@@ -1,0 +1,1036 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Candidates — Alaric Exam</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+  /* ── Avatar ── */
+  .cav { width:32px; height:32px; border-radius:50%; background:var(--mid); color:#fff; font-weight:700;
+    font-size:12px; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; text-transform:uppercase; }
+  .name-cell { display:flex; align-items:center; gap:10px; }
+  .name-cell a { color:var(--dark); font-weight:500; text-decoration:none; }
+  .name-cell a:hover { color:var(--mid); text-decoration:underline; }
+
+  /* ── Select col ── */
+  .sel-col { width:36px; text-align:center; }
+
+  /* ── Bulk bar ── */
+  .bulk-bar { background:var(--light); border:1px solid var(--mid); border-radius:8px;
+    padding:10px 16px; margin-bottom:14px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+
+  /* ── Pagination ── */
+  .pagination { display:flex; align-items:center; gap:6px; justify-content:flex-end; margin-top:14px; flex-wrap:wrap; }
+  .pg-btn { padding:5px 10px; border:1px solid var(--border); border-radius:5px; background:#fff; cursor:pointer; font-size:13px; }
+  .pg-btn.active { background:var(--mid); color:#fff; border-color:var(--mid); }
+  .pg-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+  /* ── Link box (copy) ── */
+  .link-box { display:flex; gap:8px; align-items:center; margin-top:10px; }
+  .link-box input { flex:1; font-size:12px; background:#f8f9fa; }
+
+  /* ── Dept list ── */
+  .dept-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); }
+  .dept-item:last-child { border-bottom:none; }
+
+  /* ── Detail modal sections ── */
+  .det-section { margin-bottom:20px; }
+  .det-section h4 { font-size:11px; font-weight:700; color:var(--gray); text-transform:uppercase; letter-spacing:.07em; margin-bottom:10px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  .det-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .det-item .lbl { font-size:10px; color:var(--gray); text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
+  .det-item .val { font-size:13px; font-weight:500; color:var(--dark); }
+  .sub-row { padding:10px 0; border-bottom:1px solid var(--border); display:flex; gap:12px; align-items:center; }
+  .sub-row:last-child { border-bottom:none; }
+  .lh-row { padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; display:flex; gap:10px; align-items:center; }
+  .lh-row:last-child { border-bottom:none; }
+
+  /* ── CSV import ── */
+  .csv-drop { border:2px dashed var(--border); border-radius:8px; padding:28px; text-align:center;
+    cursor:pointer; transition:border-color .15s; }
+  .csv-drop:hover, .csv-drop.over { border-color:var(--mid); background:var(--light); }
+  .csv-preview { margin-top:12px; overflow-x:auto; }
+
+  /* ── Tag list inline ── */
+  .tag-list { display:flex; flex-wrap:wrap; gap:3px; }
+
+  /* ── Expiry select custom ── */
+  #gl-expiry-select { width:100%; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<div id="sidebar">
+  <div class="brand"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="#00B4D8" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg><span>Alaric</span> Exam</div>
+  <nav>
+    <div class="nav-label">Main</div>
+    <a href="/admin/dashboard" id="nav-dashboard">📊 Dashboard</a>
+    <a href="/admin/exams" id="nav-exams">📋 Exams</a>
+    <a href="/admin/questions" id="nav-questions">❓ Question Bank</a>
+    <a href="/admin/candidates" id="nav-candidates">👥 Candidates</a>
+    <div class="nav-label">Review</div>
+    <a href="/admin/checker" id="nav-checker">✅ Review Queue</a>
+    <a href="/admin/results" id="nav-results">🏆 Results</a>
+    <a href="/admin/analytics" id="nav-analytics">📈 Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users" id="nav-users">👤 Users</a>
+    <a href="/admin/email-config" id="nav-email">📧 Email Config</a>
+    <a href="/admin/settings" id="nav-settings">⚙️ Settings</a>
+  </nav>
+  <div class="sidebar-user"><strong id="sb-name">Loading...</strong><span id="sb-role"></span></div>
+</div>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<div id="main">
+  <div id="topbar">
+    <h1>Candidates</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="importCsvBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Import CSV
+      </button>
+      <button class="btn btn-ghost btn-sm" id="manageDeptsBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Departments
+      </button>
+      <button class="btn btn-primary btn-sm" id="addCandBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Candidate
+      </button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div id="page">
+
+    <!-- ── Filter bar ── -->
+    <div class="card" style="padding:14px 16px;margin-bottom:12px">
+      <div class="filters-bar" style="margin-bottom:0">
+        <div class="search-input" style="min-width:240px">
+          <span class="ico">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="text" class="form-control" id="f-search" placeholder="Search name, email, employee ID…">
+        </div>
+        <select class="form-control" id="f-dept" style="width:auto;min-width:150px">
+          <option value="">All Departments</option>
+        </select>
+        <select class="form-control" id="f-active" style="width:auto;min-width:120px">
+          <option value="">All Status</option>
+          <option value="1">Active</option>
+          <option value="0">Inactive</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="clearFiltersBtn">Clear</button>
+        <span id="count-lbl" style="margin-left:auto;font-size:13px;color:var(--gray)"></span>
+      </div>
+    </div>
+
+    <!-- ── Bulk action bar ── -->
+    <div class="bulk-bar hidden" id="bulk-bar">
+      <strong id="bulk-count">0</strong> candidates selected
+      <button class="btn btn-outline btn-sm" id="bulkGenLinkBtn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Bulk Generate Links
+      </button>
+      <button class="btn btn-danger btn-sm" id="bulkDeleteBtn">Delete Selected</button>
+      <button class="btn btn-ghost btn-sm" id="clearSelBtn">Clear Selection</button>
+    </div>
+
+    <!-- ── Table ── -->
+    <div class="card">
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="sel-col">
+                <input type="checkbox" id="selectAll" title="Select all on page">
+              </th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>Employee ID</th>
+              <th>Department</th>
+              <th>Tags</th>
+              <th style="text-align:center"># Links</th>
+              <th style="width:170px">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="cand-tbody">
+            <tr><td colspan="9" class="text-center" style="padding:32px"><span class="spinner"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination"></div>
+    </div>
+
+  </div><!-- /page -->
+</div>
+
+<!-- ══════════════════ CREATE / EDIT CANDIDATE MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="cand-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3 id="cand-modal-title">Add Candidate</h3>
+      <button class="btn-close" onclick="closeModal('cand-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="cm-id">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" class="form-control" id="cm-name" placeholder="e.g. John Smith">
+        </div>
+        <div class="form-group">
+          <label>Email <span style="color:var(--danger)">*</span></label>
+          <input type="email" class="form-control" id="cm-email" placeholder="john@example.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="tel" class="form-control" id="cm-phone" placeholder="+1 555 000 0000">
+        </div>
+        <div class="form-group">
+          <label>Employee ID</label>
+          <input type="text" class="form-control" id="cm-empid" placeholder="e.g. EMP-0042">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Department</label>
+          <select class="form-control" id="cm-dept">
+            <option value="">— None —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Tags <span style="color:var(--gray);font-weight:400">(comma-separated)</span></label>
+          <input type="text" class="form-control" id="cm-tags" placeholder="e.g. batch-2025, engineering">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Internal Notes</label>
+        <textarea class="form-control" id="cm-notes" rows="3" placeholder="Visible only to admins…"></textarea>
+      </div>
+      <div id="cm-err" class="alert alert-danger hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('cand-modal')">Cancel</button>
+      <button class="btn btn-primary" id="cm-save-btn">Save Candidate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ GENERATE LINK MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="link-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="link-modal-title">Generate Exam Link</h3>
+      <button class="btn-close" onclick="closeModal('link-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="gl-cand-id">
+      <!-- Bulk notice -->
+      <div id="gl-bulk-notice" class="alert alert-info hidden">
+        Generating links for <strong id="gl-bulk-count">0</strong> selected candidates.
+      </div>
+      <div class="form-group">
+        <label>Select Exam <span style="color:var(--danger)">*</span></label>
+        <select class="form-control" id="gl-exam">
+          <option value="">— Select a published exam —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Expires In</label>
+        <select class="form-control" id="gl-expiry-select">
+          <option value="1">1 hour</option>
+          <option value="24">24 hours</option>
+          <option value="48" selected>48 hours</option>
+          <option value="168">7 days</option>
+          <option value="0">No expiry</option>
+        </select>
+      </div>
+
+      <!-- Single link result -->
+      <div id="gl-result" class="hidden">
+        <div class="alert alert-success" style="margin-bottom:10px">Link generated successfully!</div>
+        <div class="link-box">
+          <input type="text" class="form-control" id="gl-url" readonly>
+          <button class="btn btn-outline btn-sm" onclick="copyText(document.getElementById('gl-url').value)">Copy</button>
+        </div>
+        <p class="text-muted mt-1" id="gl-expiry-note" style="font-size:12px"></p>
+      </div>
+
+      <!-- Bulk results -->
+      <div id="gl-bulk-result" class="hidden">
+        <div class="alert alert-success" id="gl-bulk-msg" style="margin-bottom:10px"></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Candidate</th><th>Link</th><th>Copy</th></tr></thead>
+            <tbody id="gl-bulk-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('link-modal')">Close</button>
+      <button class="btn btn-primary" id="gl-gen-btn">Generate</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ CANDIDATE DETAIL MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="detail-modal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3>Candidate Details</h3>
+      <button class="btn-close" onclick="closeModal('detail-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <!-- Profile header -->
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+        <div class="cav" id="det-avatar" style="width:52px;height:52px;font-size:20px;border-radius:50%;"></div>
+        <div>
+          <div style="font-size:18px;font-weight:700;color:var(--dark)" id="det-name"></div>
+          <div class="text-muted" style="font-size:13px" id="det-email"></div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-left:auto" id="det-edit-btn">Edit Candidate</button>
+      </div>
+
+      <!-- Info grid -->
+      <div class="det-section">
+        <h4>Information</h4>
+        <div class="det-grid" id="det-info"></div>
+      </div>
+
+      <!-- Exam link history -->
+      <div class="det-section">
+        <h4>Exam Links</h4>
+        <div id="det-links"><span class="spinner"></span></div>
+      </div>
+
+      <!-- Submission history -->
+      <div class="det-section">
+        <h4>Submission History</h4>
+        <div id="det-subs"><span class="spinner"></span></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('detail-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ DEPARTMENTS MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="dept-modal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>Manage Departments</h3>
+      <button class="btn-close" onclick="closeModal('dept-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input type="text" class="form-control" id="dept-new-name" placeholder="Department name…">
+        <button class="btn btn-primary btn-sm" id="dept-add-btn" style="white-space:nowrap">+ Add</button>
+      </div>
+      <div id="dept-list"><div class="text-center text-muted" style="padding:20px"><span class="spinner"></span></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ IMPORT CSV MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="csv-modal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Import Candidates from CSV</h3>
+      <button class="btn-close" onclick="closeModal('csv-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="margin-bottom:14px">
+        Expected columns (first row = header): <code>name, email, phone, employee_id, department</code>
+      </div>
+
+      <!-- Drop zone -->
+      <div class="csv-drop" id="csv-drop" onclick="document.getElementById('csv-file').click()">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--mid)" stroke-width="1.5" style="margin:0 auto 8px;display:block"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <p style="font-size:13px;color:var(--gray)">Drop a CSV file here or <span style="color:var(--mid);font-weight:600">click to browse</span></p>
+        <input type="file" id="csv-file" accept=".csv" style="display:none">
+      </div>
+
+      <!-- Preview table -->
+      <div class="csv-preview hidden" id="csv-preview">
+        <p style="font-size:12px;color:var(--gray);margin-bottom:8px">
+          Preview — <strong id="csv-row-count">0</strong> rows to import
+        </p>
+        <div class="tbl-wrap" style="max-height:220px;overflow-y:auto">
+          <table id="csv-preview-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Employee ID</th><th>Department</th></tr></thead>
+            <tbody id="csv-preview-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="csv-err" class="alert alert-danger hidden" style="margin-top:10px"></div>
+      <div id="csv-result" class="alert alert-success hidden" style="margin-top:10px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('csv-modal')">Cancel</button>
+      <button class="btn btn-primary hidden" id="csv-import-btn">Import All Rows</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ CONFIRM MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="confirm-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3 id="conf-title">Confirm</h3>
+      <button class="btn-close" onclick="closeModal('confirm-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="conf-msg" style="font-size:14px;line-height:1.6"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">Cancel</button>
+      <button class="btn btn-danger" id="conf-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="tc"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _candidates = [];
+let _departments= [];
+let _exams      = [];
+let _page       = 1;
+let _total      = 0;
+const PG        = 25;
+let _editId     = null;
+let _bulkIds    = [];
+let _csvRows    = [];
+let _confirmCb  = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms);};}
+function openModal(id){document.getElementById(id).classList.remove('hidden');}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+function showErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.remove('hidden');}
+function clearErr(id){const el=document.getElementById(id);el.textContent='';el.classList.add('hidden');}
+function copyText(t){
+  navigator.clipboard.writeText(t).then(()=>toast('Copied to clipboard')).catch(()=>{
+    const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');ta.remove();toast('Copied to clipboard');
+  });
+}
+function initials(name){return(name||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+
+// ── Common init ───────────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  const page = location.pathname.split('/').pop();
+  const navEl = document.getElementById('nav-'+page);
+  if (navEl) navEl.classList.add('active');
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('tc').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401)window.location.href='/admin';return r;}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function loadPage() {
+  await Promise.all([loadDepartments(), loadExams()]);
+  await loadCandidates();
+}
+
+// ── Departments ───────────────────────────────────────────────────────────────
+async function loadDepartments() {
+  const r = await api('GET', '/api/candidates/departments/list');
+  const d = await r.json();
+  _departments = Array.isArray(d) ? d : (d.departments ?? []);
+  // Filter dropdown
+  const fSel = document.getElementById('f-dept');
+  fSel.innerHTML = '<option value="">All Departments</option>';
+  _departments.forEach(dep => {
+    const o=document.createElement('option'); o.value=dep.id; o.textContent=dep.name; fSel.appendChild(o);
+  });
+  // Modal dropdown
+  const cSel = document.getElementById('cm-dept');
+  cSel.innerHTML = '<option value="">— None —</option>';
+  _departments.forEach(dep => {
+    const o=document.createElement('option'); o.value=dep.id; o.textContent=dep.name; cSel.appendChild(o);
+  });
+}
+
+// ── Exams (published) ─────────────────────────────────────────────────────────
+async function loadExams() {
+  const r = await api('GET', '/api/exams?status=published&limit=200');
+  const d = await r.json();
+  _exams = Array.isArray(d) ? d : (d.exams ?? []);
+  const sel = document.getElementById('gl-exam');
+  sel.innerHTML = '<option value="">— Select a published exam —</option>';
+  _exams.forEach(e => {
+    const o=document.createElement('option'); o.value=e.id;
+    o.textContent = e.title + (e.code ? ` [${e.code}]` : '');
+    sel.appendChild(o);
+  });
+}
+
+// ── Load candidates ───────────────────────────────────────────────────────────
+async function loadCandidates() {
+  const params = new URLSearchParams();
+  const search = document.getElementById('f-search').value.trim();
+  const dept   = document.getElementById('f-dept').value;
+  const active = document.getElementById('f-active').value;
+  if (search) params.set('search', search);
+  if (dept)   params.set('department_id', dept);
+  if (active !== '') params.set('is_active', active);
+  params.set('page', _page);
+  params.set('limit', PG);
+  const tbody = document.getElementById('cand-tbody');
+  tbody.innerHTML = '<tr><td colspan="9" class="text-center" style="padding:28px"><span class="spinner"></span></td></tr>';
+  try {
+    const r = await api('GET', `/api/candidates?${params}`);
+    const d = await r.json();
+    _candidates = Array.isArray(d) ? d : (d.candidates ?? d.data ?? []);
+    _total = d.total ?? d.count ?? _candidates.length;
+    renderTable();
+    renderPagination();
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:28px">Failed to load candidates.</td></tr>';
+    toast('Failed to load candidates', 'error');
+  }
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+function renderTable() {
+  const tbody = document.getElementById('cand-tbody');
+  document.getElementById('count-lbl').textContent = `${_total} total`;
+
+  if (!_candidates.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted" style="padding:32px">No candidates found.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = _candidates.map(c => {
+    const dept   = _departments.find(d=>d.id==c.department_id);
+    const tags   = (Array.isArray(c.tags) ? c.tags : (c.tags ? c.tags.split(',') : [])).slice(0,3);
+    const tagHtml= tags.map(t=>`<span class="tag">${esc(t.trim())}</span>`).join('');
+    const active = c.is_active !== 0 && c.is_active !== false;
+    return `<tr>
+      <td class="sel-col"><input type="checkbox" class="row-chk" data-id="${c.id}"></td>
+      <td>
+        <div class="name-cell">
+          <div class="cav">${esc(initials(c.full_name||c.name))}</div>
+          <a href="#" onclick="openDetail(${c.id});return false;">${esc(c.full_name||c.name||'—')}</a>
+        </div>
+      </td>
+      <td>${esc(c.email||'—')}</td>
+      <td>${esc(c.phone||'—')}</td>
+      <td><code style="font-size:12px;color:var(--gray)">${esc(c.employee_id||'—')}</code></td>
+      <td>${dept ? esc(dept.name) : '<span class="text-muted">—</span>'}</td>
+      <td><div class="tag-list">${tagHtml||'<span class="text-muted" style="font-size:11px">—</span>'}</div></td>
+      <td style="text-align:center">${c.link_count ?? c.links_count ?? 0}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="openDetail(${c.id})">View</button>
+        <button class="btn btn-outline btn-sm" onclick="openCandModal(${c.id})">Edit</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--success);border-color:var(--success)" onclick="openGenLink(${c.id})">Link</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteCand(${c.id})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+  updateBulkBar();
+}
+
+// ── Pagination ────────────────────────────────────────────────────────────────
+function renderPagination() {
+  const pages = Math.ceil(_total / PG);
+  const bar   = document.getElementById('pagination');
+  if (pages <= 1) { bar.innerHTML=''; return; }
+  let h = `<span class="text-muted" style="font-size:12px">Page ${_page} of ${pages}</span>`;
+  h += `<button class="pg-btn" onclick="goPage(${_page-1})" ${_page===1?'disabled':''}>‹</button>`;
+  const lo = Math.max(1, _page-3), hi = Math.min(pages, _page+3);
+  if (lo>1) h+= `<button class="pg-btn" onclick="goPage(1)">1</button>${lo>2?'<span>…</span>':''}`;
+  for (let i=lo;i<=hi;i++) h+=`<button class="pg-btn${i===_page?' active':''}" onclick="goPage(${i})">${i}</button>`;
+  if (hi<pages) h+=`${hi<pages-1?'<span>…</span>':''}<button class="pg-btn" onclick="goPage(${pages})">${pages}</button>`;
+  h += `<button class="pg-btn" onclick="goPage(${_page+1})" ${_page===pages?'disabled':''}>›</button>`;
+  bar.innerHTML = h;
+}
+function goPage(p){_page=p;loadCandidates();}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+document.getElementById('f-search').addEventListener('input', debounce(()=>{_page=1;loadCandidates();},350));
+document.getElementById('f-dept').addEventListener('change',  ()=>{_page=1;loadCandidates();});
+document.getElementById('f-active').addEventListener('change', ()=>{_page=1;loadCandidates();});
+document.getElementById('clearFiltersBtn').onclick = ()=>{
+  document.getElementById('f-search').value='';
+  document.getElementById('f-dept').value='';
+  document.getElementById('f-active').value='';
+  _page=1; loadCandidates();
+};
+
+// ── Select all / bulk bar ─────────────────────────────────────────────────────
+document.getElementById('selectAll').addEventListener('change', function(){
+  document.querySelectorAll('.row-chk').forEach(cb=>cb.checked=this.checked);
+  updateBulkBar();
+});
+document.addEventListener('change', e=>{
+  if (e.target.classList.contains('row-chk')) updateBulkBar();
+});
+function updateBulkBar() {
+  const checked = document.querySelectorAll('.row-chk:checked');
+  const bar     = document.getElementById('bulk-bar');
+  if (checked.length>0) {
+    bar.classList.remove('hidden');
+    document.getElementById('bulk-count').textContent = checked.length;
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+function getSelectedIds(){ return Array.from(document.querySelectorAll('.row-chk:checked')).map(cb=>cb.dataset.id); }
+document.getElementById('clearSelBtn').onclick = ()=>{
+  document.querySelectorAll('.row-chk').forEach(cb=>cb.checked=false);
+  document.getElementById('selectAll').checked=false;
+  updateBulkBar();
+};
+
+// ── Bulk generate links ───────────────────────────────────────────────────────
+document.getElementById('bulkGenLinkBtn').onclick = ()=>{
+  _bulkIds = getSelectedIds();
+  if (!_bulkIds.length) return;
+  document.getElementById('gl-cand-id').value='';
+  document.getElementById('link-modal-title').textContent='Bulk Generate Exam Links';
+  document.getElementById('gl-bulk-notice').classList.remove('hidden');
+  document.getElementById('gl-bulk-count').textContent = _bulkIds.length;
+  resetLinkModal();
+  openModal('link-modal');
+};
+
+// ── Bulk delete ───────────────────────────────────────────────────────────────
+document.getElementById('bulkDeleteBtn').onclick = ()=>{
+  const ids = getSelectedIds();
+  if (!ids.length) return;
+  openConfirm('Delete Candidates', `Delete ${ids.length} candidate${ids.length>1?'s':''}? This cannot be undone.`, async ()=>{
+    let ok=0;
+    for (const id of ids) {
+      const r=await api('DELETE',`/api/candidates/${id}`);
+      if (r.ok||(await r.json() && !r.error)) ok++;
+    }
+    toast(`Deleted ${ok} candidate${ok>1?'s':''}`, 'warning');
+    document.querySelectorAll('.row-chk').forEach(cb=>cb.checked=false);
+    document.getElementById('selectAll').checked=false;
+    updateBulkBar();
+    loadCandidates();
+  });
+};
+
+// ── Create / Edit candidate modal ─────────────────────────────────────────────
+document.getElementById('addCandBtn').onclick = ()=>openCandModal(null);
+
+function openCandModal(id) {
+  _editId = id;
+  clearErr('cm-err');
+  if (id) {
+    const c = _candidates.find(x=>x.id==id);
+    if (!c) return;
+    document.getElementById('cand-modal-title').textContent = 'Edit Candidate';
+    document.getElementById('cm-id').value    = id;
+    document.getElementById('cm-name').value  = c.full_name||c.name||'';
+    document.getElementById('cm-email').value = c.email||'';
+    document.getElementById('cm-phone').value = c.phone||'';
+    document.getElementById('cm-empid').value = c.employee_id||'';
+    document.getElementById('cm-dept').value  = c.department_id||'';
+    document.getElementById('cm-tags').value  = Array.isArray(c.tags)?c.tags.join(', '):(c.tags||'');
+    document.getElementById('cm-notes').value = c.notes||'';
+  } else {
+    document.getElementById('cand-modal-title').textContent='Add Candidate';
+    ['cm-id','cm-name','cm-email','cm-phone','cm-empid','cm-tags','cm-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('cm-dept').value='';
+  }
+  openModal('cand-modal');
+}
+
+document.getElementById('cm-save-btn').onclick = async ()=>{
+  clearErr('cm-err');
+  const name  = document.getElementById('cm-name').value.trim();
+  const email = document.getElementById('cm-email').value.trim();
+  if (!name)  return showErr('cm-err','Full name is required.');
+  if (!email) return showErr('cm-err','Email is required.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('cm-err','Enter a valid email address.');
+  const payload = {
+    full_name:     name,
+    name:          name,
+    email,
+    phone:         document.getElementById('cm-phone').value.trim()||null,
+    employee_id:   document.getElementById('cm-empid').value.trim()||null,
+    department_id: document.getElementById('cm-dept').value||null,
+    tags:          document.getElementById('cm-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
+    notes:         document.getElementById('cm-notes').value,
+  };
+  const cid = document.getElementById('cm-id').value;
+  const btn = document.getElementById('cm-save-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    const r = cid
+      ? await api('PUT',  `/api/candidates/${cid}`, payload)
+      : await api('POST', '/api/candidates', payload);
+    const d = await r.json();
+    if (!r.ok||d.error) return showErr('cm-err', d.error??d.message??'Save failed.');
+    toast(cid?'Candidate updated':'Candidate created');
+    closeModal('cand-modal');
+    await loadCandidates();
+  } catch(e){ showErr('cm-err','An error occurred.'); }
+  finally { btn.disabled=false; btn.textContent='Save Candidate'; }
+};
+
+// ── Delete ────────────────────────────────────────────────────────────────────
+async function deleteCand(id) {
+  const c = _candidates.find(x=>x.id==id);
+  openConfirm('Delete Candidate',
+    `Delete "${c?.full_name||c?.name||'this candidate'}" and all their exam links?`,
+    async ()=>{
+      const r = await api('DELETE',`/api/candidates/${id}`);
+      if (r.ok) { toast('Candidate deleted','warning'); await loadCandidates(); }
+      else { const d=await r.json(); toast(d.error||'Failed','error'); }
+    }
+  );
+}
+
+// ── Generate link (single) ────────────────────────────────────────────────────
+function openGenLink(candId) {
+  _bulkIds = [];
+  document.getElementById('gl-cand-id').value = candId;
+  document.getElementById('link-modal-title').textContent = 'Generate Exam Link';
+  document.getElementById('gl-bulk-notice').classList.add('hidden');
+  resetLinkModal();
+  openModal('link-modal');
+}
+
+function resetLinkModal() {
+  document.getElementById('gl-result').classList.add('hidden');
+  document.getElementById('gl-bulk-result').classList.add('hidden');
+  document.getElementById('gl-exam').value = '';
+  document.getElementById('gl-expiry-select').value = '48';
+  document.getElementById('gl-gen-btn').classList.remove('hidden');
+  document.getElementById('gl-gen-btn').disabled = false;
+  document.getElementById('gl-gen-btn').textContent = 'Generate';
+}
+
+document.getElementById('gl-gen-btn').onclick = async ()=>{
+  const examId  = document.getElementById('gl-exam').value;
+  const expiry  = parseInt(document.getElementById('gl-expiry-select').value);
+  if (!examId)  return toast('Select an exam first','error');
+
+  const btn = document.getElementById('gl-gen-btn');
+  btn.disabled=true; btn.textContent='Generating…';
+
+  if (_bulkIds.length > 0) {
+    // Bulk
+    const results = [];
+    for (const cid of _bulkIds) {
+      const payload = {candidate_id:parseInt(cid), exam_id:parseInt(examId)};
+      if (expiry > 0) payload.expiry_hours = expiry;
+      const r  = await api('POST', `/api/candidates/${cid}/links`, payload);
+      const d  = await r.json();
+      const c  = _candidates.find(x=>String(x.id)===String(cid));
+      const url= d.url||d.link||d.exam_url||
+        (d.token ? `${window.location.origin}/exam/${d.token}` : null);
+      results.push({name: c?.full_name||c?.name||`#${cid}`, url, error: d.error||null});
+    }
+    const ok = results.filter(r=>!r.error&&r.url).length;
+    document.getElementById('gl-bulk-msg').textContent = `Generated ${ok} of ${results.length} links successfully.`;
+    document.getElementById('gl-bulk-tbody').innerHTML = results.map(r=>`
+      <tr>
+        <td>${esc(r.name)}</td>
+        <td><input type="text" class="form-control" value="${esc(r.url||r.error||'—')}" readonly style="font-size:11px;"></td>
+        <td>${r.url?`<button class="btn btn-outline btn-sm" onclick="copyText('${esc(r.url)}')">Copy</button>`:'<span class="text-muted">—</span>'}</td>
+      </tr>`).join('');
+    document.getElementById('gl-bulk-result').classList.remove('hidden');
+    btn.classList.add('hidden');
+    toast(`Generated ${ok} links`);
+    await loadCandidates();
+  } else {
+    // Single
+    const candId = document.getElementById('gl-cand-id').value;
+    const payload = {candidate_id:parseInt(candId), exam_id:parseInt(examId)};
+    if (expiry > 0) payload.expiry_hours = expiry;
+    const r = await api('POST', `/api/candidates/${candId}/links`, payload);
+    const d = await r.json();
+    const url = d.url||d.link||d.exam_url||
+      (d.token ? `${window.location.origin}/exam/${d.token}` : null);
+    if (url) {
+      document.getElementById('gl-url').value = url;
+      if (expiry > 0) {
+        const exp = new Date(Date.now()+expiry*3600000);
+        document.getElementById('gl-expiry-note').textContent = `Expires: ${exp.toLocaleString()}`;
+      } else {
+        document.getElementById('gl-expiry-note').textContent = 'No expiry set.';
+      }
+      document.getElementById('gl-result').classList.remove('hidden');
+      btn.classList.add('hidden');
+      toast('Link generated!');
+      await loadCandidates();
+    } else {
+      toast(d.error||'Failed to generate link','error');
+      btn.disabled=false; btn.textContent='Generate';
+    }
+  }
+};
+
+// ── Candidate detail ──────────────────────────────────────────────────────────
+async function openDetail(id) {
+  const c = _candidates.find(x=>x.id==id);
+  if (!c) return;
+  const dept  = _departments.find(d=>d.id==c.department_id);
+  const tags  = (Array.isArray(c.tags)?c.tags:(c.tags?c.tags.split(','):[]));
+  document.getElementById('det-avatar').textContent = initials(c.full_name||c.name);
+  document.getElementById('det-name').textContent   = c.full_name||c.name||'';
+  document.getElementById('det-email').textContent  = c.email||'';
+  document.getElementById('det-edit-btn').onclick   = ()=>{ closeModal('detail-modal'); openCandModal(id); };
+  document.getElementById('det-info').innerHTML = `
+    <div class="det-item"><div class="lbl">Phone</div><div class="val">${esc(c.phone||'—')}</div></div>
+    <div class="det-item"><div class="lbl">Employee ID</div><div class="val">${esc(c.employee_id||'—')}</div></div>
+    <div class="det-item"><div class="lbl">Department</div><div class="val">${esc(dept?.name||'—')}</div></div>
+    <div class="det-item"><div class="lbl">Status</div><div class="val">
+      <span class="badge ${c.is_active!==0&&c.is_active!==false?'badge-success':'badge-secondary'}">${c.is_active!==0&&c.is_active!==false?'Active':'Inactive'}</span>
+    </div></div>
+    <div class="det-item"><div class="lbl">Tags</div><div class="val">${tags.length?tags.map(t=>`<span class="tag">${esc(t.trim())}</span>`).join(' '):'—'}</div></div>
+    ${c.notes?`<div class="det-item" style="grid-column:1/-1"><div class="lbl">Notes</div><div class="val" style="white-space:pre-wrap;font-size:13px">${esc(c.notes)}</div></div>`:''}
+  `;
+  document.getElementById('det-links').innerHTML = '<span class="spinner"></span>';
+  document.getElementById('det-subs').innerHTML  = '<span class="spinner"></span>';
+  openModal('detail-modal');
+  loadDetailHistory(id);
+}
+
+async function loadDetailHistory(candId) {
+  try {
+    const [lr, sr] = await Promise.all([
+      api('GET', `/api/candidates/${candId}/links`),
+      api('GET', `/api/candidates/${candId}/submissions`),
+    ]);
+    const linksRaw = await lr.json();
+    const subsRaw  = await sr.json();
+    const links = Array.isArray(linksRaw)?linksRaw:(linksRaw.links??[]);
+    const subs  = Array.isArray(subsRaw) ?subsRaw :(subsRaw.submissions??[]);
+
+    // Links
+    const lDiv = document.getElementById('det-links');
+    if (!links.length) {
+      lDiv.innerHTML='<p class="text-muted" style="font-size:13px">No exam links generated yet.</p>';
+    } else {
+      lDiv.innerHTML = links.map(lk=>{
+        const exam    = _exams.find(e=>e.id==lk.exam_id);
+        const expired = lk.expires_at && new Date(lk.expires_at) < new Date();
+        const used    = lk.is_used || (lk.used_count >= lk.max_attempts);
+        const st      = used ? '<span class="badge badge-secondary">Used</span>' :
+                        expired ? '<span class="badge badge-danger">Expired</span>' :
+                        '<span class="badge badge-success">Active</span>';
+        const url = lk.url || lk.exam_url || `${window.location.origin}/exam/${lk.token||lk.code||''}`;
+        return `<div class="lh-row">
+          ${st}
+          <span style="flex:1;font-weight:500">${exam?esc(exam.title):`Exam #${lk.exam_id}`}</span>
+          <span class="text-muted">${lk.expires_at?new Date(lk.expires_at).toLocaleDateString():'No expiry'}</span>
+          <button class="btn btn-outline btn-sm" onclick="copyText('${esc(url)}')">Copy</button>
+        </div>`;
+      }).join('');
+    }
+
+    // Submissions
+    const sDiv = document.getElementById('det-subs');
+    if (!subs.length) {
+      sDiv.innerHTML='<p class="text-muted" style="font-size:13px">No submissions yet.</p>';
+    } else {
+      sDiv.innerHTML = subs.map(s=>{
+        const exam  = _exams.find(e=>e.id==s.exam_id);
+        const total = s.total_marks||100;
+        const score = s.final_score??s.auto_score;
+        const pct   = score!=null&&total>0 ? Math.round((score/total)*100) : null;
+        const pass  = s.pass_fail==='pass' || s.passed===1;
+        return `<div class="sub-row">
+          ${score!=null?`<span class="badge ${pass?'badge-success':'badge-danger'}">${pass?'Pass':'Fail'}</span>`:'<span class="badge badge-warning">Pending</span>'}
+          <div style="flex:1">
+            <div style="font-weight:500;font-size:13px">${exam?esc(exam.title):`Exam #${s.exam_id}`}</div>
+            <div class="text-muted" style="font-size:11px">${s.submitted_at?new Date(s.submitted_at).toLocaleString():'—'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-weight:700;font-size:15px">${pct!=null?pct+'%':'—'}</div>
+            <div class="text-muted" style="font-size:11px">${score!=null?Math.round(score)+'/'+Math.round(total)+' marks':'Pending grading'}</div>
+          </div>
+          <a href="/admin/results?submission=${s.id}" class="btn btn-ghost btn-sm">View</a>
+        </div>`;
+      }).join('');
+    }
+  } catch(e) {
+    document.getElementById('det-links').innerHTML = '<p class="text-muted" style="font-size:13px">Failed to load.</p>';
+    document.getElementById('det-subs').innerHTML  = '<p class="text-muted" style="font-size:13px">Failed to load.</p>';
+  }
+}
+
+// ── Departments modal ─────────────────────────────────────────────────────────
+document.getElementById('manageDeptsBtn').onclick = ()=>{
+  loadDeptModal();
+  openModal('dept-modal');
+};
+
+async function loadDeptModal() {
+  const list = document.getElementById('dept-list');
+  list.innerHTML = '<div class="text-center text-muted" style="padding:20px"><span class="spinner"></span></div>';
+  const r = await api('GET', '/api/candidates/departments/list');
+  const d = await r.json();
+  const depts = Array.isArray(d)?d:(d.departments??[]);
+  if (!depts.length) {
+    list.innerHTML = '<p class="text-muted text-center" style="padding:16px">No departments yet.</p>';
+    return;
+  }
+  list.innerHTML = depts.map(dep=>`
+    <div class="dept-item">
+      <span>${esc(dep.name)}</span>
+      <span style="display:flex;align-items:center;gap:8px">
+        <span class="text-muted" style="font-size:12px">${dep.candidate_count??0} candidates</span>
+        <button class="btn btn-danger btn-sm" onclick="deleteDept(${dep.id})">Delete</button>
+      </span>
+    </div>`).join('');
+}
+
+document.getElementById('dept-add-btn').onclick = async ()=>{
+  const name = document.getElementById('dept-new-name').value.trim();
+  if (!name) return toast('Enter a department name','error');
+  const r = await api('POST','/api/candidates/departments',{name});
+  const d = await r.json();
+  if (r.ok&&!d.error) {
+    toast('Department added');
+    document.getElementById('dept-new-name').value='';
+    await loadDepartments();
+    loadDeptModal();
+  } else toast(d.error||'Failed','error');
+};
+
+async function deleteDept(id) {
+  openConfirm('Delete Department','Delete this department? Candidates will not be removed.', async ()=>{
+    const r = await api('DELETE',`/api/candidates/departments/${id}`);
+    if (r.ok) { toast('Deleted','warning'); await loadDepartments(); loadDeptModal(); }
+    else { const d=await r.json(); toast(d.error||'Failed','error'); }
+  });
+}
+
+// ── CSV Import ────────────────────────────────────────────────────────────────
+document.getElementById('importCsvBtn').onclick = ()=>{
+  _csvRows=[];
+  document.getElementById('csv-preview').classList.add('hidden');
+  document.getElementById('csv-import-btn').classList.add('hidden');
+  document.getElementById('csv-result').classList.add('hidden');
+  clearErr('csv-err');
+  document.getElementById('csv-file').value='';
+  openModal('csv-modal');
+};
+
+document.getElementById('csv-drop').addEventListener('dragover',e=>{e.preventDefault();document.getElementById('csv-drop').classList.add('over');});
+document.getElementById('csv-drop').addEventListener('dragleave',()=>document.getElementById('csv-drop').classList.remove('over'));
+document.getElementById('csv-drop').addEventListener('drop',e=>{
+  e.preventDefault();
+  document.getElementById('csv-drop').classList.remove('over');
+  const file=e.dataTransfer.files[0];
+  if (file) parseCSV(file);
+});
+document.getElementById('csv-file').addEventListener('change',e=>{
+  if (e.target.files[0]) parseCSV(e.target.files[0]);
+});
+
+function parseCSV(file) {
+  if (!file.name.endsWith('.csv')) return showErr('csv-err','Please upload a .csv file.');
+  clearErr('csv-err');
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+    if (lines.length < 2) return showErr('csv-err','CSV must have a header row and at least one data row.');
+    const header = lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/[^a-z_]/g,''));
+    const nameI  = header.findIndex(h=>h.includes('name'));
+    const emailI = header.findIndex(h=>h.includes('email'));
+    if (nameI<0||emailI<0) return showErr('csv-err','CSV must have "name" and "email" columns.');
+    const phoneI  = header.findIndex(h=>h.includes('phone'));
+    const empI    = header.findIndex(h=>h.includes('employee'));
+    const deptI   = header.findIndex(h=>h.includes('dept')||h.includes('department'));
+    _csvRows = [];
+    for (let i=1;i<lines.length;i++) {
+      const cols = lines[i].split(',').map(c=>c.trim().replace(/^"|"$/g,''));
+      if (!cols[nameI]&&!cols[emailI]) continue;
+      _csvRows.push({
+        name:        cols[nameI]||'',
+        email:       cols[emailI]||'',
+        phone:       phoneI>=0?cols[phoneI]||'':'',
+        employee_id: empI>=0?cols[empI]||'':'',
+        department:  deptI>=0?cols[deptI]||'':'',
+      });
+    }
+    document.getElementById('csv-row-count').textContent = _csvRows.length;
+    document.getElementById('csv-preview-tbody').innerHTML = _csvRows.slice(0,10).map(r=>`
+      <tr><td>${esc(r.name)}</td><td>${esc(r.email)}</td><td>${esc(r.phone)}</td><td>${esc(r.employee_id)}</td><td>${esc(r.department)}</td></tr>
+    `).join('') + (_csvRows.length>10?`<tr><td colspan="5" class="text-muted" style="text-align:center">…and ${_csvRows.length-10} more rows</td></tr>`:'');
+    document.getElementById('csv-preview').classList.remove('hidden');
+    document.getElementById('csv-import-btn').classList.remove('hidden');
+    document.getElementById('csv-result').classList.add('hidden');
+  };
+  reader.readAsText(file);
+}
+
+document.getElementById('csv-import-btn').onclick = async ()=>{
+  if (!_csvRows.length) return;
+  const btn = document.getElementById('csv-import-btn');
+  btn.disabled=true; btn.textContent='Importing…';
+  let ok=0, fail=0;
+  for (const row of _csvRows) {
+    const dept = _departments.find(d=>d.name.toLowerCase()===row.department.toLowerCase());
+    const payload = {
+      full_name:row.name, name:row.name, email:row.email,
+      phone:row.phone||null, employee_id:row.employee_id||null,
+      department_id:dept?dept.id:null,
+    };
+    try {
+      const r = await api('POST','/api/candidates',payload);
+      if (r.ok) ok++; else fail++;
+    } catch(e){ fail++; }
+  }
+  document.getElementById('csv-result').textContent=`Imported ${ok} candidates.${fail>0?` ${fail} failed (possibly duplicate emails).`:''}`;
+  document.getElementById('csv-result').classList.remove('hidden');
+  btn.disabled=false; btn.textContent='Import All Rows';
+  toast(`Imported ${ok} candidates`);
+  await loadCandidates();
+};
+
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+function openConfirm(title,msg,cb){
+  document.getElementById('conf-title').textContent=title;
+  document.getElementById('conf-msg').textContent  =msg;
+  _confirmCb=cb;
+  openModal('confirm-modal');
+}
+document.getElementById('conf-ok').onclick=async ()=>{
+  if(!_confirmCb){closeModal('confirm-modal');return;}
+  const btn=document.getElementById('conf-ok');
+  btn.disabled=true;btn.textContent='Processing…';
+  await _confirmCb();
+  btn.disabled=false;btn.textContent='Confirm';
+  closeModal('confirm-modal');
+  _confirmCb=null;
+};
+
+// ── Backdrop close ────────────────────────────────────────────────────────────
+['cand-modal','link-modal','detail-modal','dept-modal','csv-modal','confirm-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{
+    if(e.target===document.getElementById(id)) closeModal(id);
+  });
+});
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exams — Alaric Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+/* ── Stats bar ── */
+.stats-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.stat-card-sm {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.stat-card-sm .sc-icon {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.stat-card-sm .sc-icon.all     { background: #e8f0fe; }
+.stat-card-sm .sc-icon.pub     { background: #d4edda; }
+.stat-card-sm .sc-icon.draft   { background: #e2e3e5; }
+.stat-card-sm .sc-icon.arch    { background: #fff3cd; }
+.stat-card-sm .sc-val  { font-size: 26px; font-weight: 700; color: var(--dark); line-height: 1; }
+.stat-card-sm .sc-lbl  { font-size: 11px; color: var(--gray); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+/* ── Filter bar ── */
+.filter-bar {
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.filter-bar .search-wrap { position: relative; min-width: 220px; flex: 1; max-width: 320px; }
+.filter-bar .search-wrap .ico { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--gray); pointer-events: none; }
+.filter-bar .search-wrap input { padding-left: 34px; }
+.filter-bar select, .filter-bar input[type=date] { width: auto; min-width: 130px; }
+.filter-count { margin-left: auto; font-size: 13px; color: var(--gray); }
+
+/* ── Cards grid ── */
+.exams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+  gap: 16px;
+}
+.exam-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  transition: box-shadow .15s, transform .15s;
+  overflow: hidden;
+}
+.exam-card:hover { box-shadow: 0 6px 20px rgba(0,43,92,.14); transform: translateY(-1px); }
+.exam-card-header {
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+}
+.exam-card-code {
+  font-family: monospace; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+  color: var(--gray); background: #f1f3f5; padding: 2px 7px; border-radius: 4px;
+  flex-shrink: 0;
+}
+.exam-card-title {
+  font-size: 14px; font-weight: 700; color: var(--dark);
+  line-height: 1.35; flex: 1;
+  text-decoration: none;
+}
+.exam-card-title:hover { color: var(--mid); }
+.exam-card-body { padding: 12px 16px; flex: 1; }
+.exam-meta-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin-bottom: 10px;
+}
+.exam-meta-item { display: flex; flex-direction: column; gap: 1px; }
+.exam-meta-item .m-lbl { font-size: 10px; color: var(--gray); text-transform: uppercase; letter-spacing: .05em; }
+.exam-meta-item .m-val { font-size: 13px; font-weight: 600; color: var(--dark); }
+.exam-card-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  background: #fafbfc;
+}
+.exam-card-date {
+  font-size: 11px; color: var(--gray); margin-bottom: 8px;
+}
+
+/* ── Empty state ── */
+.empty-state {
+  grid-column: 1/-1; text-align: center; padding: 60px 20px;
+  color: var(--gray); background: var(--white);
+  border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.empty-state .es-icon { font-size: 40px; margin-bottom: 12px; opacity: .45; }
+.empty-state p { font-size: 15px; }
+.empty-state small { font-size: 13px; display: block; margin-top: 4px; }
+
+/* ── Quick-create modal ── */
+.form-hint { font-size: 11px; color: var(--gray); margin-top: 3px; }
+#confirm-overlay .modal { max-width: 420px; }
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════════════════ -->
+<div id="sidebar">
+  <div class="brand">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+      <path stroke="#00B4D8" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+    </svg>
+    <span>Alaric</span> Exam
+  </div>
+  <nav>
+    <div class="nav-label">Main</div>
+    <a href="/admin/dashboard">📊 Dashboard</a>
+    <a href="/admin/exams" id="nav-exams" class="active">📋 Exams</a>
+    <a href="/admin/questions" id="nav-questions">❓ Question Bank</a>
+    <a href="/admin/candidates">👥 Candidates</a>
+    <div class="nav-label">Review</div>
+    <a href="/admin/checker">✅ Review Queue</a>
+    <a href="/admin/results">🏆 Results</a>
+    <a href="/admin/analytics">📈 Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users">👤 Users</a>
+    <a href="/admin/email-config">📧 Email Config</a>
+    <a href="/admin/settings">⚙️ Settings</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<div id="main">
+  <div id="topbar">
+    <h1>Exams</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-primary" id="createExamBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create New Exam
+      </button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div id="page">
+
+    <!-- Stats bar -->
+    <div class="stats-bar">
+      <div class="stat-card-sm">
+        <div class="sc-icon all">📋</div>
+        <div><div class="sc-val" id="stat-total">—</div><div class="sc-lbl">Total Exams</div></div>
+      </div>
+      <div class="stat-card-sm">
+        <div class="sc-icon pub">✅</div>
+        <div><div class="sc-val" id="stat-published">—</div><div class="sc-lbl">Published</div></div>
+      </div>
+      <div class="stat-card-sm">
+        <div class="sc-icon draft">📝</div>
+        <div><div class="sc-val" id="stat-draft">—</div><div class="sc-lbl">Draft</div></div>
+      </div>
+      <div class="stat-card-sm">
+        <div class="sc-icon arch">📦</div>
+        <div><div class="sc-val" id="stat-archived">—</div><div class="sc-lbl">Archived</div></div>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div class="filter-bar">
+      <div class="search-wrap">
+        <span class="ico">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </span>
+        <input type="text" class="form-control" id="searchInput" placeholder="Search title or code…">
+      </div>
+      <select class="form-control" id="statusFilter">
+        <option value="">All Statuses</option>
+        <option value="draft">Draft</option>
+        <option value="published">Published</option>
+        <option value="archived">Archived</option>
+      </select>
+      <input type="date" class="form-control" id="dateFrom" title="Created from">
+      <input type="date" class="form-control" id="dateTo" title="Created to">
+      <span class="filter-count" id="count-label"></span>
+    </div>
+
+    <!-- Cards grid -->
+    <div class="exams-grid" id="exams-grid">
+      <div class="empty-state">
+        <div class="es-icon"><span class="spinner"></span></div>
+        <p>Loading exams…</p>
+      </div>
+    </div>
+
+  </div><!-- /page -->
+</div><!-- /main -->
+
+<!-- ══ QUICK-CREATE MODAL ════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="createModal">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h3>Create New Exam</h3>
+      <button class="btn-close" id="closeCreateModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Title <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-control" id="c-title" placeholder="e.g. Mid-Term Assessment 2025">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Duration (minutes) <span style="color:var(--danger)">*</span></label>
+          <input type="number" class="form-control" id="c-duration" min="1" max="600" placeholder="60">
+        </div>
+        <div class="form-group">
+          <label>Pass Marks</label>
+          <input type="number" class="form-control" id="c-pass-marks" min="0" placeholder="e.g. 50">
+          <div class="form-hint">Leave blank to set later</div>
+        </div>
+      </div>
+      <p class="text-muted" style="font-size:12px;margin-top:4px;">After creating, you'll be taken to the full exam editor.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelCreateModal">Cancel</button>
+      <button class="btn btn-primary" id="doCreateBtn">Create &amp; Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CONFIRM MODAL ═════════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="confirmModal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3 id="confirm-title">Confirm</h3>
+      <button class="btn-close" onclick="closeConfirm()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-msg" style="font-size:14px;line-height:1.6"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  Globals
+// ════════════════════════════════════════════════════════
+let allExams = [];
+let _user    = null;
+
+// ════════════════════════════════════════════════════════
+//  Bootstrap
+// ════════════════════════════════════════════════════════
+async function init() {
+  const r = await fetch('/api/auth/me', { credentials: 'include' });
+  if (!r.ok) return (window.location.href = '/admin');
+  _user = await r.json();
+  document.getElementById('sb-name').textContent = _user.full_name || _user.name || 'Admin';
+  document.getElementById('sb-role').textContent = (_user.role || '').replace(/_/g, ' ');
+  await loadExams();
+}
+
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/admin';
+};
+
+// ════════════════════════════════════════════════════════
+//  API helpers
+// ════════════════════════════════════════════════════════
+async function api(method, url, body) {
+  const opts = {
+    method,
+    credentials: 'include',
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  };
+  const r = await fetch(url, opts);
+  if (r.status === 401) { window.location.href = '/admin'; return null; }
+  try { return await r.json(); } catch { return null; }
+}
+
+function toast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ════════════════════════════════════════════════════════
+//  Load + render
+// ════════════════════════════════════════════════════════
+async function loadExams() {
+  const grid = document.getElementById('exams-grid');
+  grid.innerHTML = `<div class="empty-state"><div class="es-icon"><span class="spinner"></span></div><p>Loading exams…</p></div>`;
+
+  try {
+    const data = await api('GET', '/api/exams');
+    if (!data) return;
+    allExams = Array.isArray(data) ? data : (data.exams ?? data.data ?? []);
+    updateStats();
+    renderGrid();
+  } catch {
+    grid.innerHTML = `<div class="empty-state"><div class="es-icon">⚠️</div><p>Failed to load exams.</p></div>`;
+    toast('Failed to load exams', 'error');
+  }
+}
+
+function updateStats() {
+  const total     = allExams.length;
+  const published = allExams.filter(e => (e.status||'draft') === 'published').length;
+  const draft     = allExams.filter(e => (e.status||'draft') === 'draft').length;
+  const archived  = allExams.filter(e => (e.status||'draft') === 'archived').length;
+  document.getElementById('stat-total').textContent     = total;
+  document.getElementById('stat-published').textContent = published;
+  document.getElementById('stat-draft').textContent     = draft;
+  document.getElementById('stat-archived').textContent  = archived;
+}
+
+function renderGrid() {
+  const search  = document.getElementById('searchInput').value.toLowerCase().trim();
+  const status  = document.getElementById('statusFilter').value;
+  const fromVal = document.getElementById('dateFrom').value;
+  const toVal   = document.getElementById('dateTo').value;
+  const fromTs  = fromVal ? new Date(fromVal).getTime() : null;
+  const toTs    = toVal   ? new Date(toVal + 'T23:59:59').getTime() : null;
+
+  const filtered = allExams.filter(ex => {
+    const title    = (ex.title || '').toLowerCase();
+    const code     = (ex.code || ex.exam_code || '').toLowerCase();
+    const st       = (ex.status || 'draft').toLowerCase();
+    const created  = ex.created_at ? new Date(ex.created_at).getTime() : null;
+
+    if (search  && !title.includes(search) && !code.includes(search)) return false;
+    if (status  && st !== status) return false;
+    if (fromTs  && created && created < fromTs) return false;
+    if (toTs    && created && created > toTs)   return false;
+    return true;
+  });
+
+  document.getElementById('count-label').textContent =
+    `${filtered.length} exam${filtered.length !== 1 ? 's' : ''}`;
+
+  const grid = document.getElementById('exams-grid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state">
+      <div class="es-icon">📋</div>
+      <p>${allExams.length === 0 ? 'No exams yet.' : 'No exams match your filters.'}</p>
+      ${allExams.length === 0 ? '<small>Click <strong>Create New Exam</strong> to get started.</small>' : ''}
+    </div>`;
+    return;
+  }
+
+  const isSuperAdmin = (_user?.role || '').toLowerCase().includes('super_admin');
+
+  grid.innerHTML = filtered.map(ex => {
+    const st       = (ex.status || 'draft').toLowerCase();
+    const code     = esc(ex.code || ex.exam_code || 'N/A');
+    const title    = esc(ex.title || 'Untitled');
+    const duration = ex.duration_minutes ?? ex.duration ?? '—';
+    const totalM   = ex.total_marks ?? '—';
+    const passM    = ex.pass_marks ?? ex.passing_score ?? '—';
+    const qCount   = ex.question_count ?? ex.total_questions ?? '—';
+    const subs     = ex.submission_count ?? ex.attempts ?? ex.candidate_count ?? '—';
+    const created  = fmtDate(ex.created_at);
+
+    const badgeCls = st === 'published' ? 'badge-success'
+                   : st === 'archived'  ? 'badge-dark'
+                   : 'badge-secondary';
+
+    const toggleLabel = st === 'published' ? 'Archive' : 'Publish';
+    const toggleCls   = st === 'published' ? 'btn-warning' : 'btn-success';
+
+    const deleteBtn = isSuperAdmin
+      ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete(${ex.id},'${title}')">Delete</button>`
+      : '';
+
+    return `<div class="exam-card">
+      <div class="exam-card-header">
+        <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:0;">
+          <a class="exam-card-title" href="/admin/exam-editor?id=${ex.id}">${title}</a>
+          <span class="exam-card-code">${code}</span>
+        </div>
+        <span class="badge ${badgeCls}" style="flex-shrink:0;margin-top:2px;">${st.charAt(0).toUpperCase()+st.slice(1)}</span>
+      </div>
+      <div class="exam-card-body">
+        <div class="exam-meta-grid">
+          <div class="exam-meta-item">
+            <span class="m-lbl">Duration</span>
+            <span class="m-val">${duration !== '—' ? duration+' min' : '—'}</span>
+          </div>
+          <div class="exam-meta-item">
+            <span class="m-lbl">Questions</span>
+            <span class="m-val">${qCount}</span>
+          </div>
+          <div class="exam-meta-item">
+            <span class="m-lbl">Total / Pass</span>
+            <span class="m-val">${totalM} / ${passM}</span>
+          </div>
+          <div class="exam-meta-item">
+            <span class="m-lbl">Submissions</span>
+            <span class="m-val">${subs}</span>
+          </div>
+        </div>
+        <div class="exam-card-date">Created: ${created}</div>
+      </div>
+      <div class="exam-card-footer">
+        <a class="btn btn-outline btn-sm" href="/admin/exam-editor?id=${ex.id}">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit
+        </a>
+        <button class="btn btn-ghost btn-sm" onclick="duplicateExam(${ex.id})" title="Duplicate">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+        <button class="btn ${toggleCls} btn-sm" onclick="toggleStatus(${ex.id},'${st}')">${toggleLabel}</button>
+        ${deleteBtn}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════════
+//  Filter listeners
+// ════════════════════════════════════════════════════════
+['searchInput','statusFilter','dateFrom','dateTo'].forEach(id => {
+  document.getElementById(id).addEventListener('input', renderGrid);
+  document.getElementById(id).addEventListener('change', renderGrid);
+});
+
+// ════════════════════════════════════════════════════════
+//  Quick-create modal
+// ════════════════════════════════════════════════════════
+document.getElementById('createExamBtn').onclick = () => {
+  document.getElementById('c-title').value = '';
+  document.getElementById('c-duration').value = '';
+  document.getElementById('c-pass-marks').value = '';
+  document.getElementById('createModal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('c-title').focus(), 80);
+};
+
+function closeCreateModal() {
+  document.getElementById('createModal').classList.add('hidden');
+}
+document.getElementById('closeCreateModal').onclick  = closeCreateModal;
+document.getElementById('cancelCreateModal').onclick = closeCreateModal;
+document.getElementById('createModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('createModal')) closeCreateModal();
+});
+
+document.getElementById('doCreateBtn').onclick = async () => {
+  const title    = document.getElementById('c-title').value.trim();
+  const duration = parseInt(document.getElementById('c-duration').value) || 0;
+  if (!title)       { toast('Title is required', 'error'); return; }
+  if (duration < 1) { toast('Duration must be at least 1 minute', 'error'); return; }
+
+  const btn = document.getElementById('doCreateBtn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+
+  try {
+    const body = {
+      title,
+      duration_minutes: duration,
+      pass_marks: parseInt(document.getElementById('c-pass-marks').value) || undefined,
+    };
+    const result = await api('POST', '/api/exams', body);
+    if (!result) return;
+    if (result.error) { toast(result.error, 'error'); return; }
+    const newId = result.id ?? result.exam_id ?? result.data?.id;
+    if (newId) {
+      window.location.href = `/admin/exam-editor?id=${newId}`;
+    } else {
+      toast('Exam created', 'success');
+      closeCreateModal();
+      await loadExams();
+    }
+  } catch {
+    toast('Failed to create exam', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create & Edit';
+  }
+};
+
+// ════════════════════════════════════════════════════════
+//  Toggle publish / archive
+// ════════════════════════════════════════════════════════
+async function toggleStatus(id, currentStatus) {
+  const newStatus = currentStatus === 'published' ? 'archived' : 'published';
+  const ex        = allExams.find(e => e.id === id);
+  const label     = newStatus === 'published' ? 'publish' : 'archive';
+
+  openConfirm(
+    `${newStatus === 'published' ? 'Publish' : 'Archive'} Exam`,
+    `Are you sure you want to ${label} "${ex?.title}"?`,
+    async () => {
+      const result = await api('PUT', `/api/exams/${id}`, { status: newStatus });
+      if (!result) return;
+      if (result.error) { toast(result.error, 'error'); return; }
+      toast(`Exam ${newStatus === 'published' ? 'published' : 'archived'} successfully`);
+      await loadExams();
+    }
+  );
+}
+
+// ════════════════════════════════════════════════════════
+//  Duplicate
+// ════════════════════════════════════════════════════════
+async function duplicateExam(id) {
+  const ex = allExams.find(e => e.id === id);
+  openConfirm(
+    'Duplicate Exam',
+    `Create a full copy of "${ex?.title}"?`,
+    async () => {
+      const result = await api('POST', `/api/exams/${id}/duplicate`);
+      if (!result) return;
+      if (result.error) { toast(result.error, 'error'); return; }
+      toast('Exam duplicated successfully');
+      await loadExams();
+    }
+  );
+}
+
+// ════════════════════════════════════════════════════════
+//  Delete (super_admin only — button rendered conditionally)
+// ════════════════════════════════════════════════════════
+function confirmDelete(id, title) {
+  document.getElementById('confirm-ok-btn').className = 'btn btn-danger';
+  openConfirm(
+    'Delete Exam',
+    `Permanently delete "${title}"? This removes all questions and submissions and cannot be undone.`,
+    async () => {
+      const result = await api('DELETE', `/api/exams/${id}`);
+      if (result === null) return; // 401 redirect handled
+      toast('Exam deleted', 'warning');
+      await loadExams();
+    }
+  );
+}
+
+// ════════════════════════════════════════════════════════
+//  Confirm modal
+// ════════════════════════════════════════════════════════
+let _confirmCb = null;
+
+function openConfirm(title, msg, cb) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent   = msg;
+  _confirmCb = cb;
+  document.getElementById('confirmModal').classList.remove('hidden');
+}
+
+function closeConfirm() {
+  document.getElementById('confirmModal').classList.add('hidden');
+  _confirmCb = null;
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.disabled = false; btn.textContent = 'Confirm';
+}
+
+document.getElementById('confirm-ok-btn').onclick = async () => {
+  if (!_confirmCb) return;
+  const btn = document.getElementById('confirm-ok-btn');
+  btn.disabled = true; btn.textContent = 'Processing…';
+  try { await _confirmCb(); } finally { closeConfirm(); }
+};
+
+document.getElementById('confirmModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('confirmModal')) closeConfirm();
+});
+
+// ════════════════════════════════════════════════════════
+//  Start
+// ════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

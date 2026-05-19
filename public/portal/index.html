@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Candidate Portal — Alaric Exam</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #002B5C;
+    --primary-light: #003f87;
+    --accent: #0066cc;
+    --success: #1a7f4b;
+    --danger: #c0392b;
+    --warning: #e67e22;
+    --bg: #f0f4f9;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --border: #dde3eb;
+    --text: #1a2535;
+    --text-muted: #6b7f96;
+    --radius: 8px;
+  }
+
+  html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.6; }
+
+  /* ===== SCREENS ===== */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ===== LOADING ===== */
+  #screen-loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; flex-direction: column; gap: 14px; }
+  .spinner { width: 44px; height: 44px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== LOGIN ===== */
+  #screen-login { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .login-card { background: var(--surface); border-radius: 14px; padding: 44px 40px; max-width: 440px; width: 100%; box-shadow: 0 4px 24px rgba(0,43,92,0.1); }
+  .login-logo { display: block; text-align: center; margin-bottom: 28px; }
+  .login-logo svg { width: 56px; height: 56px; }
+  .login-brand { font-size: 1.6rem; font-weight: 800; color: var(--primary); text-align: center; margin-bottom: 4px; }
+  .login-subtitle { color: var(--text-muted); text-align: center; font-size: 0.9rem; margin-bottom: 32px; }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .form-input {
+    width: 100%; padding: 11px 14px; border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-size: 0.95rem; color: var(--text); background: var(--surface2); outline: none; transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--accent); background: #fff; }
+  .btn-primary { width: 100%; padding: 12px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius); font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.2s; margin-top: 4px; }
+  .btn-primary:hover { background: #0055b0; }
+  .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-link { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 0.88rem; padding: 0; text-decoration: underline; }
+  .form-error { color: var(--danger); font-size: 0.83rem; margin-top: 8px; display: none; }
+  .otp-hint { font-size: 0.82rem; color: var(--text-muted); margin-top: 6px; }
+  .otp-step { display: none; }
+  .resend-row { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; }
+
+  /* ===== PORTAL ===== */
+  #screen-portal { min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* Topbar */
+  .topbar {
+    background: var(--primary);
+    color: #fff;
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .topbar .brand { font-weight: 700; font-size: 1rem; }
+  .topbar .brand span { color: rgba(255,255,255,0.5); font-weight: 400; font-size: 0.85rem; margin-left: 10px; }
+  .topbar-profile { display: flex; align-items: center; gap: 12px; }
+  .topbar-profile .avatar { width: 34px; height: 34px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0; }
+  .topbar-profile .profile-name { font-size: 0.88rem; line-height: 1.2; }
+  .topbar-profile .profile-email { font-size: 0.75rem; color: rgba(255,255,255,0.55); }
+  .btn-logout { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 14px; border-radius: 6px; font-size: 0.82rem; cursor: pointer; transition: background 0.15s; }
+  .btn-logout:hover { background: rgba(255,255,255,0.2); }
+
+  /* Content */
+  .portal-content { flex: 1; max-width: 1100px; margin: 0 auto; width: 100%; padding: 32px 24px; }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 4px; border-bottom: 2px solid var(--border); margin-bottom: 28px; }
+  .tab-btn { padding: 10px 20px; background: none; border: none; border-bottom: 2px solid transparent; margin-bottom: -2px; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; cursor: pointer; transition: all 0.15s; border-radius: 6px 6px 0 0; }
+  .tab-btn:hover { color: var(--accent); background: rgba(0,102,204,0.05); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(0,102,204,0.06); }
+  .tab-pane { display: none; }
+  .tab-pane.active { display: block; }
+
+  /* ===== HISTORY TABLE ===== */
+  .section-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .table-wrap { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--border); overflow: hidden; overflow-x: auto; }
+  .data-table { width: 100%; border-collapse: collapse; min-width: 580px; }
+  .data-table th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); padding: 12px 16px; background: var(--surface2); text-align: left; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .data-table td { padding: 13px 16px; border-bottom: 1px solid #f0f4f9; font-size: 0.9rem; vertical-align: middle; }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: #f7fafd; }
+  .status-chip { display: inline-block; padding: 3px 9px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .chip-graded { background: #d4edda; color: #155724; }
+  .chip-published { background: #cce5ff; color: #004085; }
+  .chip-in_progress { background: #fff3cd; color: #856404; }
+  .chip-submitted { background: #e2e3e5; color: #383d41; }
+  .chip-grading { background: #d1ecf1; color: #0c5460; }
+  .chip-auto_submitted { background: #f8d7da; color: #721c24; }
+  .btn-view { background: var(--accent); color: #fff; border: none; padding: 5px 12px; border-radius: 5px; font-size: 0.8rem; cursor: pointer; font-weight: 500; }
+  .btn-view:hover { background: #0055b0; }
+  .btn-view:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+  .empty-state { padding: 60px 24px; text-align: center; color: var(--text-muted); }
+  .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-state p { font-size: 0.9rem; }
+
+  /* ===== RESULT DETAIL ===== */
+  #tab-results .back-btn { display: flex; align-items: center; gap: 6px; background: none; border: 1px solid var(--border); color: var(--text-muted); padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; margin-bottom: 20px; }
+  #tab-results .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .result-summary-card { background: var(--primary); color: #fff; border-radius: 10px; padding: 28px 32px; margin-bottom: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: center; }
+  .rs-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+  .rs-meta { font-size: 0.85rem; opacity: 0.7; }
+  .rs-stats { display: flex; gap: 20px; flex-wrap: wrap; margin-left: auto; }
+  .rs-stat { text-align: center; }
+  .rs-stat .rs-val { font-size: 1.5rem; font-weight: 800; }
+  .rs-stat .rs-label { font-size: 0.72rem; opacity: 0.7; text-transform: uppercase; }
+  .pass-badge { padding: 4px 12px; border-radius: 16px; font-size: 0.8rem; font-weight: 700; }
+  .pass-badge.pass { background: #1a7f4b; }
+  .pass-badge.fail { background: var(--danger); }
+
+  .answer-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; overflow: hidden; }
+  .answer-card-header { padding: 14px 18px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--border); }
+  .answer-card-header .q-num { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; }
+  .answer-card-header .q-body { font-size: 0.95rem; color: var(--text); flex: 1; }
+  .answer-card-body { padding: 14px 18px; background: var(--surface2); }
+  .answer-row { display: flex; gap: 10px; margin-bottom: 8px; font-size: 0.88rem; }
+  .answer-row:last-child { margin-bottom: 0; }
+  .answer-label { font-weight: 600; color: var(--text-muted); min-width: 90px; flex-shrink: 0; }
+  .answer-val { color: var(--text); }
+  .verdict-correct { color: var(--success); font-weight: 600; }
+  .verdict-partial { color: var(--warning); font-weight: 600; }
+  .verdict-incorrect { color: var(--danger); font-weight: 600; }
+  .verdict-pending { color: var(--text-muted); font-style: italic; }
+  .option-correct { color: var(--success); }
+  .option-wrong { color: var(--danger); }
+
+  .loading-inline { padding: 40px; text-align: center; color: var(--text-muted); display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+  /* ===== BADGES ===== */
+  .badges-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; }
+  .badge-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 24px 16px; text-align: center; transition: all 0.15s; }
+  .badge-card:hover { border-color: var(--accent); box-shadow: 0 4px 12px rgba(0,102,204,0.1); transform: translateY(-2px); }
+  .badge-icon { font-size: 2.8rem; margin-bottom: 10px; display: block; }
+  .badge-name { font-weight: 700; font-size: 0.95rem; color: var(--text); margin-bottom: 4px; }
+  .badge-desc { font-size: 0.8rem; color: var(--text-muted); }
+  .badge-date { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
+  .badge-exam { font-size: 0.75rem; color: var(--accent); margin-top: 2px; }
+
+  /* Toast */
+  .toast-container { position: fixed; top: 70px; right: 16px; z-index: 2000; display: flex; flex-direction: column; gap: 8px; }
+  .toast { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 0.85rem; color: var(--text); min-width: 240px; max-width: 340px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); animation: slideIn 0.2s ease; display: flex; align-items: center; gap: 8px; }
+  .toast.success { border-left: 3px solid var(--success); }
+  .toast.danger { border-left: 3px solid var(--danger); }
+  .toast.info { border-left: 3px solid var(--accent); }
+  @keyframes slideIn { from { transform: translateX(30px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  /* ===== PROFILE ===== */
+  .profile-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; max-width: 520px; overflow: hidden; }
+  .profile-card-header { background: var(--primary); color: #fff; padding: 28px 28px 20px; display: flex; align-items: center; gap: 18px; }
+  .profile-avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; flex-shrink: 0; }
+  .profile-card-name { font-size: 1.15rem; font-weight: 700; margin-bottom: 2px; }
+  .profile-card-email { font-size: 0.82rem; color: rgba(255,255,255,0.65); }
+  .profile-card-body { padding: 24px 28px; }
+  .profile-field { display: flex; align-items: flex-start; gap: 0; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .profile-field:last-child { margin-bottom: 0; border-bottom: none; padding-bottom: 0; }
+  .profile-field-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; min-width: 130px; padding-top: 2px; flex-shrink: 0; }
+  .profile-field-value { font-size: 0.9rem; color: var(--text); font-weight: 500; }
+  .profile-readonly-note { font-size: 0.78rem; color: var(--text-muted); margin-top: 16px; font-style: italic; }
+
+  /* ===== CERTIFICATE ===== */
+  @media print {
+    body > *:not(#cert-print-area) { display: none !important; }
+    #cert-print-area { display: block !important; }
+  }
+  #cert-print-area { display: none; }
+  .cert-page { width: 794px; height: 560px; border: 12px solid var(--primary, #002B5C); padding: 48px 56px; font-family: 'Segoe UI', system-ui, sans-serif; position: relative; background: #fff; box-sizing: border-box; text-align: center; }
+  .cert-page::before { content: ''; position: absolute; inset: 22px; border: 2px solid #0078D4; pointer-events: none; }
+  .cert-logo { font-size: 2.2rem; font-weight: 900; color: #002B5C; letter-spacing: -0.02em; margin-bottom: 4px; }
+  .cert-logo span { color: #0078D4; }
+  .cert-subtitle { font-size: 0.85rem; color: #6b7f96; letter-spacing: 0.18em; text-transform: uppercase; margin-bottom: 32px; }
+  .cert-heading { font-size: 1.3rem; color: #6b7f96; font-weight: 400; margin-bottom: 8px; }
+  .cert-name { font-size: 2.4rem; font-weight: 700; color: #002B5C; border-bottom: 2px solid #0078D4; display: inline-block; padding-bottom: 8px; margin-bottom: 16px; }
+  .cert-body { font-size: 1rem; color: #333; line-height: 1.7; margin-bottom: 24px; }
+  .cert-exam-name { font-weight: 700; color: #002B5C; }
+  .cert-score { font-size: 1.3rem; font-weight: 700; color: #0078D4; }
+  .cert-footer { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; font-size: 0.82rem; color: #6b7f96; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 640px) {
+    .login-card { padding: 28px 20px; }
+    .portal-content { padding: 20px 14px; }
+    .tab-btn { padding: 9px 12px; font-size: 0.82rem; }
+    .result-summary-card { flex-direction: column; }
+    .rs-stats { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Loading -->
+<div id="screen-loading" class="screen active">
+  <div class="spinner"></div>
+  <p style="color:var(--text-muted)">Loading…</p>
+</div>
+
+<!-- Login -->
+<div id="screen-login" class="screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="56" height="56" rx="14" fill="#002B5C"/>
+        <path d="M28 10L14 20V36L28 46L42 36V20L28 10Z" fill="#0066cc" opacity="0.5"/>
+        <path d="M28 16L20 22V32L28 38L36 32V22L28 16Z" fill="white"/>
+        <circle cx="28" cy="27" r="5" fill="#002B5C"/>
+      </svg>
+    </div>
+    <div class="login-brand">Alaric Exam</div>
+    <div class="login-subtitle">Candidate Portal — Login with your email</div>
+
+    <!-- Step 1: Email -->
+    <div id="step-email">
+      <div class="form-group">
+        <label for="input-email">Email Address</label>
+        <input type="email" id="input-email" class="form-input" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-error" id="email-error"></div>
+      <button class="btn-primary" id="btn-request-otp">Send OTP</button>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="step-otp" class="otp-step">
+      <div class="form-group">
+        <label for="input-otp">One-Time Password</label>
+        <input type="text" id="input-otp" class="form-input" placeholder="6-digit code" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
+        <div class="otp-hint">A 6-digit code was sent to <strong id="otp-email-display"></strong></div>
+      </div>
+      <div class="form-error" id="otp-error"></div>
+      <button class="btn-primary" id="btn-verify-otp">Verify & Login</button>
+      <div class="resend-row">
+        <button class="btn-link" id="btn-change-email">← Change email</button>
+        <button class="btn-link" id="btn-resend-otp">Resend OTP</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Portal -->
+<div id="screen-portal" class="screen">
+  <div class="topbar">
+    <div class="brand">Alaric Exam <span>Candidate Portal</span></div>
+    <div class="topbar-profile">
+      <div class="avatar" id="profile-avatar">C</div>
+      <div>
+        <div class="profile-name" id="profile-name">—</div>
+        <div class="profile-email" id="profile-email">—</div>
+      </div>
+      <button class="btn-logout" id="btn-logout">Logout</button>
+    </div>
+  </div>
+
+  <div class="portal-content">
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="exams">📋 My Exams</button>
+      <button class="tab-btn" data-tab="badges">🏅 Badges</button>
+      <button class="tab-btn" data-tab="profile">👤 Profile</button>
+    </div>
+
+    <!-- My Exams Tab -->
+    <div id="tab-exams" class="tab-pane active">
+      <div id="exams-list-view">
+        <div class="section-title">📋 My Exams</div>
+        <div id="history-container">
+          <div class="loading-inline"><div class="spinner"></div> Loading…</div>
+        </div>
+      </div>
+      <div id="result-detail-view" style="display:none">
+        <button class="back-btn" id="btn-back-results">← Back to My Exams</button>
+        <div id="result-detail-content"></div>
+      </div>
+    </div>
+
+    <!-- Badges Tab -->
+    <div id="tab-badges" class="tab-pane">
+      <div class="section-title">🏅 My Badges</div>
+      <div id="badges-container">
+        <div class="loading-inline"><div class="spinner"></div> Loading…</div>
+      </div>
+    </div>
+
+    <!-- Profile Tab -->
+    <div id="tab-profile" class="tab-pane">
+      <div class="section-title">👤 My Profile</div>
+      <div id="profile-container">
+        <div class="loading-inline"><div class="spinner"></div> Loading…</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Certificate print area (hidden, shown only during print) -->
+<div id="cert-print-area">
+  <div class="cert-page">
+    <div class="cert-logo">Alaric <span>Exam</span></div>
+    <div class="cert-subtitle">Certificate of Achievement</div>
+    <div class="cert-heading">This is to certify that</div>
+    <div class="cert-name" id="cert-candidate-name">Candidate Name</div>
+    <div class="cert-body">
+      has successfully completed the examination<br>
+      <span class="cert-exam-name" id="cert-exam-name">Exam Title</span><br>
+      with a score of <span class="cert-score" id="cert-score">—</span>
+    </div>
+    <div class="cert-footer">
+      <div>Date: <span id="cert-date"></span></div>
+      <div>Alaric Exam Platform</div>
+      <div>ID: <span id="cert-id"></span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== STATE =====
+const state = {
+  token: null,
+  profile: null,
+  history: null,
+  badges: null,
+  historyLoaded: false,
+  badgesLoaded: false,
+  profileLoaded: false
+};
+
+// ===== INIT =====
+async function init() {
+  state.token = localStorage.getItem('portal_token');
+  if (state.token) {
+    const ok = await loadProfile();
+    if (ok) {
+      showScreen('portal');
+      loadHistory();
+      return;
+    }
+  }
+  state.historyLoaded = false; state.badgesLoaded = false; state.profileLoaded = false;
+  showScreen('login');
+}
+
+// ===== AUTH =====
+async function requestOtp() {
+  const email = document.getElementById('input-email').value.trim();
+  if (!email) { showFieldError('email-error', 'Please enter your email address.'); return; }
+  clearFieldError('email-error');
+  const btn = document.getElementById('btn-request-otp');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  const res = await post('/api/portal/request-otp', { email });
+  btn.disabled = false; btn.textContent = 'Send OTP';
+
+  if (!res.ok) {
+    showFieldError('email-error', res.data.error || 'Failed to send OTP.');
+    return;
+  }
+
+  // Show OTP step
+  document.getElementById('otp-email-display').textContent = email;
+  document.getElementById('step-email').style.display = 'none';
+  document.getElementById('step-otp').style.display = 'block';
+  document.getElementById('input-otp').focus();
+
+  if (res.data.debug_otp) {
+    showToast(`Dev mode OTP: ${res.data.debug_otp}`, 'info', 10000);
+  } else {
+    showToast('OTP sent to your email.', 'success');
+  }
+}
+
+async function verifyOtp() {
+  const email = document.getElementById('input-email').value.trim();
+  const otp = document.getElementById('input-otp').value.trim();
+  if (!otp || otp.length !== 6) { showFieldError('otp-error', 'Please enter the 6-digit OTP.'); return; }
+  clearFieldError('otp-error');
+  const btn = document.getElementById('btn-verify-otp');
+  btn.disabled = true; btn.textContent = 'Verifying…';
+
+  const res = await post('/api/portal/verify-otp', { email, otp });
+  btn.disabled = false; btn.textContent = 'Verify & Login';
+
+  if (!res.ok) {
+    showFieldError('otp-error', res.data.error || 'Invalid or expired OTP.');
+    return;
+  }
+
+  state.token = res.data.token;
+  localStorage.setItem('portal_token', state.token);
+  await loadProfile();
+  showScreen('portal');
+  loadHistory();
+}
+
+async function loadProfile() {
+  const res = await get('/api/portal/profile');
+  if (!res.ok) {
+    localStorage.removeItem('portal_token');
+    state.token = null;
+    return false;
+  }
+  state.profile = res.data;
+  document.getElementById('profile-name').textContent = res.data.name || 'Candidate';
+  document.getElementById('profile-email').textContent = res.data.email || '';
+  document.getElementById('profile-avatar').textContent = (res.data.name || 'C').charAt(0).toUpperCase();
+  return true;
+}
+
+// ===== HISTORY =====
+async function loadHistory() {
+  if (state.historyLoaded) return;
+  const res = await get('/api/portal/history');
+  state.historyLoaded = true;
+
+  const container = document.getElementById('history-container');
+  if (!res.ok) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load history.</p></div>';
+    return;
+  }
+  state.history = res.data;
+  renderHistory(res.data);
+}
+
+function renderHistory(submissions) {
+  const container = document.getElementById('history-container');
+  if (!submissions.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><p>No exam history yet. You haven\'t taken any exams.</p></div>';
+    return;
+  }
+  container.innerHTML = `
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Exam</th>
+            <th>Date Taken</th>
+            <th>Score</th>
+            <th>Status</th>
+            <th>Result</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${submissions.map(s => {
+            const canView = s.result_released || s.show_result_immediately;
+            const score = s.final_score !== null ? s.final_score : (s.auto_score !== null && s.auto_score !== undefined ? s.auto_score : null);
+            return `<tr>
+              <td style="font-weight:500">${escapeHTML(s.exam_title)}</td>
+              <td style="color:var(--text-muted)">${formatDate(s.started_at)}</td>
+              <td>${score !== null ? `${score} / ${s.total_marks}` : '—'}</td>
+              <td>${statusChip(s.status)}</td>
+              <td>${s.pass_fail ? `<span class="status-chip ${s.pass_fail === 'pass' ? 'chip-graded' : 'chip-auto_submitted'}">${s.pass_fail.toUpperCase()}</span>` : '—'}</td>
+              <td><button class="btn-view" data-id="${s.id}" ${canView ? '' : 'disabled'} title="${canView ? 'View Results' : 'Results not released yet'}">${canView ? 'View Results' : 'Pending'}</button></td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+  container.querySelectorAll('.btn-view:not(:disabled)').forEach(btn => {
+    btn.addEventListener('click', () => loadResult(parseInt(btn.dataset.id)));
+  });
+}
+
+async function loadResult(submissionId) {
+  document.getElementById('exams-list-view').style.display = 'none';
+  document.getElementById('result-detail-view').style.display = 'block';
+  document.getElementById('result-detail-content').innerHTML = '<div class="loading-inline"><div class="spinner"></div> Loading result…</div>';
+
+  const res = await get(`/api/portal/result/${submissionId}`);
+  if (!res.ok) {
+    document.getElementById('result-detail-content').innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>${escapeHTML(res.data.error || 'Failed to load result.')}</p></div>`;
+    return;
+  }
+  renderResultDetail(res.data);
+}
+
+function renderResultDetail(data) {
+  const sub = data;
+  const answers = data.answers || [];
+  const passed = sub.pass_fail;
+  const score = sub.final_score !== null ? sub.final_score : sub.auto_score;
+
+  const timeTaken = sub.time_taken_seconds ? formatTime(sub.time_taken_seconds) : '—';
+
+  const isPassed = passed === 'pass';
+
+  // Populate certificate fields
+  document.getElementById('cert-candidate-name').textContent = state.profile?.name || 'Candidate';
+  document.getElementById('cert-exam-name').textContent = sub.title || 'Exam';
+  document.getElementById('cert-score').textContent = score !== null && score !== undefined ? `${score} / ${sub.total_marks || '—'}` : '—';
+  document.getElementById('cert-date').textContent = new Date(sub.submitted_at || sub.started_at || Date.now()).toLocaleDateString('en-US', {year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('cert-id').textContent = sub.id || '—';
+
+  let html = `
+    <div class="result-summary-card">
+      <div>
+        <div class="rs-title">${escapeHTML(sub.title || 'Exam Result')}</div>
+        <div class="rs-meta">Submitted: ${formatDate(sub.submitted_at || sub.started_at)}</div>
+        ${passed ? `<br><span class="pass-badge ${passed}">${passed.toUpperCase()}</span>` : ''}
+        ${isPassed ? `<br><button onclick="window.print()" style="margin-top:10px;padding:6px 14px;background:#1a7f4b;color:#fff;border:none;border-radius:6px;font-size:0.82rem;font-weight:600;cursor:pointer;">⬇ Download Certificate</button>` : ''}
+      </div>
+      <div class="rs-stats">
+        <div class="rs-stat">
+          <div class="rs-val">${score !== null && score !== undefined ? score : '—'}</div>
+          <div class="rs-label">Score</div>
+        </div>
+        <div class="rs-stat">
+          <div class="rs-val">${sub.total_marks || '—'}</div>
+          <div class="rs-label">Total</div>
+        </div>
+        <div class="rs-stat">
+          <div class="rs-val">${sub.pass_marks || '—'}</div>
+          <div class="rs-label">Pass Mark</div>
+        </div>
+        <div class="rs-stat">
+          <div class="rs-val">${timeTaken}</div>
+          <div class="rs-label">Time Taken</div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  if (answers.length) {
+    html += `<div class="section-title" style="margin-bottom:16px">Answer Review</div>`;
+    answers.forEach((a, idx) => {
+      const verdictClass = a.checker_verdict === 'correct' ? 'verdict-correct' : a.checker_verdict === 'partial' ? 'verdict-partial' : a.checker_verdict === 'incorrect' ? 'verdict-incorrect' : 'verdict-pending';
+      const verdictText = a.checker_verdict ? a.checker_verdict.charAt(0).toUpperCase() + a.checker_verdict.slice(1) : 'Pending review';
+
+      let answerDisplay = a.response || '(no answer)';
+      let correctDisplay = '';
+
+      // Show correct options for MCQ types
+      if (a.options && a.options.length > 0) {
+        const selectedIds = (() => { try { const p = JSON.parse(a.response || '[]'); return Array.isArray(p) ? p.map(String) : []; } catch { return []; } })();
+        const opts = a.options.map(o => {
+          const isSelected = selectedIds.includes(String(o.id));
+          const isCorrect = o.is_correct === 1;
+          let cls = '';
+          if (isSelected && isCorrect) cls = 'option-correct';
+          else if (isSelected && !isCorrect) cls = 'option-wrong';
+          else if (!isSelected && isCorrect) cls = 'option-correct';
+          const prefix = isSelected ? '◉' : '○';
+          const suffix = isCorrect ? ' ✓' : '';
+          return `<span class="${cls}" style="display:inline-block;margin-right:12px;margin-bottom:4px">${prefix} ${escapeHTML(o.body)}${suffix}</span>`;
+        }).join('');
+        answerDisplay = opts || answerDisplay;
+      }
+
+      html += `
+        <div class="answer-card">
+          <div class="answer-card-header">
+            <div>
+              <div class="q-num">Question ${idx + 1}</div>
+              <div class="q-body">${escapeHTML(a.body)}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <div class="${verdictClass}" style="font-size:0.85rem">${verdictText}</div>
+              ${a.auto_score !== null ? `<div style="font-size:0.8rem;color:var(--text-muted);margin-top:2px">${a.auto_score ?? '—'} / ${a.marks} pts</div>` : ''}
+            </div>
+          </div>
+          <div class="answer-card-body">
+            <div class="answer-row">
+              <span class="answer-label">Your Answer:</span>
+              <span class="answer-val">${answerDisplay}</span>
+            </div>
+            ${a.checker_remarks ? `<div class="answer-row"><span class="answer-label">Remarks:</span><span class="answer-val" style="color:var(--text-muted)">${escapeHTML(a.checker_remarks)}</span></div>` : ''}
+            ${a.explanation ? `<div class="answer-row"><span class="answer-label">Explanation:</span><span class="answer-val" style="color:var(--text-muted)">${escapeHTML(a.explanation)}</span></div>` : ''}
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  document.getElementById('result-detail-content').innerHTML = html;
+}
+
+// ===== BADGES =====
+async function loadBadges() {
+  if (state.badgesLoaded) return;
+  state.badgesLoaded = true;
+  const res = await get('/api/portal/badges');
+  const container = document.getElementById('badges-container');
+
+  if (!res.ok) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load badges.</p></div>';
+    return;
+  }
+
+  const badges = res.data;
+  if (!badges.length) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">🏅</div><p>No badges earned yet. Complete exams to earn badges!</p></div>';
+    return;
+  }
+
+  const icons = ['🏆', '⭐', '🎖️', '🥇', '🎓', '🌟', '💎', '🔥', '✨', '🏅'];
+  container.innerHTML = `
+    <div class="badges-grid">
+      ${badges.map((b, i) => `
+        <div class="badge-card">
+          <span class="badge-icon">${b.badge_image || icons[i % icons.length]}</span>
+          <div class="badge-name">${escapeHTML(b.badge_name || b.badge_code)}</div>
+          ${b.badge_description ? `<div class="badge-desc">${escapeHTML(b.badge_description)}</div>` : ''}
+          <div class="badge-date">Earned ${formatDate(b.earned_at)}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ===== PROFILE TAB =====
+async function loadProfileTab() {
+  if (state.profileLoaded) return;
+  state.profileLoaded = true;
+  const container = document.getElementById('profile-container');
+  const res = await get('/api/portal/profile');
+  if (!res.ok) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-icon">⚠️</div><p>Failed to load profile.</p></div>';
+    return;
+  }
+  const p = res.data;
+  // Also update the topbar
+  if (p.name) { document.getElementById('profile-name').textContent = p.name; document.getElementById('profile-avatar').textContent = p.name.charAt(0).toUpperCase(); }
+  if (p.email) document.getElementById('profile-email').textContent = p.email;
+
+  const fields = [
+    { label: 'Full Name', value: p.name || p.full_name || '—' },
+    { label: 'Email Address', value: p.email || '—' },
+    { label: 'Employee ID', value: p.employee_id || p.emp_id || '—' },
+    { label: 'Department', value: p.department || '—' },
+    { label: 'Phone', value: p.phone || '—' },
+  ].filter(f => f.value !== '—' || ['Full Name','Email Address','Employee ID'].includes(f.label));
+
+  container.innerHTML = `
+    <div class="profile-card">
+      <div class="profile-card-header">
+        <div class="profile-avatar-lg">${(p.name || p.full_name || 'C').charAt(0).toUpperCase()}</div>
+        <div>
+          <div class="profile-card-name">${escapeHTML(p.name || p.full_name || 'Candidate')}</div>
+          <div class="profile-card-email">${escapeHTML(p.email || '')}</div>
+        </div>
+      </div>
+      <div class="profile-card-body">
+        ${fields.map(f => `
+          <div class="profile-field">
+            <div class="profile-field-label">${f.label}</div>
+            <div class="profile-field-value">${escapeHTML(String(f.value))}</div>
+          </div>
+        `).join('')}
+        <p class="profile-readonly-note">Profile information is managed by your administrator. Contact them to request changes.</p>
+      </div>
+    </div>
+  `;
+}
+
+// ===== TABS =====
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById(`tab-${tab}`).classList.add('active');
+    if (tab === 'badges') loadBadges();
+    if (tab === 'profile') loadProfileTab();
+    if (tab === 'exams') {
+      // Reset to list view when switching back to exams tab
+      document.getElementById('exams-list-view').style.display = 'block';
+      document.getElementById('result-detail-view').style.display = 'none';
+    }
+  });
+});
+
+// Back button in results
+document.getElementById('btn-back-results').addEventListener('click', () => {
+  document.getElementById('result-detail-view').style.display = 'none';
+  document.getElementById('exams-list-view').style.display = 'block';
+});
+
+// ===== LOGOUT =====
+document.getElementById('btn-logout').addEventListener('click', () => {
+  localStorage.removeItem('portal_token');
+  state.token = null;
+  state.profile = null;
+  state.historyLoaded = false;
+  state.badgesLoaded = false;
+  state.history = null;
+  state.profileLoaded = false;
+  document.getElementById('history-container').innerHTML = '<div class="loading-inline"><div class="spinner"></div> Loading…</div>';
+  document.getElementById('badges-container').innerHTML = '<div class="loading-inline"><div class="spinner"></div> Loading…</div>';
+  document.getElementById('profile-container').innerHTML = '<div class="loading-inline"><div class="spinner"></div> Loading…</div>';
+  document.getElementById('exams-list-view').style.display = 'block';
+  document.getElementById('result-detail-view').style.display = 'none';
+  // Reset to exams tab
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  document.querySelector('[data-tab="exams"]').classList.add('active');
+  document.getElementById('tab-exams').classList.add('active');
+  showScreen('login');
+  // Reset login form
+  document.getElementById('step-email').style.display = 'block';
+  document.getElementById('step-otp').style.display = 'none';
+  document.getElementById('input-email').value = '';
+  document.getElementById('input-otp').value = '';
+});
+
+// ===== LOGIN EVENTS =====
+document.getElementById('btn-request-otp').addEventListener('click', requestOtp);
+document.getElementById('btn-verify-otp').addEventListener('click', verifyOtp);
+document.getElementById('btn-change-email').addEventListener('click', () => {
+  document.getElementById('step-otp').style.display = 'none';
+  document.getElementById('step-email').style.display = 'block';
+  clearFieldError('otp-error');
+});
+document.getElementById('btn-resend-otp').addEventListener('click', requestOtp);
+
+document.getElementById('input-email').addEventListener('keydown', e => { if (e.key === 'Enter') requestOtp(); });
+document.getElementById('input-otp').addEventListener('keydown', e => { if (e.key === 'Enter') verifyOtp(); });
+
+// ===== SCREEN SWITCHING =====
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const el = document.getElementById(`screen-${name}`);
+  if (el) el.classList.add('active');
+}
+
+// ===== API HELPERS =====
+async function get(path) {
+  try {
+    const r = await fetch(path, { headers: state.token ? { 'Authorization': `Bearer ${state.token}` } : {} });
+    const data = await r.json();
+    return { ok: r.ok, status: r.status, data };
+  } catch { return { ok: false, status: 0, data: { error: 'Network error' } }; }
+}
+
+async function post(path, body) {
+  try {
+    const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(state.token ? { 'Authorization': `Bearer ${state.token}` } : {}) }, body: JSON.stringify(body) });
+    const data = await r.json();
+    return { ok: r.ok, status: r.status, data };
+  } catch { return { ok: false, status: 0, data: { error: 'Network error' } }; }
+}
+
+// ===== HELPERS =====
+function escapeHTML(str) {
+  if (!str && str !== 0) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function formatDate(dt) {
+  if (!dt) return '—';
+  try { return new Date(dt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return dt; }
+}
+
+function formatTime(secs) {
+  if (!secs) return '—';
+  const m = Math.floor(secs / 60);
+  const s = secs % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+function statusChip(status) {
+  const map = { graded:'chip-graded', published:'chip-published', in_progress:'chip-in_progress', submitted:'chip-submitted', grading:'chip-grading', auto_submitted:'chip-auto_submitted' };
+  const cls = map[status] || 'chip-submitted';
+  const label = (status || 'unknown').replace('_', ' ');
+  return `<span class="status-chip ${cls}">${label}</span>`;
+}
+
+function showFieldError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function clearFieldError(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = '';
+  el.style.display = 'none';
+}
+
+function showToast(msg, type = 'info', duration = 4000) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, duration);
+}
+
+// ===== START =====
+init();
+</script>
+</body>
+</html>

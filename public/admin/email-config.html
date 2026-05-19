@@ -1,0 +1,750 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Email Config — Alaric Exam Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+.provider-toggle { display:flex; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; width:fit-content; margin-bottom:20px; }
+.provider-toggle button {
+  padding:9px 22px; border:none; background:transparent; cursor:pointer;
+  font-size:13.5px; font-weight:500; color:var(--gray); transition:all .15s;
+}
+.provider-toggle button.active { background:var(--mid); color:#fff; }
+.provider-section { display:none; }
+.provider-section.active { display:block; }
+.status-badge-active { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:#d4edda; color:#155724; border-radius:20px; font-size:12px; font-weight:600; }
+.status-badge-inactive { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; background:#f8d7da; color:#721c24; border-radius:20px; font-size:12px; font-weight:600; }
+.status-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+.dot-active { background:var(--success); }
+.dot-inactive { background:var(--danger); }
+.template-list { display:flex; flex-direction:column; gap:0; }
+.template-item {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 16px; border-bottom:1px solid var(--border); cursor:pointer;
+  transition:background .15s;
+}
+.template-item:last-child { border-bottom:none; }
+.template-item:hover { background:#f8f9fa; }
+.template-item.active { background:var(--light); border-left:3px solid var(--mid); }
+.template-editor { display:none; }
+.template-editor.active { display:block; }
+.var-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+.var-chip {
+  display:inline-flex; align-items:center; padding:3px 9px;
+  background:#e8f0fe; color:var(--dark); border-radius:4px;
+  font-size:11px; font-family:monospace; cursor:pointer; border:1px solid #c5d5f7;
+  transition:background .1s;
+}
+.var-chip:hover { background:#c5d5f7; }
+.preview-pane {
+  border:1px solid var(--border); border-radius:6px; padding:0; background:#fff;
+  min-height:200px; overflow:hidden;
+}
+.preview-pane iframe { width:100%; min-height:250px; border:none; }
+.preview-header { background:#f8f9fa; border-bottom:1px solid var(--border); padding:8px 14px; font-size:12px; color:var(--gray); font-weight:500; }
+.send-log-row td { font-size:12.5px; padding:8px 10px; }
+.provider-note { display:flex; align-items:flex-start; gap:10px; padding:12px 16px; background:#cce5ff; border-radius:6px; color:#004085; font-size:13px; margin-bottom:16px; }
+.provider-note svg { flex-shrink:0; margin-top:1px; }
+.config-actions { display:flex; align-items:center; gap:12px; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand">
+    <svg width="22" height="22" fill="none" stroke="#00B4D8" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+    Alaric <span>Exam</span>
+  </div>
+  <nav>
+    <div class="nav-label">Navigation</div>
+    <a href="/admin/dashboard"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a href="/admin/exams"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Exams</a>
+    <a href="/admin/questions"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Question Bank</a>
+    <a href="/admin/candidates"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Candidates</a>
+    <a href="/admin/checker"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Review Queue</a>
+    <a href="/admin/results"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results</a>
+    <a href="/admin/analytics"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21H3"/><path d="M21 3l-9 9-4-4-5 5"/></svg>Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
+    <a href="/admin/settings"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a>
+    <a href="/admin/email-config" class="active"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Config</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h1>Email Configuration</h1>
+    <div class="topbar-actions">
+      <div id="emailStatusBadge"></div>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+  <div id="page">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('provider',this)">Provider Config</button>
+      <button class="tab-btn" onclick="switchTab('templates',this)">Email Templates</button>
+      <button class="tab-btn" onclick="switchTab('sendlog',this)">Send Log</button>
+    </div>
+
+    <!-- Provider Config Tab -->
+    <div id="tab-provider" class="tab-pane active">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Email Provider</span>
+          <div id="providerActiveBadge"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Provider</label>
+          <div class="provider-toggle">
+            <button id="btn-azure" class="active" onclick="switchProvider('azure_graph')">Azure Graph API</button>
+            <button id="btn-smtp" onclick="switchProvider('smtp')">SMTP</button>
+          </div>
+        </div>
+
+        <!-- Azure Graph Section -->
+        <div id="section-azure_graph" class="provider-section active">
+          <div class="provider-note">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Token is obtained automatically from Microsoft Identity Platform using client credentials flow. No OAuth redirect or user consent needed.
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tenant ID <span style="color:var(--danger)">*</span></label>
+              <input type="text" class="form-control" id="az-tenant-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            </div>
+            <div class="form-group">
+              <label>Client ID (Application ID) <span style="color:var(--danger)">*</span></label>
+              <input type="text" class="form-control" id="az-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Client Secret <span style="color:var(--danger)">*</span></label>
+            <input type="password" class="form-control" id="az-client-secret" placeholder="●●●●●●●● (enter to update)">
+            <small class="text-muted">Leave blank to keep the existing secret unchanged</small>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>From Email <span style="color:var(--danger)">*</span></label>
+              <input type="email" class="form-control" id="az-from-email" placeholder="noreply@yourdomain.com">
+            </div>
+            <div class="form-group">
+              <label>From Name</label>
+              <input type="text" class="form-control" id="az-from-name" placeholder="Alaric Exam">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Reply-To</label>
+            <input type="email" class="form-control" id="az-reply-to" placeholder="support@yourdomain.com (optional)">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Default CC <span class="text-muted" style="font-weight:400">(comma-separated)</span></label>
+              <input type="text" class="form-control" id="az-default-cc" placeholder="cc1@domain.com, cc2@domain.com">
+            </div>
+            <div class="form-group">
+              <label>Default BCC <span class="text-muted" style="font-weight:400">(comma-separated)</span></label>
+              <input type="text" class="form-control" id="az-default-bcc" placeholder="bcc@domain.com">
+            </div>
+          </div>
+        </div>
+
+        <!-- SMTP Section -->
+        <div id="section-smtp" class="provider-section">
+          <div class="form-row">
+            <div class="form-group">
+              <label>SMTP Host <span style="color:var(--danger)">*</span></label>
+              <input type="text" class="form-control" id="smtp-host" placeholder="smtp.yourdomain.com">
+            </div>
+            <div class="form-group">
+              <label>Port <span style="color:var(--danger)">*</span></label>
+              <input type="number" class="form-control" id="smtp-port" placeholder="587" min="1" max="65535">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Username</label>
+              <input type="text" class="form-control" id="smtp-username" placeholder="smtp-user@yourdomain.com">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" class="form-control" id="smtp-password" placeholder="●●●●●●●● (enter to update)">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-check">
+              <input type="checkbox" id="smtp-secure">
+              <span>Use SSL/TLS (secure)</span>
+            </label>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>From Email <span style="color:var(--danger)">*</span></label>
+              <input type="email" class="form-control" id="smtp-from-email" placeholder="noreply@yourdomain.com">
+            </div>
+            <div class="form-group">
+              <label>From Name</label>
+              <input type="text" class="form-control" id="smtp-from-name" placeholder="Alaric Exam">
+            </div>
+          </div>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn btn-primary" onclick="saveEmailConfig()">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Config
+          </button>
+          <button class="btn btn-success" onclick="toggleActivate()" id="activateBtn">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            <span id="activateBtnLabel">Activate</span>
+          </button>
+          <button class="btn btn-outline btn-sm" onclick="testEmailConnection(event)">
+            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10a2 2 0 01-2-2.18v-3a2 2 0 012.44-1.95l3 .68a2 2 0 011.52 1.36l.76 2.3a2 2 0 01-.46 2l-.61.61a16 16 0 006.11 6.11l.61-.61a2 2 0 012-.46l2.3.76a2 2 0 011.36 1.52z"/></svg>
+            Test Connection
+          </button>
+        </div>
+
+        <!-- Send Test Email row -->
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+          <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Send Test Email</label>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <input type="email" id="testEmailAddr" class="form-control" placeholder="recipient@example.com" style="max-width:280px;flex:1">
+            <button class="btn btn-outline btn-sm" onclick="sendTestEmail(event)" style="white-space:nowrap">
+              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Send Test Email
+            </button>
+          </div>
+          <small class="text-muted" style="display:block;margin-top:4px">Sends a real email using your saved config to verify delivery end-to-end. Config must be saved first.</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates Tab -->
+    <div id="tab-templates" class="tab-pane">
+      <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+        <!-- Template List -->
+        <div class="card" style="width:280px;flex-shrink:0;padding:0">
+          <div class="card-header" style="padding:14px 16px">
+            <span class="card-title">Templates</span>
+          </div>
+          <div class="template-list" id="templateList">
+            <div class="text-center text-muted" style="padding:20px"><span class="spinner"></span></div>
+          </div>
+        </div>
+
+        <!-- Template Editor -->
+        <div class="card" style="flex:1;min-width:0" id="templateEditorCard">
+          <div id="templateEditorEmpty" style="padding:40px;text-align:center;color:var(--gray)">
+            <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto 12px;display:block"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+            <p>Select a template to edit</p>
+          </div>
+          <div id="templateEditorForm" class="hidden">
+            <div class="card-header">
+              <span class="card-title" id="te-name"></span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <label style="font-size:12px;color:var(--gray);margin:0">Active</label>
+                <label class="toggle-switch" style="position:relative;display:inline-block;width:44px;height:24px">
+                  <input type="checkbox" id="te-active" style="opacity:0;width:0;height:0">
+                  <span style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:24px;transition:.3s" id="te-active-slider" onclick="toggleTempSlider()"></span>
+                </label>
+              </div>
+            </div>
+            <div style="padding:16px 20px">
+              <div class="form-group">
+                <label>Subject</label>
+                <input type="text" class="form-control" id="te-subject" placeholder="Email subject line">
+              </div>
+              <div class="form-group">
+                <label>Available Variables <span class="text-muted" style="font-weight:400">(click to insert)</span></label>
+                <div class="var-chips" id="te-vars"></div>
+              </div>
+              <div class="form-row" style="gap:16px">
+                <div class="form-group" style="margin-bottom:0">
+                  <label>HTML Body</label>
+                  <textarea class="form-control" id="te-body" rows="18" style="font-family:monospace;font-size:12px;resize:vertical" oninput="schedulePreview()"></textarea>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label>Preview</label>
+                  <div class="preview-pane">
+                    <div class="preview-header">Rendered preview (sample data)</div>
+                    <iframe id="te-preview" sandbox="allow-same-origin"></iframe>
+                  </div>
+                </div>
+              </div>
+              <div style="margin-top:16px;display:flex;gap:10px">
+                <button class="btn btn-primary" onclick="saveTemplate()">Save Template</button>
+                <button class="btn btn-outline btn-sm" onclick="refreshPreview()">Refresh Preview</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Send Log Tab -->
+    <div id="tab-sendlog" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Send Log</span>
+          <button class="btn btn-outline btn-sm" onclick="loadSendLog()">
+            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+            Refresh
+          </button>
+        </div>
+        <div class="filters-bar">
+          <select class="form-control" id="logStatusFilter" style="max-width:160px" onchange="loadSendLog()">
+            <option value="">All Statuses</option>
+            <option value="sent">Sent</option>
+            <option value="failed">Failed</option>
+            <option value="bounced">Bounced</option>
+          </select>
+          <input type="date" class="form-control" id="logDateFilter" style="max-width:160px" onchange="loadSendLog()">
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>To</th><th>Subject</th><th>Template</th><th>Status</th><th>Sent At</th><th>Error</th></tr>
+            </thead>
+            <tbody id="sendLogBody">
+              <tr><td colspan="6" class="text-center text-muted" style="padding:20px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Error detail popup -->
+<div id="errModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeErrModal()">
+  <div style="background:#fff;border-radius:10px;width:min(520px,94vw);box-shadow:0 8px 32px rgba(0,0,0,.22);overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:#fff8f8">
+      <span style="font-weight:700;font-size:14px;color:var(--danger);display:flex;align-items:center;gap:7px">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Email Error Detail
+      </span>
+      <button onclick="closeErrModal()" style="background:none;border:none;cursor:pointer;font-size:20px;line-height:1;color:var(--gray);padding:0 4px">&times;</button>
+    </div>
+    <div style="padding:18px 20px">
+      <div id="errModalMeta" style="font-size:12px;color:var(--gray);margin-bottom:12px;display:flex;flex-direction:column;gap:3px"></div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:12px 14px;font-family:monospace;font-size:12.5px;color:#b91c1c;white-space:pre-wrap;word-break:break-all;max-height:240px;overflow-y:auto" id="errModalBody"></div>
+    </div>
+    <div style="padding:10px 18px 14px;text-align:right">
+      <button class="btn btn-outline btn-sm" onclick="closeErrModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _currentProvider = 'azure_graph';
+let _currentTemplateCode = null;
+let _previewTimer = null;
+let _templates = {};
+let _logEntries = [];
+
+const TEMPLATE_VARS = {
+  candidate_name: 'Full name of the candidate',
+  candidate_email: 'Candidate email address',
+  exam_title: 'Title of the exam',
+  exam_date: 'Scheduled exam date',
+  exam_start_url: 'Direct link to start the exam',
+  exam_duration: 'Duration in minutes',
+  score: 'Final score achieved',
+  max_score: 'Maximum possible score',
+  pass_fail: 'PASS or FAIL result',
+  result_url: 'Link to view full results',
+  otp_code: 'One-time password code',
+  otp_expiry: 'OTP expiry time',
+  admin_name: 'Name of the admin who sent the email',
+  platform_name: 'Platform/application name',
+  support_email: 'Support contact email',
+  year: 'Current year',
+};
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;document.getElementById('toast-container').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401){window.location.href='/admin';return null;}return r.json();}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'templates') loadTemplates();
+  if (name === 'sendlog') loadSendLog();
+}
+
+// ── Page init ──────────────────────────────────────────────────────────────
+async function loadPage() {
+  await loadEmailConfig();
+}
+
+async function loadEmailConfig() {
+  const data = await api('GET', '/api/settings/email-config');
+  if (!data) return;
+  _currentProvider = data.provider || 'azure_graph';
+  switchProvider(_currentProvider, false);
+  // Azure
+  if (data.tenant_id) document.getElementById('az-tenant-id').value = data.tenant_id;
+  if (data.client_id) document.getElementById('az-client-id').value = data.client_id;
+  if (data.from_email) document.getElementById('az-from-email').value = data.from_email;
+  if (data.from_name) document.getElementById('az-from-name').value = data.from_name;
+  if (data.reply_to) document.getElementById('az-reply-to').value = data.reply_to;
+  if (data.default_cc) document.getElementById('az-default-cc').value = Array.isArray(data.default_cc) ? data.default_cc.join(', ') : data.default_cc;
+  if (data.default_bcc) document.getElementById('az-default-bcc').value = Array.isArray(data.default_bcc) ? data.default_bcc.join(', ') : data.default_bcc;
+  // SMTP
+  if (data.smtp_host) document.getElementById('smtp-host').value = data.smtp_host;
+  if (data.smtp_port) document.getElementById('smtp-port').value = data.smtp_port;
+  if (data.smtp_user) document.getElementById('smtp-username').value = data.smtp_user;
+  if (data.smtp_secure !== undefined) document.getElementById('smtp-secure').checked = !!data.smtp_secure;
+  if (data.provider === 'smtp' && data.from_email) document.getElementById('smtp-from-email').value = data.from_email;
+  if (data.provider === 'smtp' && data.from_name) document.getElementById('smtp-from-name').value = data.from_name;
+  // Status badge + activate button state
+  updateStatusBadge(data.is_active, data.provider);
+  setActivateBtn(!!data.is_active);
+}
+
+function updateStatusBadge(active, provider) {
+  const el = document.getElementById('emailStatusBadge');
+  const pBadge = document.getElementById('providerActiveBadge');
+  const provLabel = provider === 'azure_graph' ? 'Azure Graph' : 'SMTP';
+  if (active) {
+    el.innerHTML = `<span class="status-badge-active"><span class="status-dot dot-active"></span>Active (${provLabel})</span>`;
+    if (pBadge) pBadge.innerHTML = `<span class="badge badge-success">Active</span>`;
+  } else {
+    el.innerHTML = `<span class="status-badge-inactive"><span class="status-dot dot-inactive"></span>Not Active</span>`;
+    if (pBadge) pBadge.innerHTML = `<span class="badge badge-warning">Not Active</span>`;
+  }
+}
+
+function switchProvider(provider, doLoad = true) {
+  _currentProvider = provider;
+  document.querySelectorAll('.provider-section').forEach(s => s.classList.remove('active'));
+  document.getElementById('section-' + provider)?.classList.add('active');
+  document.getElementById('btn-azure').classList.toggle('active', provider === 'azure_graph');
+  document.getElementById('btn-smtp').classList.toggle('active', provider === 'smtp');
+}
+
+async function saveEmailConfig() {
+  const body = { provider: _currentProvider };
+  if (_currentProvider === 'azure_graph') {
+    body.tenant_id = document.getElementById('az-tenant-id').value.trim();
+    body.client_id = document.getElementById('az-client-id').value.trim();
+    const secret = document.getElementById('az-client-secret').value;
+    if (secret) body.client_secret = secret;
+    body.from_email = document.getElementById('az-from-email').value.trim();
+    body.from_name = document.getElementById('az-from-name').value.trim();
+    body.reply_to = document.getElementById('az-reply-to').value.trim() || undefined;
+    const cc = document.getElementById('az-default-cc').value.trim();
+    const bcc = document.getElementById('az-default-bcc').value.trim();
+    if (cc) body.default_cc = cc.split(',').map(s => s.trim()).filter(Boolean);
+    if (bcc) body.default_bcc = bcc.split(',').map(s => s.trim()).filter(Boolean);
+  } else {
+    body.smtp_host = document.getElementById('smtp-host').value.trim();
+    body.smtp_port = parseInt(document.getElementById('smtp-port').value) || 587;
+    body.smtp_username = document.getElementById('smtp-username').value.trim();
+    const pass = document.getElementById('smtp-password').value;
+    if (pass) body.smtp_password = pass;
+    body.smtp_secure = document.getElementById('smtp-secure').checked;
+    body.from_email = document.getElementById('smtp-from-email').value.trim();
+    body.from_name = document.getElementById('smtp-from-name').value.trim();
+  }
+  const result = await api('PUT', '/api/settings/email-config', body);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Email configuration saved');
+}
+
+async function toggleActivate() {
+  const btn = document.getElementById('activateBtn');
+  const isActive = btn.dataset.active === '1';
+  btn.disabled = true;
+  document.getElementById('activateBtnLabel').textContent = isActive ? 'Deactivating…' : 'Activating…';
+  const result = await api('POST', '/api/settings/email-config/activate', { active: !isActive });
+  btn.disabled = false;
+  if (!result) return;
+  if (result.error) { toast(result.error, 'error'); return; }
+  const nowActive = result.is_active === 1;
+  setActivateBtn(nowActive);
+  updateStatusBadge(nowActive, _currentProvider);
+  toast(nowActive ? 'Email provider activated — platform will now send real emails' : 'Email provider deactivated — no emails will be sent', nowActive ? 'success' : 'info');
+}
+
+function setActivateBtn(active) {
+  const btn = document.getElementById('activateBtn');
+  btn.dataset.active = active ? '1' : '0';
+  btn.className = active ? 'btn btn-danger' : 'btn btn-success';
+  document.getElementById('activateBtnLabel').textContent = active ? 'Deactivate' : 'Activate';
+}
+
+async function sendTestEmail(evt) {
+  const btn = evt?.target?.closest('button');
+  const to = document.getElementById('testEmailAddr').value.trim();
+  if (!to) { toast('Enter a recipient email address', 'error'); return; }
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Sending…'; }
+  const result = await api('POST', '/api/settings/email-config/send-test', { to });
+  if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Test Email'; }
+  if (!result) return;
+  if (result.error) { toast(`Send failed: ${result.error}`, 'error'); return; }
+  toast(result.message || 'Test email sent — check your inbox', 'success');
+}
+
+async function testEmailConnection() {
+  const btn = event?.target?.closest('button');
+  if (btn) { btn.disabled = true; btn.textContent = 'Testing…'; }
+  const body = { provider: _currentProvider };
+  if (_currentProvider === 'azure_graph') {
+    body.tenant_id = document.getElementById('az-tenant-id').value.trim();
+    body.client_id = document.getElementById('az-client-id').value.trim();
+    const secret = document.getElementById('az-client-secret').value;
+    if (secret) body.client_secret = secret;
+    body.from_email = document.getElementById('az-from-email').value.trim();
+  } else {
+    body.smtp_host = document.getElementById('smtp-host').value.trim();
+    body.smtp_port = parseInt(document.getElementById('smtp-port').value) || 587;
+    body.smtp_username = document.getElementById('smtp-username').value.trim();
+    const pass = document.getElementById('smtp-password').value;
+    if (pass) body.smtp_password = pass;
+    body.smtp_secure = document.getElementById('smtp-secure').checked;
+    body.from_email = document.getElementById('smtp-from-email').value.trim();
+  }
+  const result = await api('POST', '/api/settings/email-config/test', body);
+  if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10a2 2 0 01-2-2.18v-3a2 2 0 012.44-1.95l3 .68a2 2 0 011.52 1.36l.76 2.3a2 2 0 01-.46 2l-.61.61a16 16 0 006.11 6.11l.61-.61a2 2 0 012-.46l2.3.76a2 2 0 011.36 1.52z"/></svg> Test Connection'; }
+  if (!result) return;
+  if (result.error) { toast(`Test failed: ${result.error}`, 'error'); return; }
+  toast(result.message || 'Connection test successful', 'success');
+}
+
+// ── Templates ──────────────────────────────────────────────────────────────
+async function loadTemplates() {
+  const listEl = document.getElementById('templateList');
+  listEl.innerHTML = '<div class="text-center text-muted" style="padding:20px"><span class="spinner"></span></div>';
+  const data = await api('GET', '/api/settings/email-templates');
+  if (!data) return;
+  const templates = data.templates || data.data || data || [];
+  _templates = {};
+  templates.forEach(t => _templates[t.code] = t);
+  if (!templates.length) {
+    listEl.innerHTML = '<div class="text-center text-muted" style="padding:20px">No templates found</div>';
+    return;
+  }
+  listEl.innerHTML = templates.map(t => `
+    <div class="template-item ${_currentTemplateCode === t.code ? 'active' : ''}" onclick="selectTemplate('${esc(t.code)}')">
+      <div>
+        <div style="font-weight:600;font-size:13px">${esc(t.name || t.code)}</div>
+        <div style="font-size:11px;color:var(--gray);font-family:monospace">${esc(t.code)}</div>
+      </div>
+      <span class="badge ${t.active !== false ? 'badge-success' : 'badge-secondary'}">${t.active !== false ? 'On' : 'Off'}</span>
+    </div>
+  `).join('');
+}
+
+function selectTemplate(code) {
+  _currentTemplateCode = code;
+  const t = _templates[code];
+  if (!t) return;
+  // Update active state
+  document.querySelectorAll('.template-item').forEach(el => {
+    el.classList.toggle('active', el.textContent.includes(code));
+  });
+  document.getElementById('templateEditorEmpty').classList.add('hidden');
+  document.getElementById('templateEditorForm').classList.remove('hidden');
+  document.getElementById('te-name').textContent = t.name || t.code;
+  document.getElementById('te-subject').value = t.subject || '';
+  document.getElementById('te-body').value = t.html_body || t.body || '';
+  document.getElementById('te-active').checked = t.active !== false;
+  updateSliderUI();
+  // Variables
+  const vars = t.variables || Object.keys(TEMPLATE_VARS);
+  const varContainer = document.getElementById('te-vars');
+  varContainer.innerHTML = vars.map(v => {
+    const raw = v.startsWith('{{') ? v : `{{${v}}}`;
+    const hint = TEMPLATE_VARS[v] || v;
+    return `<span class="var-chip" title="${esc(hint)}" onclick="insertVar('${esc(raw)}')">${esc(raw)}</span>`;
+  }).join('');
+  refreshPreview();
+}
+
+function toggleTempSlider() {
+  document.getElementById('te-active').checked = !document.getElementById('te-active').checked;
+  updateSliderUI();
+}
+
+function updateSliderUI() {
+  const slider = document.getElementById('te-active-slider');
+  if (!slider) return;
+  const checked = document.getElementById('te-active').checked;
+  slider.style.background = checked ? 'var(--mid)' : '#ccc';
+  // Move knob
+  let knob = slider.querySelector('.knob');
+  if (!knob) {
+    knob = document.createElement('span');
+    knob.className = 'knob';
+    Object.assign(knob.style, {position:'absolute',height:'18px',width:'18px',left:'3px',bottom:'3px',background:'#fff',borderRadius:'50%',transition:'.3s'});
+    slider.appendChild(knob);
+  }
+  knob.style.transform = checked ? 'translateX(20px)' : 'translateX(0)';
+}
+
+function insertVar(v) {
+  const ta = document.getElementById('te-body');
+  const start = ta.selectionStart;
+  const end = ta.selectionEnd;
+  ta.value = ta.value.substring(0, start) + v + ta.value.substring(end);
+  ta.selectionStart = ta.selectionEnd = start + v.length;
+  ta.focus();
+  schedulePreview();
+}
+
+function schedulePreview() {
+  clearTimeout(_previewTimer);
+  _previewTimer = setTimeout(refreshPreview, 800);
+}
+
+function refreshPreview() {
+  const html = document.getElementById('te-body').value;
+  const subject = document.getElementById('te-subject').value;
+  // Substitute sample variables
+  const sampleVars = {
+    candidate_name: 'Jane Doe',
+    candidate_email: 'jane.doe@example.com',
+    exam_title: 'Sample Examination',
+    exam_date: new Date().toLocaleDateString(),
+    exam_start_url: '#',
+    exam_duration: '120',
+    score: '82',
+    max_score: '100',
+    pass_fail: 'PASS',
+    result_url: '#',
+    otp_code: '123456',
+    otp_expiry: '10 minutes',
+    admin_name: 'Admin',
+    platform_name: 'Alaric Exam',
+    support_email: 'support@example.com',
+    year: new Date().getFullYear().toString(),
+  };
+  let rendered = html;
+  Object.entries(sampleVars).forEach(([k, v]) => {
+    rendered = rendered.replace(new RegExp(`\\{\\{\\s*${k}\\s*\\}\\}`, 'g'), v);
+  });
+  const iframe = document.getElementById('te-preview');
+  try {
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open(); doc.write(rendered); doc.close();
+  } catch (e) { /* sandboxed */ }
+}
+
+async function saveTemplate() {
+  if (!_currentTemplateCode) return;
+  const body = {
+    subject: document.getElementById('te-subject').value,
+    body_html: document.getElementById('te-body').value,
+    is_active: document.getElementById('te-active').checked
+  };
+  const result = await api('PUT', `/api/settings/email-templates/${_currentTemplateCode}`, body);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Template saved');
+  if (_templates[_currentTemplateCode]) {
+    _templates[_currentTemplateCode] = {..._templates[_currentTemplateCode], ...body};
+  }
+}
+
+// ── Error detail modal ────────────────────────────────────────────────────
+function showErrModal(idx) {
+  const l = _logEntries[idx];
+  if (!l) return;
+  const meta = document.getElementById('errModalMeta');
+  meta.innerHTML = [
+    l.to_email   ? `<span><strong>To:</strong> ${esc(l.to_email)}</span>` : '',
+    l.subject    ? `<span><strong>Subject:</strong> ${esc(l.subject)}</span>` : '',
+    l.template_code ? `<span><strong>Template:</strong> ${esc(l.template_code)}</span>` : '',
+    (l.sent_at||l.created_at) ? `<span><strong>Time:</strong> ${formatDate(l.sent_at||l.created_at)}</span>` : '',
+  ].filter(Boolean).join('');
+  document.getElementById('errModalBody').textContent = l.error_message || l.error || 'No error details available.';
+  const modal = document.getElementById('errModal');
+  modal.style.display = 'flex';
+  document.addEventListener('keydown', _errModalEsc);
+}
+function closeErrModal() {
+  document.getElementById('errModal').style.display = 'none';
+  document.removeEventListener('keydown', _errModalEsc);
+}
+function _errModalEsc(e) { if (e.key === 'Escape') closeErrModal(); }
+
+// ── Send Log ──────────────────────────────────────────────────────────────
+async function loadSendLog() {
+  const tbody = document.getElementById('sendLogBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:20px"><span class="spinner"></span></td></tr>';
+  const status = document.getElementById('logStatusFilter').value;
+  const date = document.getElementById('logDateFilter').value;
+  let url = '/api/settings/email-log?limit=100';
+  if (status) url += `&status=${status}`;
+  if (date) url += `&date=${date}`;
+  const data = await api('GET', url);
+  if (!data) return;
+  const logs = data.logs || data.data || data || [];
+  _logEntries = logs;
+  if (!logs.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:20px">No emails in log</td></tr>';
+    return;
+  }
+  tbody.innerHTML = logs.map((l, i) => {
+    const statusClass = l.status === 'sent' ? 'badge-success' : l.status === 'failed' ? 'badge-danger' : l.status === 'bounced' ? 'badge-warning' : 'badge-secondary';
+    const errMsg = l.error_message || l.error || '';
+    return `<tr class="send-log-row">
+      <td>${esc(l.to_email || l.to || l.recipient || '—')}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.subject || '—')}</td>
+      <td><span style="font-family:monospace;font-size:11px;background:#f8f9fa;padding:1px 6px;border-radius:3px">${esc(l.template_code || l.template || '—')}</span></td>
+      <td><span class="badge ${statusClass}">${esc(l.status || '—')}</span></td>
+      <td style="white-space:nowrap">${formatDate(l.sent_at || l.created_at)}</td>
+      <td style="max-width:220px;">
+        ${errMsg
+          ? `<span onclick="showErrModal(${i})" style="cursor:pointer;font-size:11px;color:var(--danger);text-decoration:underline dotted;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:220px;" title="Click to view full error">${esc(errMsg.substring(0,60))}${errMsg.length>60?'…':''}</span>`
+          : '<span style="color:var(--gray);font-size:11px">—</span>'
+        }
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function formatDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch { return d; }
+}
+
+function esc(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — Alaric Exam</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+  /* ── Welcome banner ── */
+  .welcome-banner {
+    background: linear-gradient(135deg, var(--dark) 0%, #004a99 60%, var(--mid) 100%);
+    border-radius: var(--radius); padding: 22px 28px; margin-bottom: 20px;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  }
+  .welcome-banner h2 { color: #fff; font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+  .welcome-banner p { color: rgba(255,255,255,.75); font-size: 13px; }
+  .welcome-banner .wb-date { color: rgba(255,255,255,.55); font-size: 12px; margin-top: 2px; }
+  .welcome-banner .wb-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-white { background: #fff; color: var(--dark); font-weight: 600; }
+  .btn-white:hover { background: #f0f0f0; }
+  .btn-outline-white { background: transparent; color: #fff; border: 1px solid rgba(255,255,255,.4); }
+  .btn-outline-white:hover { background: rgba(255,255,255,.1); }
+
+  /* ── Stat cards ── */
+  .stats-grid-4 {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 20px;
+  }
+  @media(max-width:1100px){ .stats-grid-4 { grid-template-columns: repeat(2,1fr); } }
+  @media(max-width:600px){ .stats-grid-4 { grid-template-columns: 1fr; } }
+  .stat-card-lg {
+    background: var(--white); border-radius: var(--radius); padding: 20px 22px;
+    box-shadow: var(--shadow); border-top: 3px solid var(--mid);
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .stat-card-lg .sc-icon { font-size: 22px; margin-bottom: 2px; }
+  .stat-card-lg .sc-val { font-size: 32px; font-weight: 700; color: var(--dark); line-height: 1; }
+  .stat-card-lg .sc-label { font-size: 12px; color: var(--gray); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .stat-card-lg .sc-sub { font-size: 12px; color: var(--gray); margin-top: 2px; }
+  .stat-card-lg.accent-success { border-top-color: var(--success); }
+  .stat-card-lg.accent-warning { border-top-color: var(--warning); }
+  .stat-card-lg.accent-danger  { border-top-color: var(--danger); }
+
+  /* ── Quick actions ── */
+  .quick-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+
+  /* ── Two-col layout ── */
+  #two-col { display: grid; grid-template-columns: 1fr 340px; gap: 16px; margin-bottom: 20px; }
+  @media(max-width:960px){ #two-col { grid-template-columns: 1fr; } }
+
+  /* ── Recent submissions card ── */
+  .recent-card {
+    background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px;
+  }
+  .recent-card .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .recent-card .card-title { font-size:15px; font-weight:600; color:var(--dark); }
+  .score-pill { display:inline-block; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:600; }
+  .score-pass   { background:#d4edda; color:#155724; }
+  .score-fail   { background:#f8d7da; color:#721c24; }
+  .score-pending{ background:#fff3cd; color:#856404; }
+  .date-muted { color:var(--gray); font-size:11px; }
+  .empty-row td { text-align:center; color:var(--gray); padding:36px !important; font-size:13px; }
+
+  /* ── Trend chart ── */
+  .trend-card { background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; margin-bottom:16px; }
+  .trend-card .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .trend-card .card-title { font-size:15px; font-weight:600; color:var(--dark); }
+  #trend-svg { width:100%; display:block; overflow:visible; }
+  .chart-label { font-size:10px; fill:var(--gray); }
+  .chart-line  { fill:none; stroke:var(--mid); stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
+  .chart-area  { fill:url(#areaGrad); }
+  .chart-dot   { fill:var(--mid); }
+
+  /* ── Attention / getting-started card ── */
+  .attn-card { background:var(--white); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; }
+  .attn-card .card-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid var(--border); }
+  .attn-card .card-title { font-size:15px; font-weight:600; color:var(--dark); }
+  .attn-list { list-style:none; }
+  .attn-list li { padding:9px 0; border-bottom:1px solid var(--border); font-size:13px; display:flex; align-items:flex-start; gap:8px; }
+  .attn-list li:last-child { border-bottom:none; }
+  .attn-list .bullet { font-size:16px; line-height:1.2; flex-shrink:0; }
+
+  /* ── Getting started steps ── */
+  .gs-step { display:flex; align-items:flex-start; gap:14px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .gs-step:last-child { border-bottom:none; }
+  .gs-num { width:26px; height:26px; border-radius:50%; background:var(--mid); color:#fff; font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+  .gs-step .gs-title { font-weight:600; font-size:13px; color:var(--dark); margin-bottom:2px; }
+  .gs-step .gs-desc  { font-size:12px; color:var(--gray); }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<div id="sidebar">
+  <div class="brand"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="#00B4D8" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg><span>Alaric</span> Exam</div>
+  <nav>
+    <div class="nav-label">Main</div>
+    <a href="/admin/dashboard" id="nav-dashboard">📊 Dashboard</a>
+    <a href="/admin/exams" id="nav-exams">📋 Exams</a>
+    <a href="/admin/questions" id="nav-questions">❓ Question Bank</a>
+    <a href="/admin/candidates" id="nav-candidates">👥 Candidates</a>
+    <div class="nav-label">Review</div>
+    <a href="/admin/checker" id="nav-checker">✅ Review Queue</a>
+    <a href="/admin/results" id="nav-results">🏆 Results</a>
+    <a href="/admin/analytics" id="nav-analytics">📈 Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users" id="nav-users">👤 Users</a>
+    <a href="/admin/email-config" id="nav-email">📧 Email Config</a>
+    <a href="/admin/settings" id="nav-settings">⚙️ Settings</a>
+  </nav>
+  <div class="sidebar-user"><strong id="sb-name">Loading...</strong><span id="sb-role"></span></div>
+</div>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<div id="main">
+  <div id="topbar">
+    <h1>Dashboard</h1>
+    <div class="topbar-actions">
+      <span id="topbar-date" style="font-size:12px;color:var(--gray)"></span>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div id="page">
+
+    <!-- Welcome Banner -->
+    <div class="welcome-banner">
+      <div>
+        <h2>Welcome back, <span id="wb-name">—</span></h2>
+        <p>Here's what's happening with your exams today.</p>
+        <div class="wb-date" id="wb-date"></div>
+      </div>
+      <div class="wb-actions">
+        <a href="/admin/exam-editor" class="btn btn-white btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create New Exam
+        </a>
+        <a href="/admin/candidates" class="btn btn-outline-white btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          Add Candidates
+        </a>
+        <a href="/admin/checker" class="btn btn-outline-white btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Review Queue
+        </a>
+      </div>
+    </div>
+
+    <!-- 4 Stat Cards -->
+    <div class="stats-grid-4" id="stats-grid">
+      <div class="stat-card-lg">
+        <div class="sc-icon">📋</div>
+        <div class="sc-val" id="s-exams">—</div>
+        <div class="sc-label">Total Exams</div>
+        <div class="sc-sub" id="s-published-sub">— published</div>
+      </div>
+      <div class="stat-card-lg accent-success">
+        <div class="sc-icon">👥</div>
+        <div class="sc-val" id="s-candidates">—</div>
+        <div class="sc-label">Total Candidates</div>
+        <div class="sc-sub" id="s-candidates-sub">registered</div>
+      </div>
+      <div class="stat-card-lg accent-warning">
+        <div class="sc-icon">📨</div>
+        <div class="sc-val" id="s-today">—</div>
+        <div class="sc-label">Submissions Today</div>
+        <div class="sc-sub" id="s-total-sub">— total</div>
+      </div>
+      <div class="stat-card-lg accent-danger">
+        <div class="sc-icon">⏳</div>
+        <div class="sc-val" id="s-pending">—</div>
+        <div class="sc-label">Pending Review</div>
+        <div class="sc-sub"><a href="/admin/checker" style="color:var(--mid);font-size:12px;">Go to queue →</a></div>
+      </div>
+    </div>
+
+    <!-- Two-column -->
+    <div id="two-col">
+
+      <!-- Recent Submissions Table -->
+      <div class="recent-card">
+        <div class="card-header">
+          <span class="card-title">Recent Submissions</span>
+          <a href="/admin/results" class="btn btn-ghost btn-sm">View All</a>
+        </div>
+        <div class="tbl-wrap">
+          <table id="sub-table">
+            <thead>
+              <tr>
+                <th>Candidate</th>
+                <th>Exam</th>
+                <th>Status</th>
+                <th>Score</th>
+                <th>Started</th>
+              </tr>
+            </thead>
+            <tbody id="sub-tbody">
+              <tr><td colspan="5" class="text-center text-muted" style="padding:32px"><span class="spinner"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right: Chart + Attention -->
+      <div>
+
+        <!-- Sparkline chart -->
+        <div class="trend-card">
+          <div class="card-header">
+            <span class="card-title">30-Day Trend</span>
+            <span class="text-muted" style="font-size:11px">Submissions</span>
+          </div>
+          <div id="chart-wrap">
+            <svg id="trend-svg" height="130" aria-label="30-day submission trend">
+              <defs>
+                <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0078D4" stop-opacity="0.28"/>
+                  <stop offset="100%" stop-color="#0078D4" stop-opacity="0.03"/>
+                </linearGradient>
+              </defs>
+              <text x="50%" y="65" text-anchor="middle" class="chart-label">Loading…</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Needs attention / getting started -->
+        <div class="attn-card">
+          <div class="card-header">
+            <span class="card-title" id="attn-title">Needs Attention</span>
+          </div>
+          <div id="attn-body">
+            <ul class="attn-list">
+              <li><span class="text-muted">Loading…</span></li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /page -->
+</div>
+
+<!-- Toast container -->
+<div id="tc"></div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDT(iso){if(!iso)return'—';const d=new Date(iso);return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+
+// ── Common init ───────────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  // Highlight active nav
+  const page = location.pathname.split('/').pop();
+  const navEl = document.getElementById('nav-'+page);
+  if (navEl) navEl.classList.add('active');
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('tc').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401)window.location.href='/admin';return r;}
+
+// ── Page init ─────────────────────────────────────────────────────────────────
+async function loadPage() {
+  // Welcome banner
+  const now = new Date();
+  document.getElementById('wb-name').textContent = (window._user?.full_name ?? '').split(' ')[0] || 'Admin';
+  document.getElementById('wb-date').textContent = now.toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('topbar-date').textContent = now.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+
+  await Promise.all([loadStats(), loadSubmissions(), loadTrends()]);
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const r = await api('GET', '/api/analytics/overview');
+    if (!r || !r.ok) return;
+    const d = await r.json();
+    const totalExams  = parseInt(d.total_exams ?? d.totalExams ?? 0);
+    const pubExams    = parseInt(d.published_exams ?? d.publishedExams ?? 0);
+    const totalCands  = parseInt(d.total_candidates ?? d.totalCandidates ?? 0);
+    const todaySubs   = parseInt(d.today_submissions ?? d.todaySubmissions ?? 0);
+    const totalSubs   = parseInt(d.total_submissions ?? d.totalSubmissions ?? 0);
+    const pending     = parseInt(d.pending_reviews ?? d.pendingReviews ?? 0);
+
+    document.getElementById('s-exams').textContent        = totalExams;
+    document.getElementById('s-published-sub').textContent = `${pubExams} published`;
+    document.getElementById('s-candidates').textContent   = totalCands;
+    document.getElementById('s-today').textContent        = todaySubs;
+    document.getElementById('s-total-sub').textContent    = `${totalSubs} total`;
+    document.getElementById('s-pending').textContent      = pending;
+
+    renderAttention({totalExams, pubExams, pending});
+  } catch(e) {
+    console.error('Stats error', e);
+  }
+}
+
+// ── Attention / getting-started ───────────────────────────────────────────────
+function renderAttention({totalExams, pubExams, pending}) {
+  const body  = document.getElementById('attn-body');
+  const title = document.getElementById('attn-title');
+
+  if (totalExams === 0) {
+    // Getting started
+    title.textContent = 'Getting Started';
+    body.innerHTML = `
+      <div class="gs-step">
+        <div class="gs-num">1</div>
+        <div><div class="gs-title">Create your first exam</div><div class="gs-desc">Define title, duration, passing marks and sections. <a href="/admin/exam-editor" class="text-primary">Create Exam →</a></div></div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-num">2</div>
+        <div><div class="gs-title">Add questions</div><div class="gs-desc">Use the question bank to add MCQ, text or file-upload questions. <a href="/admin/questions" class="text-primary">Question Bank →</a></div></div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-num">3</div>
+        <div><div class="gs-title">Register candidates</div><div class="gs-desc">Import candidates or add them individually. <a href="/admin/candidates" class="text-primary">Candidates →</a></div></div>
+      </div>
+      <div class="gs-step">
+        <div class="gs-num">4</div>
+        <div><div class="gs-title">Generate exam links &amp; publish</div><div class="gs-desc">Publish the exam and send unique links to candidates.</div></div>
+      </div>
+    `;
+    return;
+  }
+
+  const items = [];
+  if (pending > 0)
+    items.push({bullet:'🔴', text:`${pending} submission${pending>1?'s':''} awaiting manual review`, href:'/admin/checker'});
+  const drafts = totalExams - pubExams;
+  if (drafts > 0)
+    items.push({bullet:'🟡', text:`${drafts} exam${drafts>1?'s':''} still in draft — publish to allow access`, href:'/admin/exams'});
+
+  if (items.length === 0) {
+    body.innerHTML = `<ul class="attn-list"><li><span class="bullet">✅</span><span style="color:var(--success);font-weight:500;">No pending actions — all good!</span></li></ul>`;
+  } else {
+    body.innerHTML = `<ul class="attn-list">${items.map(i=>`
+      <li>
+        <span class="bullet">${i.bullet}</span>
+        <a href="${i.href}" style="color:var(--dark);text-decoration:none;flex:1;">
+          ${esc(i.text)}
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:4px;vertical-align:middle;color:var(--mid)"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+        </a>
+      </li>`).join('')}</ul>`;
+  }
+}
+
+// ── Recent Submissions ────────────────────────────────────────────────────────
+async function loadSubmissions() {
+  try {
+    const r = await api('GET', '/api/submissions?limit=10');
+    if (!r || !r.ok) return;
+    const data = await r.json();
+    const rows = Array.isArray(data) ? data : (data.submissions ?? data.data ?? []);
+    const tbody = document.getElementById('sub-tbody');
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">No submissions yet. Once candidates complete exams they will appear here.</td></tr>';
+      return;
+    }
+
+    const statusMap = {
+      submitted:       '<span class="badge badge-info">Submitted</span>',
+      graded:          '<span class="badge badge-success">Graded</span>',
+      grading:         '<span class="badge badge-warning">Grading</span>',
+      in_progress:     '<span class="badge badge-secondary">In Progress</span>',
+      auto_submitted:  '<span class="badge badge-warning">Auto-submitted</span>',
+      published:       '<span class="badge badge-success">Published</span>',
+    };
+
+    tbody.innerHTML = rows.map(s => {
+      const scoreVal = s.final_score ?? s.auto_score ?? s.score;
+      const maxVal   = s.total_marks ?? s.max_score ?? 100;
+      let scoreHtml;
+      if (scoreVal == null) {
+        scoreHtml = '<span class="score-pill score-pending">Pending</span>';
+      } else {
+        const pct  = maxVal > 0 ? Math.round((scoreVal/maxVal)*100) : 0;
+        const pass = s.pass_fail === 'pass' || s.passed === 1 || (s.pass_fail == null && pct >= 50);
+        scoreHtml  = `<span class="score-pill ${pass?'score-pass':'score-fail'}">${Math.round(scoreVal)}/${Math.round(maxVal)}</span>`;
+      }
+      const st = s.status ?? '';
+      const badge = statusMap[st] ?? `<span class="badge badge-secondary">${esc(st)}</span>`;
+      return `<tr>
+        <td><strong>${esc(s.candidate_name ?? s.full_name ?? '—')}</strong></td>
+        <td class="text-muted" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(s.exam_title ?? s.exam_name ?? '')}">
+          ${esc(s.exam_title ?? s.exam_name ?? '—')}
+        </td>
+        <td>${badge}</td>
+        <td>${scoreHtml}</td>
+        <td><span class="date-muted">${fmtDT(s.started_at ?? s.submitted_at ?? s.created_at)}</span></td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    console.error('Submissions error', e);
+    document.getElementById('sub-tbody').innerHTML = '<tr class="empty-row"><td colspan="5">Failed to load submissions.</td></tr>';
+  }
+}
+
+// ── Trend Sparkline ───────────────────────────────────────────────────────────
+async function loadTrends() {
+  try {
+    const r = await api('GET', '/api/analytics/trends?days=30');
+    if (!r || !r.ok) return;
+    const data = await r.json();
+    const pts  = Array.isArray(data) ? data : (data.trends ?? data.data ?? []);
+    renderChart(pts);
+  } catch(e) {
+    console.error('Trend error', e);
+  }
+}
+
+function renderChart(pts) {
+  const svg = document.getElementById('trend-svg');
+  const W   = document.getElementById('chart-wrap').offsetWidth || 300;
+  const H   = 130;
+  const PAD = {top:14, right:14, bottom:26, left:30};
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+  if (!pts || pts.length < 2) {
+    svg.innerHTML = `<defs><linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0078D4" stop-opacity="0.28"/><stop offset="100%" stop-color="#0078D4" stop-opacity="0.03"/></linearGradient></defs>
+      <text x="${W/2}" y="${H/2}" text-anchor="middle" class="chart-label">No trend data available</text>`;
+    return;
+  }
+
+  const vals   = pts.map(p => Math.max(0, parseInt(p.count ?? p.submissions ?? p.value ?? 0)));
+  const labels = pts.map(p => {
+    const d = new Date(p.date ?? p.day ?? p.label ?? '');
+    return isNaN(d) ? String(p.label ?? '') : d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+  });
+  const maxV   = Math.max(...vals, 1);
+  const cW     = W - PAD.left - PAD.right;
+  const cH     = H - PAD.top  - PAD.bottom;
+  const n      = pts.length;
+  const xS     = i => PAD.left + (i/(n-1))*cW;
+  const yS     = v => PAD.top  + cH - (v/maxV)*cH;
+
+  // Grid + y-labels
+  let grid = '';
+  [0, Math.round(maxV/2), maxV].forEach(v => {
+    const y = yS(v);
+    grid += `<line x1="${PAD.left}" y1="${y}" x2="${W-PAD.right}" y2="${y}" stroke="#dee2e6" stroke-width="1"/>`;
+    grid += `<text x="${PAD.left-5}" y="${y+4}" text-anchor="end" class="chart-label">${v}</text>`;
+  });
+
+  // X-labels (show ~5)
+  let xLabels = '';
+  const step = Math.max(1, Math.floor(n/5));
+  for (let i = 0; i < n; i += step) {
+    xLabels += `<text x="${xS(i)}" y="${H-5}" text-anchor="middle" class="chart-label">${labels[i]}</text>`;
+  }
+
+  // Paths
+  const linePts = vals.map((v,i) => `${i===0?'M':'L'}${xS(i).toFixed(1)},${yS(v).toFixed(1)}`).join(' ');
+  const areaPts = `${linePts} L${xS(n-1).toFixed(1)},${yS(0).toFixed(1)} L${xS(0).toFixed(1)},${yS(0).toFixed(1)} Z`;
+
+  // Highlight dots: first, last, peak
+  const peakIdx = vals.indexOf(Math.max(...vals));
+  const dotSet  = new Set([0, n-1, peakIdx]);
+  let dots = '';
+  dotSet.forEach(i => {
+    dots += `<circle cx="${xS(i).toFixed(1)}" cy="${yS(vals[i]).toFixed(1)}" r="4" class="chart-dot">
+      <title>${labels[i]}: ${vals[i]} submissions</title>
+    </circle>`;
+  });
+
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#0078D4" stop-opacity="0.28"/>
+        <stop offset="100%" stop-color="#0078D4" stop-opacity="0.03"/>
+      </linearGradient>
+    </defs>
+    ${grid}${xLabels}
+    <path d="${areaPts}" class="chart-area"/>
+    <path d="${linePts}" class="chart-line"/>
+    ${dots}
+  `;
+}
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Analytics — Alaric Exam Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+.chart-wrap { overflow-x:auto; }
+.bar-chart { display:flex; align-items:flex-end; gap:6px; height:160px; padding:0 4px; }
+.bar-col { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; min-width:36px; }
+.bar-col .bar { width:100%; background:var(--mid); border-radius:4px 4px 0 0; transition:height .4s; min-height:2px; position:relative; }
+.bar-col .bar:hover { background:var(--accent); }
+.bar-col .bar-lbl { font-size:10px; color:var(--gray); }
+.bar-col .bar-val { font-size:10px; font-weight:600; color:var(--dark); }
+.bar-col .bar-pct { font-size:9px; color:var(--gray); }
+.line-chart-wrap { position:relative; }
+svg.line-chart { width:100%; height:180px; }
+.leaderboard-rank { width:30px; font-weight:700; color:var(--mid); }
+.item-analysis-table th, .item-analysis-table td { font-size:12px; padding:7px 10px; }
+.integrity-summary { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.int-card { border-radius:6px; padding:14px; text-align:center; }
+.int-card.high { background:#f8d7da; }
+.int-card.medium { background:#fff3cd; }
+.int-card.low { background:#d4edda; }
+.int-card .ic-val { font-size:24px; font-weight:700; }
+.int-card.high .ic-val { color:#721c24; }
+.int-card.medium .ic-val { color:#856404; }
+.int-card.low .ic-val { color:#155724; }
+.int-card .ic-lbl { font-size:12px; margin-top:2px; }
+.exam-select-bar { display:flex; align-items:center; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+#examAnalyticsSection { display:none; }
+.trend-tooltip { position:absolute; background:#002B5C; color:#fff; padding:6px 10px; border-radius:6px; font-size:11px; pointer-events:none; z-index:10; white-space:nowrap; }
+.overview-details-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:12px; margin-bottom:20px; }
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand">
+    <svg width="22" height="22" fill="none" stroke="#00B4D8" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+    Alaric <span>Exam</span>
+  </div>
+  <nav>
+    <div class="nav-label">Navigation</div>
+    <a href="/admin/dashboard"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a href="/admin/exams"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Exams</a>
+    <a href="/admin/questions"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Question Bank</a>
+    <a href="/admin/candidates"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Candidates</a>
+    <a href="/admin/checker"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Review Queue</a>
+    <a href="/admin/results"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results</a>
+    <a href="/admin/analytics" class="active"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21H3"/><path d="M21 3l-9 9-4-4-5 5"/></svg>Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
+    <a href="/admin/settings"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a>
+    <a href="/admin/email-config"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Config</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h1>Analytics</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+  <div id="page">
+
+    <!-- Overview Stats -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Platform Overview</span>
+        <button class="btn btn-outline btn-sm" onclick="loadOverview()">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+      <div class="stats-grid" id="overviewStats">
+        <div class="stat-card"><div class="lbl">Total Exams</div><div class="val" id="ov-exams">—</div></div>
+        <div class="stat-card"><div class="lbl">Total Submissions</div><div class="val" id="ov-submissions">—</div></div>
+        <div class="stat-card"><div class="lbl">Candidates</div><div class="val" id="ov-candidates">—</div></div>
+        <div class="stat-card"><div class="lbl">Pass Rate</div><div class="val" id="ov-passrate">—</div></div>
+        <div class="stat-card"><div class="lbl">Avg Score</div><div class="val" id="ov-avgscore">—</div></div>
+        <div class="stat-card"><div class="lbl">Pending Review</div><div class="val" id="ov-pending">—</div></div>
+      </div>
+    </div>
+
+    <!-- 30-day trend chart -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Submission Trends (30 days)</span>
+      </div>
+      <div class="line-chart-wrap" id="trendChartWrap">
+        <div class="text-center text-muted" style="padding:30px"><span class="spinner"></span></div>
+      </div>
+    </div>
+
+    <!-- Exam selector -->
+    <div class="exam-select-bar">
+      <label style="font-weight:600; font-size:14px">Exam Analytics:</label>
+      <select class="form-control" id="examSelect" style="max-width:320px" onchange="loadExamAnalytics()">
+        <option value="">Select an exam…</option>
+      </select>
+      <span class="text-muted" style="font-size:12px" id="examSelectHint">Select an exam to view detailed analytics</span>
+    </div>
+
+    <!-- Exam-specific section -->
+    <div id="examAnalyticsSection">
+      <!-- Summary cards -->
+      <div class="stats-grid" id="examStats">
+        <div class="stat-card"><div class="lbl">Submissions</div><div class="val" id="ea-submissions">—</div></div>
+        <div class="stat-card"><div class="lbl">Pass Rate</div><div class="val" id="ea-passrate">—</div></div>
+        <div class="stat-card"><div class="lbl">Avg Score</div><div class="val" id="ea-avg">—</div></div>
+        <div class="stat-card"><div class="lbl">Highest Score</div><div class="val" id="ea-max">—</div></div>
+        <div class="stat-card"><div class="lbl">Lowest Score</div><div class="val" id="ea-min">—</div></div>
+        <div class="stat-card"><div class="lbl">Avg Time</div><div class="val" id="ea-avgtime">—</div></div>
+      </div>
+
+      <div class="form-row" style="gap:16px">
+        <!-- Score Distribution -->
+        <div class="card" style="flex:1;margin-bottom:0">
+          <div class="card-header"><span class="card-title">Score Distribution</span></div>
+          <div class="chart-wrap" id="scoreDist">
+            <div class="text-center text-muted" style="padding:20px">No data</div>
+          </div>
+        </div>
+        <!-- Integrity Summary -->
+        <div class="card" style="flex:1;margin-bottom:0">
+          <div class="card-header"><span class="card-title">Integrity Summary</span></div>
+          <div class="integrity-summary" id="integritySummary">
+            <div class="int-card high"><div class="ic-val" id="int-high">—</div><div class="ic-lbl">High Risk</div></div>
+            <div class="int-card medium"><div class="ic-val" id="int-med">—</div><div class="ic-lbl">Medium Risk</div></div>
+            <div class="int-card low"><div class="ic-val" id="int-low">—</div><div class="ic-lbl">Low Risk</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item Analysis -->
+      <div class="card mt-2">
+        <div class="card-header"><span class="card-title">Item Analysis</span></div>
+        <div class="tbl-wrap">
+          <table class="item-analysis-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Question</th>
+                <th>Type</th>
+                <th>Marks</th>
+                <th>% Correct</th>
+                <th>Avg Time</th>
+              </tr>
+            </thead>
+            <tbody id="itemAnalysisBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="card mt-2">
+        <div class="card-header"><span class="card-title">Top 10 Leaderboard</span></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Candidate</th><th>Score</th><th>Pass/Fail</th><th>Time Taken</th></tr>
+            </thead>
+            <tbody id="leaderboardBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ── Shared helpers ──────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;document.getElementById('toast-container').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401){window.location.href='/admin';return null;}return r.json();}
+
+// ── Page logic ──────────────────────────────────────────────────────────────
+async function loadPage() {
+  await Promise.all([loadOverview(), loadExams(), loadTrends()]);
+}
+
+async function loadOverview() {
+  const data = await api('GET', '/api/analytics/overview');
+  if (!data) return;
+  document.getElementById('ov-exams').textContent = data.total_exams ?? data.exams ?? '—';
+  document.getElementById('ov-submissions').textContent = data.total_submissions ?? data.submissions ?? '—';
+  document.getElementById('ov-candidates').textContent = data.total_candidates ?? data.candidates ?? '—';
+  const pr = data.pass_rate ?? data.passRate;
+  document.getElementById('ov-passrate').textContent = pr != null ? `${parseFloat(pr).toFixed(1)}%` : '—';
+  const avg = data.avg_score ?? data.avgScore;
+  document.getElementById('ov-avgscore').textContent = avg != null ? parseFloat(avg).toFixed(1) : '—';
+  document.getElementById('ov-pending').textContent = data.pending_review ?? data.pendingReview ?? '—';
+}
+
+async function loadExams() {
+  const data = await api('GET', '/api/exams?limit=200');
+  if (!data) return;
+  const sel = document.getElementById('examSelect');
+  const exams = data.exams || data.data || data || [];
+  exams.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.id; o.textContent = e.title;
+    sel.appendChild(o);
+  });
+}
+
+async function loadTrends() {
+  const wrap = document.getElementById('trendChartWrap');
+  const data = await api('GET', '/api/analytics/trends');
+  if (!data) {
+    wrap.innerHTML = '<div class="text-center text-muted" style="padding:20px">Could not load trends data</div>';
+    return;
+  }
+  const points = data.data || data.trends || data || [];
+  if (!points.length) {
+    wrap.innerHTML = '<div class="text-center text-muted" style="padding:20px">No trend data available</div>';
+    return;
+  }
+  renderLineChart(wrap, points);
+}
+
+function renderLineChart(container, points) {
+  const W = 800, H = 160, padL = 36, padR = 16, padT = 16, padB = 28;
+  const vals = points.map(p => p.count ?? p.submissions ?? 0);
+  const maxVal = Math.max(...vals, 1);
+  const n = points.length;
+  const xStep = (W - padL - padR) / Math.max(n - 1, 1);
+  const yScale = (H - padT - padB) / maxVal;
+
+  let pathD = '';
+  let areaD = `M ${padL} ${H - padB}`;
+  const circles = [];
+  const tooltipData = [];
+
+  points.forEach((p, i) => {
+    const x = padL + i * xStep;
+    const y = H - padB - (vals[i] * yScale);
+    if (i === 0) pathD = `M ${x} ${y}`;
+    else pathD += ` L ${x} ${y}`;
+    areaD += ` L ${x} ${y}`;
+    circles.push(`<circle cx="${x}" cy="${y}" r="4" fill="var(--mid)" stroke="#fff" stroke-width="2" class="trend-pt" data-idx="${i}"/>`);
+    tooltipData.push({x, y, label: p.date || p.day || `Day ${i+1}`, val: vals[i]});
+  });
+  areaD += ` L ${padL + (n-1)*xStep} ${H-padB} Z`;
+
+  // X-axis labels — show ~6 labels
+  const labelStep = Math.max(1, Math.floor(n / 6));
+  const xLabels = points.map((p, i) => {
+    if (i % labelStep !== 0 && i !== n-1) return '';
+    const x = padL + i * xStep;
+    const lbl = (p.date || p.day || '').toString().slice(-5);
+    return `<text x="${x}" y="${H - padB + 16}" text-anchor="middle" font-size="9" fill="#6c757d">${lbl}</text>`;
+  }).join('');
+
+  // Y-axis
+  const yLines = [0, 0.25, 0.5, 0.75, 1].map(frac => {
+    const yVal = Math.round(maxVal * frac);
+    const y = H - padB - frac * (H - padT - padB);
+    return `<line x1="${padL}" y1="${y}" x2="${W - padR}" y2="${y}" stroke="#dee2e6" stroke-width="1"/>
+      <text x="${padL - 4}" y="${y + 4}" text-anchor="end" font-size="9" fill="#6c757d">${yVal}</text>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div style="position:relative">
+      <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:180px;overflow:visible">
+        <defs>
+          <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--mid)" stop-opacity=".2"/>
+            <stop offset="100%" stop-color="var(--mid)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${yLines}
+        <path d="${areaD}" fill="url(#areaGrad)"/>
+        <path d="${pathD}" fill="none" stroke="var(--mid)" stroke-width="2.5" stroke-linejoin="round"/>
+        ${circles.join('')}
+        ${xLabels}
+      </svg>
+      <div class="trend-tooltip hidden" id="trendTooltip"></div>
+    </div>`;
+
+  // Tooltip events
+  container.querySelectorAll('.trend-pt').forEach(el => {
+    el.addEventListener('mouseenter', function(e) {
+      const idx = parseInt(this.dataset.idx);
+      const d = tooltipData[idx];
+      const tt = document.getElementById('trendTooltip');
+      tt.textContent = `${d.label}: ${d.val} submission${d.val !== 1 ? 's' : ''}`;
+      tt.classList.remove('hidden');
+      tt.style.left = (d.x / 800 * 100) + '%';
+      tt.style.top = (d.y - 36) + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+      document.getElementById('trendTooltip').classList.add('hidden');
+    });
+  });
+}
+
+async function loadExamAnalytics() {
+  const examId = document.getElementById('examSelect').value;
+  if (!examId) {
+    document.getElementById('examAnalyticsSection').style.display = 'none';
+    document.getElementById('examSelectHint').textContent = 'Select an exam to view detailed analytics';
+    return;
+  }
+  document.getElementById('examSelectHint').textContent = 'Loading…';
+  const data = await api('GET', `/api/analytics/exam/${examId}`);
+  if (!data) { document.getElementById('examSelectHint').textContent = 'Error loading data'; return; }
+  document.getElementById('examSelectHint').textContent = '';
+  document.getElementById('examAnalyticsSection').style.display = 'block';
+
+  // Summary
+  document.getElementById('ea-submissions').textContent = data.total_submissions ?? '—';
+  const pr = data.pass_rate ?? data.passRate;
+  document.getElementById('ea-passrate').textContent = pr != null ? `${parseFloat(pr).toFixed(1)}%` : '—';
+  const avg = data.avg_score ?? data.avgScore;
+  document.getElementById('ea-avg').textContent = avg != null ? parseFloat(avg).toFixed(1) : '—';
+  document.getElementById('ea-max').textContent = data.max_score ?? data.maxScore ?? '—';
+  document.getElementById('ea-min').textContent = data.min_score ?? data.minScore ?? '—';
+  const avgT = data.avg_time_minutes ?? data.avgTime;
+  document.getElementById('ea-avgtime').textContent = avgT != null ? `${Math.round(avgT)}m` : '—';
+
+  // Score distribution
+  renderScoreDistribution(data.score_distribution || data.scoreDistribution || []);
+
+  // Integrity
+  const integ = data.integrity_summary || data.integritySummary || {};
+  document.getElementById('int-high').textContent = integ.high ?? 0;
+  document.getElementById('int-med').textContent = integ.medium ?? 0;
+  document.getElementById('int-low').textContent = integ.low ?? 0;
+
+  // Item analysis
+  const items = data.item_analysis || data.itemAnalysis || [];
+  const iaBody = document.getElementById('itemAnalysisBody');
+  if (items.length) {
+    iaBody.innerHTML = items.map((q, i) => `
+      <tr>
+        <td>${q.question_number ?? i+1}</td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(q.question_text || '')}">${esc((q.question_text || '').substring(0, 60))}${(q.question_text || '').length > 60 ? '…' : ''}</td>
+        <td><span class="qtype">${esc(q.type || q.question_type || '—')}</span></td>
+        <td>${q.marks ?? q.max_marks ?? '—'}</td>
+        <td>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;background:#e9ecef;border-radius:4px;height:8px;min-width:60px">
+              <div style="width:${Math.min(q.percent_correct ?? 0, 100)}%;background:var(--success);height:8px;border-radius:4px"></div>
+            </div>
+            <span style="font-size:11px;min-width:32px">${q.percent_correct != null ? q.percent_correct.toFixed(0) + '%' : '—'}</span>
+          </div>
+        </td>
+        <td>${q.avg_time_seconds != null ? Math.round(q.avg_time_seconds) + 's' : (q.avg_time != null ? q.avg_time : '—')}</td>
+      </tr>
+    `).join('');
+  } else {
+    iaBody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No item data available</td></tr>';
+  }
+
+  // Leaderboard
+  const leaders = data.leaderboard || [];
+  const lbBody = document.getElementById('leaderboardBody');
+  if (leaders.length) {
+    lbBody.innerHTML = leaders.slice(0, 10).map((l, i) => `
+      <tr>
+        <td class="leaderboard-rank">${i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i+1}</td>
+        <td><strong>${esc(l.candidate_name || l.name || '—')}</strong></td>
+        <td><strong>${l.score ?? l.total_score ?? '—'}</strong> / ${l.max_score || data.max_possible || '?'}</td>
+        <td>${l.passed === true ? '<span class="badge badge-success">PASS</span>' : l.passed === false ? '<span class="badge badge-danger">FAIL</span>' : '<span class="badge badge-secondary">—</span>'}</td>
+        <td>${l.time_taken_minutes != null ? Math.round(l.time_taken_minutes) + 'm' : (l.time_taken != null ? l.time_taken : '—')}</td>
+      </tr>
+    `).join('');
+  } else {
+    lbBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No leaderboard data</td></tr>';
+  }
+}
+
+function renderScoreDistribution(dist) {
+  const wrap = document.getElementById('scoreDist');
+  if (!dist.length) {
+    wrap.innerHTML = '<div class="text-center text-muted" style="padding:20px">No distribution data</div>';
+    return;
+  }
+  // Expect dist = [{bucket:'0-10', count:5}, ...]
+  // Or generate 10 buckets if raw data
+  let buckets = dist;
+  if (!dist[0].bucket) {
+    // Assume array of {score, count}
+    const arr = new Array(10).fill(0);
+    dist.forEach(d => {
+      const idx = Math.min(9, Math.floor((d.score || 0) / 10));
+      arr[idx] += d.count || 1;
+    });
+    buckets = arr.map((c, i) => ({bucket: `${i*10}-${(i+1)*10}%`, count: c}));
+  }
+  const maxCount = Math.max(...buckets.map(b => b.count || 0), 1);
+  const bars = buckets.map(b => {
+    const h = Math.max(4, Math.round(((b.count || 0) / maxCount) * 120));
+    return `<div class="bar-col">
+      <div class="bar-val">${b.count || 0}</div>
+      <div class="bar" style="height:${h}px" title="${b.bucket}: ${b.count} candidates"></div>
+      <div class="bar-lbl">${b.bucket || ''}</div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="bar-chart" style="padding:8px 8px 0">${bars}</div>`;
+}
+
+function esc(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

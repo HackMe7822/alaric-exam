@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings — Alaric Exam Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+.toggle-switch { position:relative; display:inline-block; width:44px; height:24px; }
+.toggle-switch input { opacity:0; width:0; height:0; }
+.toggle-slider { position:absolute; cursor:pointer; inset:0; background:#ccc; border-radius:24px; transition:.3s; }
+.toggle-slider:before { position:absolute; content:""; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.3s; }
+.toggle-switch input:checked + .toggle-slider { background:var(--mid); }
+.toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); }
+.setting-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border); gap:20px; }
+.setting-row:last-child { border-bottom:none; }
+.setting-row .setting-info { flex:1; }
+.setting-row .setting-info label { font-weight:600; font-size:13.5px; display:block; margin-bottom:2px; }
+.setting-row .setting-info p { font-size:12px; color:var(--gray); margin:0; }
+.setting-row .setting-ctrl { flex-shrink:0; min-width:120px; text-align:right; display:flex; align-items:center; gap:8px; justify-content:flex-end; }
+.api-key-prefix { font-family:monospace; background:#f8f9fa; border:1px solid var(--border); border-radius:4px; padding:2px 8px; font-size:12px; }
+.permission-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; background:var(--light); color:var(--mid); border-radius:20px; font-size:11px; font-weight:500; margin:2px; }
+.audit-row { font-size:12px; }
+.audit-row td { padding:7px 10px; }
+.audit-action { font-weight:600; color:var(--dark); }
+.jwt-info { background:#f8f9fa; border:1px solid var(--border); border-radius:6px; padding:14px; font-family:monospace; font-size:12px; color:#495057; line-height:1.7; }
+.session-badge { background:var(--light); color:var(--mid); border-radius:6px; padding:10px 16px; font-size:13px; font-weight:600; display:inline-flex; align-items:center; gap:8px; }
+.webhook-event-chip { display:inline-flex; padding:1px 6px; background:#e2e3e5; border-radius:3px; font-size:10px; color:#383d41; font-family:monospace; margin:1px; }
+.perm-check { display:flex; align-items:center; gap:8px; padding:6px 0; }
+.perm-check input { width:14px; height:14px; }
+.perm-check label { font-size:13px; cursor:pointer; }
+.section-title { font-size:13px; font-weight:600; color:var(--gray); text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px; margin-top:4px; }
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand">
+    <svg width="22" height="22" fill="none" stroke="#00B4D8" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+    Alaric <span>Exam</span>
+  </div>
+  <nav>
+    <div class="nav-label">Navigation</div>
+    <a href="/admin/dashboard"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a href="/admin/exams"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Exams</a>
+    <a href="/admin/questions"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Question Bank</a>
+    <a href="/admin/candidates"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Candidates</a>
+    <a href="/admin/checker"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Review Queue</a>
+    <a href="/admin/results"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results</a>
+    <a href="/admin/analytics"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21H3"/><path d="M21 3l-9 9-4-4-5 5"/></svg>Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
+    <a href="/admin/settings" class="active"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a>
+    <a href="/admin/email-config"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Config</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h1>Settings</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+  <div id="page">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('general',this)">General</button>
+      <button class="tab-btn" onclick="switchTab('security',this)">Security</button>
+      <button class="tab-btn" onclick="switchTab('anticheat',this)">Anti-Cheat</button>
+      <button class="tab-btn" onclick="switchTab('apikeys',this)">API Keys</button>
+      <button class="tab-btn" onclick="switchTab('webhooks',this)">Webhooks</button>
+      <button class="tab-btn" onclick="switchTab('auditlog',this)">Audit Log</button>
+      <button class="tab-btn" onclick="switchTab('gdpr',this)">GDPR</button>
+    </div>
+
+    <!-- General Tab -->
+    <div id="tab-general" class="tab-pane active">
+      <div class="card">
+        <div class="card-header"><span class="card-title">General Settings</span></div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label for="appName">Application Name</label>
+            <p>Displayed in emails, candidate portal, and browser tab title</p>
+          </div>
+          <div class="setting-ctrl" style="min-width:200px">
+            <input type="text" class="form-control" id="appName" placeholder="Alaric Exam">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label>Public Exam Catalog</label>
+            <p>Allow candidates to browse available exams without signing in</p>
+          </div>
+          <div class="setting-ctrl">
+            <label class="toggle-switch">
+              <input type="checkbox" id="allowPublicCatalog">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" onclick="saveGeneralSettings()">Save General Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Tab -->
+    <div id="tab-security" class="tab-pane">
+      <div class="card">
+        <div class="card-header"><span class="card-title">JWT Configuration</span></div>
+        <div class="jwt-info" id="jwtInfo">Loading…</div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Active Sessions</span>
+          <button class="btn btn-danger btn-sm" onclick="revokeAllSessions()">Revoke All Sessions</button>
+        </div>
+        <div class="setting-row" style="border:0;padding:8px 0">
+          <div class="setting-info"><label>Currently Active Sessions</label><p>Users currently logged into the admin portal</p></div>
+          <div class="setting-ctrl">
+            <span class="session-badge" id="activeSessions"><span class="spinner"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anti-Cheat Tab -->
+    <div id="tab-anticheat" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Anti-Cheat Settings</span>
+          <button class="btn btn-primary" onclick="saveAntiCheat()">Save Changes</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label>Webcam Monitoring</label>
+            <p>Capture periodic webcam snapshots during exams to verify candidate identity</p>
+          </div>
+          <div class="setting-ctrl">
+            <label class="toggle-switch">
+              <input type="checkbox" id="webcamEnabled">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label>Webcam Capture Interval</label>
+            <p>How often (in seconds) to capture a webcam snapshot</p>
+          </div>
+          <div class="setting-ctrl">
+            <input type="number" class="form-control" id="webcamInterval" min="10" max="600" step="5" placeholder="30" style="width:90px">
+            <span class="text-muted" style="font-size:12px">seconds</span>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label>Enforce Fullscreen</label>
+            <p>Force candidates to remain in fullscreen mode during the exam</p>
+          </div>
+          <div class="setting-ctrl">
+            <label class="toggle-switch">
+              <input type="checkbox" id="fullscreenEnforce">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label>AI Paste Detection</label>
+            <p>Flag answers that appear to have been pasted from AI tools (pattern analysis)</p>
+          </div>
+          <div class="setting-ctrl">
+            <label class="toggle-switch">
+              <input type="checkbox" id="aiPasteDetect">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label>Max Tab Switches Allowed</label>
+            <p>Number of tab/window switches permitted before flagging the submission</p>
+          </div>
+          <div class="setting-ctrl">
+            <input type="number" class="form-control" id="maxTabSwitches" min="0" max="20" placeholder="3" style="width:90px">
+            <span class="text-muted" style="font-size:12px">switches</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- API Keys Tab -->
+    <div id="tab-apikeys" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">API Keys</span>
+          <button class="btn btn-primary btn-sm" onclick="openCreateKeyModal()">+ Create Key</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="apiKeyTable">
+            <thead>
+              <tr><th>Name</th><th>Prefix</th><th>Permissions</th><th>Last Used</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="apiKeyBody">
+              <tr><td colspan="6" class="text-center text-muted" style="padding:20px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Webhooks Tab -->
+    <div id="tab-webhooks" class="tab-pane">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Webhooks</span>
+          <button class="btn btn-primary btn-sm" onclick="openCreateWebhookModal()">+ Add Webhook</button>
+        </div>
+        <div class="tbl-wrap">
+          <table id="webhookTable">
+            <thead>
+              <tr><th>Name</th><th>URL</th><th>Events</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="webhookBody">
+              <tr><td colspan="5" class="text-center text-muted" style="padding:20px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audit Log Tab -->
+    <div id="tab-auditlog" class="tab-pane">
+      <div class="card">
+        <div class="card-header"><span class="card-title">Audit Log</span></div>
+        <div class="filters-bar">
+          <div class="search-input" style="max-width:260px">
+            <span class="ico">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            </span>
+            <input type="text" class="form-control" id="auditSearch" placeholder="Search action, user…" oninput="filterAuditLog()">
+          </div>
+          <select class="form-control" id="auditActionFilter" style="max-width:180px" onchange="filterAuditLog()">
+            <option value="">All Actions</option>
+            <option value="login">Login</option>
+            <option value="logout">Logout</option>
+            <option value="settings_updated">Settings Updated</option>
+            <option value="exam_created">Exam Created</option>
+            <option value="exam_deleted">Exam Deleted</option>
+            <option value="user_created">User Created</option>
+            <option value="api_key_created">API Key Created</option>
+            <option value="result_released">Result Released</option>
+          </select>
+          <input type="date" class="form-control" id="auditDateFilter" style="max-width:150px" onchange="filterAuditLog()">
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>IP</th><th>Details</th></tr>
+            </thead>
+            <tbody id="auditBody">
+              <tr><td colspan="6" class="text-center text-muted" style="padding:20px">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="margin-top:12px;text-align:right">
+          <button class="btn btn-outline btn-sm" onclick="loadMoreAudit()">Load More</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- GDPR Tab -->
+    <div id="tab-gdpr" class="tab-pane">
+      <div class="card">
+        <div class="card-header"><span class="card-title">GDPR Data Export</span></div>
+        <div class="alert alert-info">Export all personal data associated with a candidate ID in JSON format, as required by GDPR Article 20 (Data Portability).</div>
+        <div class="form-group" style="max-width:400px">
+          <label>Candidate ID or Email</label>
+          <input type="text" class="form-control" id="gdprCandidateId" placeholder="Enter candidate ID or email address">
+        </div>
+        <button class="btn btn-primary" onclick="downloadGdprExport()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Data Export
+        </button>
+      </div>
+      <div class="card mt-2">
+        <div class="card-header"><span class="card-title">Right to Erasure</span></div>
+        <div class="alert alert-warning">Permanently delete all personal data for a candidate. This action is irreversible and will anonymise all submission records.</div>
+        <div class="form-group" style="max-width:400px">
+          <label>Candidate ID or Email</label>
+          <input type="text" class="form-control" id="gdprDeleteId" placeholder="Enter candidate ID or email address">
+        </div>
+        <button class="btn btn-danger" onclick="requestErasure()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+          Request Erasure
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create API Key Modal -->
+<div class="modal-overlay hidden" id="createKeyModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Create API Key</h3>
+      <button class="btn-close" onclick="closeCreateKeyModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Key Name <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-control" id="newKeyName" placeholder="e.g. Integration – My App">
+      </div>
+      <div class="form-group">
+        <label>Permissions</label>
+        <div id="keyPermissions">
+          <div class="perm-check"><input type="checkbox" id="perm-read" value="read"><label for="perm-read">read — Read data (exams, candidates, results)</label></div>
+          <div class="perm-check"><input type="checkbox" id="perm-write" value="write"><label for="perm-write">write — Create and update records</label></div>
+          <div class="perm-check"><input type="checkbox" id="perm-submissions" value="submissions"><label for="perm-submissions">submissions — Access submission data</label></div>
+          <div class="perm-check"><input type="checkbox" id="perm-results" value="results"><label for="perm-results">results — Release and manage results</label></div>
+          <div class="perm-check"><input type="checkbox" id="perm-analytics" value="analytics"><label for="perm-analytics">analytics — Access analytics endpoints</label></div>
+          <div class="perm-check"><input type="checkbox" id="perm-admin" value="admin"><label for="perm-admin">admin — Full administrative access</label></div>
+        </div>
+      </div>
+      <div id="newKeyResult" class="hidden">
+        <div class="alert alert-success">API key created. Copy it now — it will not be shown again.</div>
+        <div style="background:#f8f9fa;border:1px solid var(--border);border-radius:6px;padding:12px;font-family:monospace;font-size:13px;word-break:break-all" id="newKeyValue"></div>
+        <button class="btn btn-outline btn-sm mt-1" onclick="copyApiKey()">Copy Key</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCreateKeyModal()">Close</button>
+      <button class="btn btn-primary" id="createKeyBtn" onclick="createApiKey()">Create Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- Create Webhook Modal -->
+<div class="modal-overlay hidden" id="createWebhookModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Add Webhook</h3>
+      <button class="btn-close" onclick="closeCreateWebhookModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Webhook Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" class="form-control" id="whName" placeholder="e.g. LMS Integration">
+        </div>
+        <div class="form-group">
+          <label>Endpoint URL <span style="color:var(--danger)">*</span></label>
+          <input type="url" class="form-control" id="whUrl" placeholder="https://your-app.com/webhook">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Secret (HMAC signing key)</label>
+        <input type="text" class="form-control" id="whSecret" placeholder="Optional — used to sign payloads">
+      </div>
+      <div class="form-group">
+        <label>Events to Subscribe</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+          <div class="perm-check"><input type="checkbox" id="ev-submission-created" value="submission.created"><label for="ev-submission-created">submission.created</label></div>
+          <div class="perm-check"><input type="checkbox" id="ev-submission-submitted" value="submission.submitted"><label for="ev-submission-submitted">submission.submitted</label></div>
+          <div class="perm-check"><input type="checkbox" id="ev-result-released" value="result.released"><label for="ev-result-released">result.released</label></div>
+          <div class="perm-check"><input type="checkbox" id="ev-candidate-registered" value="candidate.registered"><label for="ev-candidate-registered">candidate.registered</label></div>
+          <div class="perm-check"><input type="checkbox" id="ev-exam-published" value="exam.published"><label for="ev-exam-published">exam.published</label></div>
+          <div class="perm-check"><input type="checkbox" id="ev-integrity-flagged" value="integrity.flagged"><label for="ev-integrity-flagged">integrity.flagged</label></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeCreateWebhookModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="createWebhook()">Add Webhook</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _auditLog = [];
+let _auditOffset = 0;
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;document.getElementById('toast-container').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401){window.location.href='/admin';return null;}return r.json();}
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'apikeys') loadApiKeys();
+  if (name === 'webhooks') loadWebhooks();
+  if (name === 'auditlog') loadAuditLog();
+  if (name === 'security') loadSecurityInfo();
+}
+
+// ── Page init ──────────────────────────────────────────────────────────────
+async function loadPage() {
+  await loadSettings();
+}
+
+async function loadSettings() {
+  const data = await api('GET', '/api/settings');
+  if (!data) return;
+  document.getElementById('appName').value = data.app_name || data.appName || 'Alaric Exam';
+  document.getElementById('allowPublicCatalog').checked = !!(data.allow_public_catalog ?? data.allowPublicCatalog);
+  document.getElementById('webcamEnabled').checked = !!(data.webcam_enabled ?? data.webcamEnabled);
+  document.getElementById('webcamInterval').value = data.webcam_interval ?? data.webcamInterval ?? 30;
+  document.getElementById('fullscreenEnforce').checked = !!(data.fullscreen_enforce ?? data.fullscreenEnforce);
+  document.getElementById('aiPasteDetect').checked = !!(data.ai_paste_detect ?? data.aiPasteDetect);
+  document.getElementById('maxTabSwitches').value = data.max_tab_switches ?? data.maxTabSwitches ?? 3;
+}
+
+async function saveGeneralSettings() {
+  const body = {
+    app_name: document.getElementById('appName').value.trim(),
+    allow_public_catalog: document.getElementById('allowPublicCatalog').checked
+  };
+  const result = await api('PUT', '/api/settings', body);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('General settings saved');
+}
+
+async function saveAntiCheat() {
+  const body = {
+    webcam_enabled: document.getElementById('webcamEnabled').checked,
+    webcam_interval: parseInt(document.getElementById('webcamInterval').value) || 30,
+    fullscreen_enforce: document.getElementById('fullscreenEnforce').checked,
+    ai_paste_detect: document.getElementById('aiPasteDetect').checked,
+    max_tab_switches: parseInt(document.getElementById('maxTabSwitches').value) || 3
+  };
+  const result = await api('PUT', '/api/settings', body);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Anti-cheat settings saved');
+}
+
+// ── Security ──────────────────────────────────────────────────────────────
+async function loadSecurityInfo() {
+  const data = await api('GET', '/api/settings/security');
+  const jwtEl = document.getElementById('jwtInfo');
+  if (!data) { jwtEl.textContent = 'Could not load security info'; return; }
+  jwtEl.textContent = [
+    `JWT Algorithm:      ${data.jwt_algorithm || data.algorithm || 'HS256'}`,
+    `Token Expiry:       ${data.jwt_expiry || data.tokenExpiry || '1d'}`,
+    `Refresh Expiry:     ${data.refresh_expiry || data.refreshExpiry || '7d'}`,
+    `TOTP Required:      ${data.totp_required ? 'Yes (configured per user)' : 'No'}`,
+    `Cookie Secure:      ${data.cookie_secure ?? true ? 'Yes (HTTPS only)' : 'No'}`,
+    `Cookie SameSite:    ${data.cookie_samesite || 'Strict'}`,
+  ].join('\n');
+  const sessEl = document.getElementById('activeSessions');
+  sessEl.innerHTML = `<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> ${data.active_sessions ?? data.activeSessions ?? '—'} active session${(data.active_sessions ?? data.activeSessions ?? 0) !== 1 ? 's' : ''}`;
+}
+
+async function revokeAllSessions() {
+  if (!confirm('Revoke all active sessions? Everyone will be logged out, including you.')) return;
+  const result = await api('POST', '/api/auth/revoke-all');
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('All sessions revoked. Redirecting…','warning');
+  setTimeout(() => window.location.href = '/admin', 1500);
+}
+
+// ── API Keys ──────────────────────────────────────────────────────────────
+async function loadApiKeys() {
+  const tbody = document.getElementById('apiKeyBody');
+  tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:20px"><span class="spinner"></span></td></tr>';
+  const data = await api('GET', '/api/settings/api-keys');
+  if (!data) return;
+  const keys = data.keys || data.data || data || [];
+  if (!keys.length) { tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:20px">No API keys configured</td></tr>'; return; }
+  tbody.innerHTML = keys.map(k => `
+    <tr>
+      <td><strong>${esc(k.name)}</strong></td>
+      <td><span class="api-key-prefix">${esc(k.prefix || k.key_prefix || '...')}</span></td>
+      <td>${(k.permissions || []).map(p => `<span class="permission-chip">${esc(p)}</span>`).join('')}</td>
+      <td>${k.last_used_at ? formatDate(k.last_used_at) : '<span class="text-muted">Never</span>'}</td>
+      <td>${k.active !== false ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="revokeApiKey(${k.id})">Revoke</button></td>
+    </tr>
+  `).join('');
+}
+
+function openCreateKeyModal() {
+  document.getElementById('newKeyName').value = '';
+  document.querySelectorAll('#keyPermissions input[type=checkbox]').forEach(c => c.checked = false);
+  document.getElementById('newKeyResult').classList.add('hidden');
+  document.getElementById('createKeyBtn').disabled = false;
+  document.getElementById('createKeyModal').classList.remove('hidden');
+}
+
+function closeCreateKeyModal() {
+  document.getElementById('createKeyModal').classList.add('hidden');
+}
+
+async function createApiKey() {
+  const name = document.getElementById('newKeyName').value.trim();
+  if (!name) { toast('Key name is required','error'); return; }
+  const perms = [...document.querySelectorAll('#keyPermissions input:checked')].map(c => c.value);
+  const btn = document.getElementById('createKeyBtn');
+  btn.disabled = true; btn.textContent = 'Creating…';
+  const result = await api('POST', '/api/settings/api-keys', { name, permissions: perms });
+  btn.disabled = false; btn.textContent = 'Create Key';
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  document.getElementById('newKeyValue').textContent = result.key || result.api_key || '';
+  document.getElementById('newKeyResult').classList.remove('hidden');
+  document.getElementById('createKeyBtn').classList.add('hidden');
+  loadApiKeys();
+}
+
+async function revokeApiKey(id) {
+  if (!confirm('Revoke this API key? It will stop working immediately.')) return;
+  const result = await api('DELETE', `/api/settings/api-keys/${id}`);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('API key revoked');
+  loadApiKeys();
+}
+
+function copyApiKey() {
+  navigator.clipboard.writeText(document.getElementById('newKeyValue').textContent).then(() => toast('Key copied to clipboard'));
+}
+
+// ── Webhooks ──────────────────────────────────────────────────────────────
+async function loadWebhooks() {
+  const tbody = document.getElementById('webhookBody');
+  tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding:20px"><span class="spinner"></span></td></tr>';
+  const data = await api('GET', '/api/settings/webhooks');
+  if (!data) return;
+  const hooks = data.webhooks || data.data || data || [];
+  if (!hooks.length) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding:20px">No webhooks configured</td></tr>'; return; }
+  tbody.innerHTML = hooks.map(h => `
+    <tr>
+      <td><strong>${esc(h.name)}</strong></td>
+      <td style="font-family:monospace;font-size:12px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(h.url)}</td>
+      <td>${(h.events || []).map(e => `<span class="webhook-event-chip">${esc(e)}</span>`).join('')}</td>
+      <td>${h.active !== false ? '<span class="badge badge-success">Active</span>' : '<span class="badge badge-secondary">Inactive</span>'}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="toggleWebhook(${h.id},${!h.active})">${h.active !== false ? 'Disable' : 'Enable'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteWebhook(${h.id})" style="margin-left:4px">Delete</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function openCreateWebhookModal() {
+  ['whName','whUrl','whSecret'].forEach(id => document.getElementById(id).value = '');
+  document.querySelectorAll('#createWebhookModal input[type=checkbox]').forEach(c => c.checked = false);
+  document.getElementById('createWebhookModal').classList.remove('hidden');
+}
+
+function closeCreateWebhookModal() {
+  document.getElementById('createWebhookModal').classList.add('hidden');
+}
+
+async function createWebhook() {
+  const name = document.getElementById('whName').value.trim();
+  const url = document.getElementById('whUrl').value.trim();
+  if (!name) { toast('Webhook name is required','error'); return; }
+  if (!url) { toast('Endpoint URL is required','error'); return; }
+  const events = [...document.querySelectorAll('#createWebhookModal input[type=checkbox]:checked')].map(c => c.value);
+  if (!events.length) { toast('Select at least one event','error'); return; }
+  const secret = document.getElementById('whSecret').value.trim();
+  const result = await api('POST', '/api/settings/webhooks', { name, url, events, secret: secret || undefined });
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Webhook created');
+  closeCreateWebhookModal();
+  loadWebhooks();
+}
+
+async function toggleWebhook(id, active) {
+  const result = await api('PATCH', `/api/settings/webhooks/${id}`, { active });
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast(active ? 'Webhook enabled' : 'Webhook disabled');
+  loadWebhooks();
+}
+
+async function deleteWebhook(id) {
+  if (!confirm('Delete this webhook?')) return;
+  const result = await api('DELETE', `/api/settings/webhooks/${id}`);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Webhook deleted');
+  loadWebhooks();
+}
+
+// ── Audit Log ──────────────────────────────────────────────────────────────
+async function loadAuditLog(append = false) {
+  if (!append) { _auditOffset = 0; _auditLog = []; }
+  const search = document.getElementById('auditSearch').value.trim();
+  const action = document.getElementById('auditActionFilter').value;
+  const date = document.getElementById('auditDateFilter').value;
+  let url = `/api/settings/audit-log?limit=50&page=${Math.floor(_auditOffset/50)+1}`;
+  if (search) url += `&q=${encodeURIComponent(search)}`;
+  if (action) url += `&action=${action}`;
+  if (date) url += `&date=${date}`;
+  const tbody = document.getElementById('auditBody');
+  if (!append) tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:20px"><span class="spinner"></span></td></tr>';
+  const data = await api('GET', url);
+  if (!data) return;
+  const items = data.events || data.data || data || [];
+  if (!append) _auditLog = [];
+  _auditLog = _auditLog.concat(items);
+  _auditOffset += items.length;
+  if (!_auditLog.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:20px">No audit events found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _auditLog.map(e => `
+    <tr class="audit-row">
+      <td style="white-space:nowrap">${formatDate(e.created_at || e.timestamp)}</td>
+      <td>${esc(e.user_name || e.user?.full_name || e.user_email || '—')}</td>
+      <td><span class="audit-action">${esc(e.action || '—')}</span></td>
+      <td>${esc(e.target || e.resource || '—')}</td>
+      <td style="font-family:monospace;font-size:11px">${esc(e.ip_address || e.ip || '—')}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${esc(JSON.stringify(e.details || e.metadata || {}))}">
+        ${esc(JSON.stringify(e.details || e.metadata || {}).substring(0, 60))}
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterAuditLog() { loadAuditLog(false); }
+function loadMoreAudit() { loadAuditLog(true); }
+
+// ── GDPR ──────────────────────────────────────────────────────────────────
+async function downloadGdprExport() {
+  const id = document.getElementById('gdprCandidateId').value.trim();
+  if (!id) { toast('Enter a candidate ID','error'); return; }
+  const r = await fetch(`/api/settings/gdpr-export/${encodeURIComponent(id)}`, {credentials:'include'});
+  if (r.status === 401) { window.location.href = '/admin'; return; }
+  if (!r.ok) { const d = await r.json().catch(()=>({error:'Export failed'})); toast(d.error,'error'); return; }
+  const blob = await r.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `gdpr-export-${id}.json`; a.click();
+  URL.revokeObjectURL(url);
+  toast('Export downloaded');
+}
+
+async function requestErasure() {
+  const id = document.getElementById('gdprDeleteId').value.trim();
+  if (!id) { toast('Enter a candidate ID','error'); return; }
+  if (!confirm(`Permanently delete all data for candidate ID "${id}"? This cannot be undone.`)) return;
+  const result = await api('DELETE', `/api/settings/gdpr-erase/${encodeURIComponent(id)}`);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('All data for this candidate has been erased','warning');
+}
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function formatDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch { return d; }
+}
+
+function esc(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('createKeyModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreateKeyModal(); });
+document.getElementById('createWebhookModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreateWebhookModal(); });
+
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,1568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Exam Editor — Alaric Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+/* ══ Layout ═══════════════════════════════════════════════════════════════ */
+#editor-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 0;
+  min-height: calc(100vh - var(--header-h) - 58px); /* below topbar + header-bar */
+  align-items: start;
+}
+#settings-panel {
+  background: var(--white);
+  border-right: 1px solid var(--border);
+  padding: 20px 18px;
+  position: sticky;
+  top: var(--header-h);
+  height: calc(100vh - var(--header-h));
+  overflow-y: auto;
+}
+#content-panel {
+  padding: 20px;
+  background: var(--bg);
+}
+
+/* ══ Exam header bar ══════════════════════════════════════════════════════ */
+.editor-topbar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: var(--header-h);
+  z-index: 49;
+}
+.exam-code-chip {
+  font-family: monospace; font-size: 11.5px; font-weight: 700;
+  letter-spacing: .08em; color: var(--gray);
+  background: var(--light); padding: 3px 10px; border-radius: 20px;
+}
+.exam-title-chip {
+  font-size: 16px; font-weight: 700; color: var(--dark); flex: 1; min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ══ Settings panel ═══════════════════════════════════════════════════════ */
+.panel-section-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--gray); font-weight: 700; margin: 18px 0 10px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.panel-section-title:first-child { margin-top: 0; }
+.form-group-sm { margin-bottom: 12px; }
+.form-group-sm label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #495057; }
+.form-control-sm {
+  width: 100%; padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px;
+  font-size: 13px; background: #fff; transition: border-color .15s;
+}
+.form-control-sm:focus { outline: none; border-color: var(--mid); box-shadow: 0 0 0 2px rgba(0,120,212,.15); }
+textarea.form-control-sm { resize: vertical; min-height: 72px; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 5px 0; border-bottom: 1px solid #f1f3f5; font-size: 12.5px;
+}
+.toggle-row:last-child { border-bottom: none; }
+.toggle-row label { color: #495057; font-weight: 500; }
+.toggle-sw { position: relative; display: inline-flex; width: 34px; height: 18px; flex-shrink: 0; }
+.toggle-sw input { opacity: 0; width: 0; height: 0; }
+.toggle-sw .sw-track {
+  position: absolute; inset: 0; background: #ccc; border-radius: 18px;
+  cursor: pointer; transition: background .2s;
+}
+.toggle-sw input:checked + .sw-track { background: var(--mid); }
+.toggle-sw .sw-track::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 14px; height: 14px; background: #fff; border-radius: 50%;
+  transition: transform .2s;
+}
+.toggle-sw input:checked + .sw-track::after { transform: translateX(16px); }
+.color-row { display: flex; align-items: center; gap: 8px; }
+.color-row input[type=color] { width: 38px; height: 34px; padding: 2px; border-radius: 5px; border: 1px solid var(--border); cursor: pointer; }
+.save-settings-btn { width: 100%; margin-top: 18px; }
+.total-marks-display {
+  background: var(--light); border-radius: 6px; padding: 10px 12px; margin-bottom: 12px;
+  display: flex; justify-content: space-between; font-size: 13px;
+}
+.total-marks-display strong { color: var(--dark); font-size: 16px; }
+
+/* ══ Content panel ════════════════════════════════════════════════════════ */
+.cp-card {
+  background: var(--white); border-radius: var(--radius);
+  box-shadow: var(--shadow); margin-bottom: 18px; overflow: hidden;
+}
+.cp-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 18px; border-bottom: 1px solid var(--border);
+}
+.cp-card-title { font-size: 14px; font-weight: 700; color: var(--dark); }
+.cp-card-body { padding: 18px; }
+
+/* ══ Sections list ════════════════════════════════════════════════════════ */
+.section-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px;
+  background: #fff; cursor: pointer; transition: border-color .15s, background .1s;
+}
+.section-item:hover { border-color: var(--mid); background: #f8fbff; }
+.section-item.active { border-color: var(--mid); background: var(--light); }
+.section-item .drag-handle { cursor: grab; color: #bbb; flex-shrink: 0; }
+.section-item .sec-name { font-weight: 600; font-size: 13px; flex: 1; }
+.section-item .sec-qlabel { font-size: 11px; color: var(--gray); white-space: nowrap; }
+
+/* ══ Add-section inline form ══════════════════════════════════════════════ */
+#add-section-form {
+  display: none; padding: 14px; background: #f8fbff;
+  border: 1px dashed var(--mid); border-radius: 6px; margin-bottom: 8px;
+}
+#add-section-form.open { display: block; }
+.asf-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+
+/* ══ Questions table ══════════════════════════════════════════════════════ */
+.q-table { width: 100%; border-collapse: collapse; }
+.q-table th, .q-table td { padding: 8px 10px; text-align: left; border-bottom: 1px solid var(--border); font-size: 13px; }
+.q-table th { background: #f8f9fa; font-weight: 600; color: #495057; font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em; }
+.q-table tr:hover td { background: #fafbfc; }
+.q-body-cell { max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+.move-btn { background: none; border: none; cursor: pointer; padding: 2px 5px; color: var(--gray); font-size: 14px; border-radius: 4px; }
+.move-btn:hover { background: var(--light); color: var(--mid); }
+
+/* ══ Import area ══════════════════════════════════════════════════════════ */
+.import-area {
+  border: 2px dashed var(--border); border-radius: 8px; padding: 22px 16px;
+  text-align: center; cursor: pointer; transition: border-color .15s;
+}
+.import-area:hover { border-color: var(--mid); }
+.import-area input[type=file] { display: none; }
+
+/* ══ Question modal (large) ═══════════════════════════════════════════════ */
+.modal-xl { max-width: 860px; }
+.qm-layout { display: grid; grid-template-columns: 220px 1fr; gap: 0; min-height: 420px; }
+.qm-type-nav {
+  border-right: 1px solid var(--border); padding: 12px 0;
+  background: #f8f9fa; border-radius: 0 0 0 var(--radius);
+}
+.qm-type-btn {
+  display: flex; align-items: center; gap: 8px; padding: 9px 16px;
+  background: none; border: none; cursor: pointer; width: 100%;
+  font-size: 13px; color: #495057; transition: all .12s;
+  border-left: 3px solid transparent; text-align: left;
+}
+.qm-type-btn:hover { background: #e8f0fe; color: var(--mid); }
+.qm-type-btn.active { background: var(--light); color: var(--mid); border-left-color: var(--mid); font-weight: 600; }
+.qm-type-icon { font-size: 15px; width: 20px; text-align: center; }
+.qm-body-area { padding: 18px 20px; overflow-y: auto; max-height: 70vh; }
+
+/* Common question form header */
+.qm-type-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.qm-type-header h4 { font-size: 14px; font-weight: 700; color: var(--dark); margin: 0; }
+.qm-type-header .qtype-pill {
+  font-size: 11px; background: var(--light); color: var(--mid);
+  padding: 2px 9px; border-radius: 20px; font-weight: 600;
+}
+
+/* Shared meta strip */
+.qm-meta-strip { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.qm-tags-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+/* Options */
+.opts-container { display: flex; flex-direction: column; gap: 7px; margin-bottom: 10px; }
+.opt-row { display: flex; align-items: center; gap: 8px; }
+.opt-row .opt-marker { font-size: 11.5px; color: var(--gray); min-width: 26px; font-weight: 600; }
+.opt-row input[type=radio], .opt-row input[type=checkbox] { width: 16px; height: 16px; cursor: pointer; flex-shrink: 0; }
+.opt-row input[type=text] { flex: 1; padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 13px; }
+.opt-row input[type=text]:focus { outline: none; border-color: var(--mid); }
+.opt-remove { background: none; border: none; cursor: pointer; color: var(--gray); padding: 2px 5px; border-radius: 4px; font-size: 16px; line-height: 1; }
+.opt-remove:hover { background: #fde; color: var(--danger); }
+
+/* Match pairs */
+.match-grid-hdr { display: grid; grid-template-columns: 1fr 1fr 28px; gap: 8px; font-size: 11px; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+.match-pair-row { display: grid; grid-template-columns: 1fr 1fr 28px; gap: 8px; margin-bottom: 7px; align-items: center; }
+.match-pair-row input { padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px; font-size: 13px; width: 100%; }
+.match-pair-row input:focus { outline: none; border-color: var(--mid); }
+
+/* Drag & drop items */
+.drag-item-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.drag-item-row .di-handle { cursor: grab; color: #bbb; font-size: 14px; flex-shrink: 0; }
+
+/* Hotspot */
+.hotspot-coords { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+
+/* Explanation */
+.explanation-row { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+
+/* Diff / misc */
+.diff-btns { display: flex; gap: 6px; }
+.diff-btn {
+  padding: 4px 12px; border-radius: 20px; border: 1.5px solid var(--border);
+  cursor: pointer; font-size: 12px; font-weight: 600; background: #fff;
+  transition: all .12s; color: var(--gray);
+}
+.diff-btn.active-easy   { background: #d4edda; border-color: var(--success); color: #155724; }
+.diff-btn.active-medium { background: #fff3cd; border-color: var(--warning); color: #856404; }
+.diff-btn.active-hard   { background: #f8d7da; border-color: var(--danger);  color: #721c24; }
+
+/* ══ Misc ══════════════════════════════════════════════════════════════════ */
+.badge-draft     { background: #e2e3e5; color: #383d41; }
+.badge-published { background: #d4edda; color: #155724; }
+.badge-archived  { background: #fff3cd; color: #856404; }
+.badge-closed    { background: #f8d7da; color: #721c24; }
+
+@media (max-width: 900px) {
+  #editor-layout { grid-template-columns: 1fr; }
+  #settings-panel { position: static; height: auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════════════════════════ -->
+<div id="sidebar">
+  <div class="brand">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+      <path stroke="#00B4D8" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+    </svg>
+    <span>Alaric</span> Exam
+  </div>
+  <nav>
+    <div class="nav-label">Main</div>
+    <a href="/admin/dashboard">📊 Dashboard</a>
+    <a href="/admin/exams" id="nav-exams" class="active">📋 Exams</a>
+    <a href="/admin/questions" id="nav-questions">❓ Question Bank</a>
+    <a href="/admin/candidates">👥 Candidates</a>
+    <div class="nav-label">Review</div>
+    <a href="/admin/checker">✅ Review Queue</a>
+    <a href="/admin/results">🏆 Results</a>
+    <a href="/admin/analytics">📈 Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users">👤 Users</a>
+    <a href="/admin/email-config">📧 Email Config</a>
+    <a href="/admin/settings">⚙️ Settings</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- ══ MAIN ══════════════════════════════════════════════════════════════════ -->
+<div id="main">
+  <!-- Top bar -->
+  <div id="topbar">
+    <h1 id="page-title">Exam Editor</h1>
+    <div class="topbar-actions">
+      <a href="/admin/exams" class="btn btn-ghost btn-sm">← Back to Exams</a>
+      <button id="logoutBtn" class="btn btn-ghost btn-sm">Logout</button>
+    </div>
+  </div>
+
+  <!-- Exam header bar -->
+  <div class="editor-topbar" id="editor-topbar">
+    <span class="exam-code-chip" id="exam-code-chip">—</span>
+    <span class="exam-title-chip" id="exam-title-chip">Loading…</span>
+    <span id="exam-status-badge" class="badge badge-secondary">—</span>
+    <button id="publishBtn"   class="btn btn-success btn-sm hidden">Publish</button>
+    <button id="archiveBtn"   class="btn btn-warning btn-sm hidden">Archive</button>
+    <button id="unpublishBtn" class="btn btn-ghost   btn-sm hidden">Unpublish</button>
+  </div>
+
+  <!-- Editor layout -->
+  <div id="editor-layout">
+
+    <!-- ══ LEFT: Settings panel (30%) ══════════════════════════════════════ -->
+    <div id="settings-panel">
+
+      <div class="total-marks-display" id="total-marks-row">
+        <span>Total Marks</span>
+        <strong id="display-total-marks">—</strong>
+      </div>
+
+      <div class="panel-section-title">Basic Info</div>
+      <div class="form-group-sm">
+        <label>Title <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-control-sm" id="s-title" placeholder="Exam title">
+      </div>
+      <div class="form-group-sm">
+        <label>Description</label>
+        <textarea class="form-control-sm" id="s-desc" placeholder="Short description for admin reference…"></textarea>
+      </div>
+      <div class="form-group-sm">
+        <label>Instructions <span style="font-size:10px;color:var(--gray)">(shown to candidates before start)</span></label>
+        <textarea class="form-control-sm" id="s-instructions" rows="4" placeholder="Read all questions carefully…"></textarea>
+      </div>
+
+      <div class="panel-section-title">Marks &amp; Timing</div>
+      <div class="row-2">
+        <div class="form-group-sm">
+          <label>Duration (min) *</label>
+          <input type="number" class="form-control-sm" id="s-duration" min="1" max="600" placeholder="60">
+        </div>
+        <div class="form-group-sm">
+          <label>Pass Marks</label>
+          <input type="number" class="form-control-sm" id="s-pass-marks" min="0" placeholder="e.g. 50">
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="form-group-sm">
+          <label>Negative / Wrong</label>
+          <input type="number" class="form-control-sm" id="s-neg-marks" min="0" step="0.5" placeholder="0">
+        </div>
+        <div class="form-group-sm">
+          <label>Max Attempts</label>
+          <input type="number" class="form-control-sm" id="s-max-attempts" min="1" value="1">
+        </div>
+      </div>
+
+      <div class="panel-section-title">Schedule</div>
+      <div class="form-group-sm">
+        <label>Start Date &amp; Time</label>
+        <input type="datetime-local" class="form-control-sm" id="s-start-date">
+      </div>
+      <div class="form-group-sm">
+        <label>End Date &amp; Time</label>
+        <input type="datetime-local" class="form-control-sm" id="s-end-date">
+      </div>
+
+      <div class="panel-section-title">Options</div>
+      <div class="toggle-row">
+        <label>Shuffle Questions</label>
+        <label class="toggle-sw"><input type="checkbox" id="s-shuffle-q"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <label>Shuffle Options</label>
+        <label class="toggle-sw"><input type="checkbox" id="s-shuffle-o"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <label>Show Result Immediately</label>
+        <label class="toggle-sw"><input type="checkbox" id="s-show-result"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <label>Allow Review Before Submit</label>
+        <label class="toggle-sw"><input type="checkbox" id="s-allow-review"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <label>Public Catalog</label>
+        <label class="toggle-sw"><input type="checkbox" id="s-is-public"><span class="sw-track"></span></label>
+      </div>
+
+      <div class="panel-section-title">Branding</div>
+      <div class="form-group-sm">
+        <label>Brand Color</label>
+        <div class="color-row">
+          <input type="color" id="s-color" value="#0078D4">
+          <input type="text"  class="form-control-sm" id="s-color-hex" placeholder="#0078D4" style="flex:1;">
+        </div>
+      </div>
+
+      <button class="btn btn-primary save-settings-btn" id="saveSettingsBtn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Settings
+      </button>
+    </div><!-- /settings-panel -->
+
+    <!-- ══ RIGHT: Content panel (70%) ══════════════════════════════════════ -->
+    <div id="content-panel">
+
+      <!-- Sections card -->
+      <div class="cp-card">
+        <div class="cp-card-header">
+          <span class="cp-card-title">Sections</span>
+          <button class="btn btn-outline btn-sm" id="toggleAddSectionBtn">+ Add Section</button>
+        </div>
+        <div class="cp-card-body">
+
+          <!-- Inline add-section form -->
+          <div id="add-section-form">
+            <div class="asf-row">
+              <div class="form-group-sm">
+                <label>Section Name *</label>
+                <input type="text" class="form-control-sm" id="asf-name" placeholder="e.g. General Aptitude">
+              </div>
+              <div class="form-group-sm">
+                <label>Duration (min)</label>
+                <input type="number" class="form-control-sm" id="asf-duration" min="0" placeholder="optional">
+              </div>
+              <div class="form-group-sm">
+                <label>Marks per Question</label>
+                <input type="number" class="form-control-sm" id="asf-mpq" min="0" step="0.5" placeholder="1">
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end;">
+              <button class="btn btn-ghost btn-sm" id="cancelAddSectionBtn">Cancel</button>
+              <button class="btn btn-primary btn-sm" id="saveAddSectionBtn">Add Section</button>
+            </div>
+          </div>
+
+          <!-- Sections list -->
+          <div id="sections-list">
+            <p class="text-muted text-center" style="padding:20px 0;" id="sections-empty-msg">No sections yet. Sections are optional — questions can belong to the default exam.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Questions card -->
+      <div class="cp-card">
+        <div class="cp-card-header">
+          <span class="cp-card-title">Questions <span id="q-count-badge" class="badge badge-info" style="margin-left:6px;font-size:11px;">0</span></span>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <a id="downloadSampleCsvBtn" href="#" class="btn btn-ghost btn-sm">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Sample CSV
+            </a>
+            <button class="btn btn-outline btn-sm" id="exportCsvBtn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export CSV
+            </button>
+            <button class="btn btn-outline btn-sm" id="importCsvBtn">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import CSV
+            </button>
+            <button class="btn btn-primary btn-sm" id="addQuestionBtn">+ Add Question</button>
+          </div>
+        </div>
+        <div class="cp-card-body" style="padding-bottom:8px;">
+          <!-- Filters -->
+          <div class="filter-bar" style="margin-bottom:14px;">
+            <div style="position:relative;min-width:180px;flex:1;max-width:260px;">
+              <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--gray);pointer-events:none;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              </span>
+              <input type="text" class="form-control" id="q-search" placeholder="Search questions…" style="padding-left:30px;">
+            </div>
+            <select class="form-control" id="q-filter-section" style="width:auto;min-width:130px;">
+              <option value="">All Sections</option>
+            </select>
+            <select class="form-control" id="q-filter-type" style="width:auto;min-width:120px;">
+              <option value="">All Types</option>
+              <option value="MCQ">MCQ</option>
+              <option value="Multi-MCQ">Multi-MCQ</option>
+              <option value="Text">Text/Essay</option>
+              <option value="Drag & Drop">Drag &amp; Drop</option>
+              <option value="Match">Match Pairs</option>
+              <option value="Fill Blank">Fill in Blank</option>
+              <option value="Hotspot">Hotspot</option>
+              <option value="File Upload">File Upload</option>
+            </select>
+          </div>
+          <!-- Table -->
+          <div class="tbl-wrap">
+            <table class="q-table">
+              <thead>
+                <tr>
+                  <th style="width:28px;"></th>
+                  <th style="width:36px;">#</th>
+                  <th>Question</th>
+                  <th style="width:100px;">Type</th>
+                  <th style="width:64px;">Marks</th>
+                  <th style="width:110px;">Section</th>
+                  <th style="width:78px;">Difficulty</th>
+                  <th style="width:100px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="questions-tbody">
+                <tr><td colspan="8" class="text-center text-muted" style="padding:32px;" id="q-empty-row">No questions yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /content-panel -->
+  </div><!-- /editor-layout -->
+</div><!-- /main -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     QUESTION MODAL
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="questionModal">
+  <div class="modal modal-xl" style="max-height:92vh;overflow:hidden;display:flex;flex-direction:column;">
+    <div class="modal-header">
+      <h3 id="qm-modal-title">Add Question</h3>
+      <button class="btn-close" id="closeQModal">&times;</button>
+    </div>
+    <div style="flex:1;overflow:hidden;">
+      <div class="qm-layout" style="height:100%;">
+
+        <!-- Type nav (left) -->
+        <div class="qm-type-nav">
+          <button class="qm-type-btn active" data-type="MCQ">
+            <span class="qm-type-icon">🔘</span> MCQ
+          </button>
+          <button class="qm-type-btn" data-type="Multi-MCQ">
+            <span class="qm-type-icon">☑️</span> Multi-Select
+          </button>
+          <button class="qm-type-btn" data-type="Text">
+            <span class="qm-type-icon">📝</span> Text / Essay
+          </button>
+          <button class="qm-type-btn" data-type="Drag & Drop">
+            <span class="qm-type-icon">↕️</span> Drag &amp; Drop
+          </button>
+          <button class="qm-type-btn" data-type="Match">
+            <span class="qm-type-icon">🔗</span> Match Pairs
+          </button>
+          <button class="qm-type-btn" data-type="Fill Blank">
+            <span class="qm-type-icon">✏️</span> Fill in Blank
+          </button>
+          <button class="qm-type-btn" data-type="Hotspot">
+            <span class="qm-type-icon">🎯</span> Hotspot
+          </button>
+          <button class="qm-type-btn" data-type="File Upload">
+            <span class="qm-type-icon">📎</span> File Upload
+          </button>
+          <div style="padding:14px 16px;border-top:1px solid var(--border);margin-top:12px;">
+            <div class="form-group-sm">
+              <label>Section</label>
+              <select class="form-control-sm" id="qm-section">
+                <option value="">— None —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main body (right) -->
+        <div class="qm-body-area" style="overflow-y:auto;">
+          <input type="hidden" id="qm-editing-id">
+
+          <!-- Type heading -->
+          <div class="qm-type-header">
+            <span id="qm-type-icon-display" style="font-size:18px;">🔘</span>
+            <h4 id="qm-type-label">Multiple Choice (Single Answer)</h4>
+            <span class="qtype-pill" id="qm-type-pill">MCQ</span>
+          </div>
+
+          <!-- Question body -->
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:13px;font-weight:600;">Question <span style="color:var(--danger)">*</span></label>
+            <textarea class="form-control" id="qm-body" rows="4" placeholder="Enter question text…" style="font-size:14px;"></textarea>
+          </div>
+
+          <!-- Meta strip: marks / negative / time / difficulty -->
+          <div class="qm-meta-strip">
+            <div class="form-group-sm">
+              <label>Marks *</label>
+              <input type="number" class="form-control-sm" id="qm-marks" min="0" step="0.5" value="1">
+            </div>
+            <div class="form-group-sm">
+              <label>Neg. Marks</label>
+              <input type="number" class="form-control-sm" id="qm-neg-marks" min="0" step="0.5" value="0">
+            </div>
+            <div class="form-group-sm">
+              <label>Time Limit (sec)</label>
+              <input type="number" class="form-control-sm" id="qm-time-limit" min="0" placeholder="none">
+            </div>
+            <div class="form-group-sm">
+              <label>Difficulty</label>
+              <div class="diff-btns">
+                <button type="button" class="diff-btn active-easy" data-diff="easy">Easy</button>
+                <button type="button" class="diff-btn active-medium" data-diff="medium">Med</button>
+                <button type="button" class="diff-btn active-hard" data-diff="hard">Hard</button>
+              </div>
+              <input type="hidden" id="qm-difficulty" value="medium">
+            </div>
+          </div>
+
+          <div class="qm-tags-row">
+            <div class="form-group-sm">
+              <label>Tags <span style="font-size:10px;color:var(--gray)">(comma-separated)</span></label>
+              <input type="text" class="form-control-sm" id="qm-tags" placeholder="e.g. algebra, chapter3">
+            </div>
+            <div></div>
+          </div>
+
+          <hr style="border:none;border-top:1px solid var(--border);margin:0 0 14px;">
+
+          <!-- ── MCQ options ── -->
+          <div id="section-MCQ">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <label style="font-size:13px;font-weight:600;" id="mcq-opts-label">Options <span style="font-size:11px;color:var(--gray);font-weight:400;">(select the correct answer)</span></label>
+              <button type="button" class="btn btn-outline btn-sm" id="addOptBtn">+ Add Option</button>
+            </div>
+            <div class="opts-container" id="mcq-opts-list"></div>
+            <p class="text-muted" style="font-size:11.5px;margin-top:4px;">Minimum 2 options required. Click radio/checkbox to mark correct.</p>
+          </div>
+
+          <!-- ── Text / Essay ── -->
+          <div id="section-Text" class="hidden">
+            <div class="alert alert-info" style="font-size:13px;">
+              <strong>Text / Essay</strong> — No options needed. Candidates type a free-text response. This question type is graded manually in the <a href="/admin/checker" style="color:var(--mid);">Review Queue</a>.
+            </div>
+          </div>
+
+          <!-- ── Drag & Drop ── -->
+          <div id="section-Drag" class="hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <label style="font-size:13px;font-weight:600;">Items in Correct Order</label>
+              <button type="button" class="btn btn-outline btn-sm" id="addDragItemBtn">+ Add Item</button>
+            </div>
+            <div id="drag-items-list"></div>
+            <p class="text-muted" style="font-size:11.5px;margin-top:4px;">Candidates will see these items shuffled and must rearrange them into the correct order shown above.</p>
+          </div>
+
+          <!-- ── Match Pairs ── -->
+          <div id="section-Match" class="hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+              <label style="font-size:13px;font-weight:600;">Match Pairs</label>
+              <button type="button" class="btn btn-outline btn-sm" id="addMatchPairBtn">+ Add Pair</button>
+            </div>
+            <div class="match-grid-hdr"><span>Left Column</span><span>Right Column (match)</span><span></span></div>
+            <div id="match-pairs-list"></div>
+          </div>
+
+          <!-- ── Fill in Blank ── -->
+          <div id="section-FillBlank" class="hidden">
+            <div class="form-group-sm">
+              <label style="font-size:13px;font-weight:600;">Correct Answer</label>
+              <input type="text" class="form-control-sm" id="qm-fill-answer" placeholder="Enter the exact correct answer">
+              <p class="text-muted" style="font-size:11.5px;margin-top:4px;">Matching is case-insensitive. Candidate's typed answer must match this exactly.</p>
+            </div>
+          </div>
+
+          <!-- ── Hotspot ── -->
+          <div id="section-Hotspot" class="hidden">
+            <div class="form-group-sm">
+              <label style="font-size:13px;font-weight:600;">Image URL *</label>
+              <input type="url" class="form-control-sm" id="qm-hotspot-img" placeholder="https://example.com/image.png">
+            </div>
+            <div id="hotspot-img-preview" style="margin:8px 0;display:none;">
+              <img id="hotspot-preview-img" src="" alt="Preview" style="max-width:100%;border:1px solid var(--border);border-radius:6px;display:block;">
+            </div>
+            <label style="font-size:13px;font-weight:600;">Correct Clickable Region</label>
+            <p class="text-muted" style="font-size:11.5px;margin-bottom:6px;">Specify the bounding box (pixels from top-left of image).</p>
+            <div class="hotspot-coords">
+              <div class="form-group-sm"><label>X (left)</label><input type="number" class="form-control-sm" id="qm-hs-x" min="0" placeholder="0"></div>
+              <div class="form-group-sm"><label>Y (top)</label><input type="number" class="form-control-sm" id="qm-hs-y" min="0" placeholder="0"></div>
+              <div class="form-group-sm"><label>Width</label><input type="number" class="form-control-sm" id="qm-hs-w" min="1" placeholder="100"></div>
+              <div class="form-group-sm"><label>Height</label><input type="number" class="form-control-sm" id="qm-hs-h" min="1" placeholder="100"></div>
+            </div>
+          </div>
+
+          <!-- ── File Upload ── -->
+          <div id="section-FileUpload" class="hidden">
+            <div class="alert alert-info" style="font-size:13px;margin-bottom:12px;">
+              <strong>File Upload</strong> — Candidates upload a file (PDF, image, doc, etc.). Graded manually in the Review Queue.
+            </div>
+            <div class="form-group-sm">
+              <label style="font-size:13px;font-weight:600;">Upload Instructions</label>
+              <textarea class="form-control-sm" id="qm-upload-instructions" rows="3" placeholder="e.g. Upload a scanned PDF of your work. Max size 10 MB."></textarea>
+            </div>
+            <div class="form-group-sm">
+              <label style="font-size:13px;font-weight:600;">Max File Size Note</label>
+              <input type="text" class="form-control-sm" id="qm-upload-maxsize" placeholder="e.g. 10 MB">
+            </div>
+          </div>
+
+          <!-- Explanation (common) -->
+          <div class="explanation-row">
+            <div class="form-group-sm">
+              <label style="font-size:13px;font-weight:600;">Explanation <span style="font-size:10px;color:var(--gray);font-weight:400;">(shown after submission if results released)</span></label>
+              <textarea class="form-control-sm" id="qm-explanation" rows="3" placeholder="Optional explanation for candidates…"></textarea>
+            </div>
+          </div>
+
+        </div><!-- /qm-body-area -->
+      </div><!-- /qm-layout -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelQModal">Cancel</button>
+      <button class="btn btn-primary" id="saveQBtn">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     IMPORT CSV MODAL
+══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay hidden" id="importModal">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <h3>Import Questions from CSV</h3>
+      <button class="btn-close" id="closeImportModal">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info" style="font-size:13px;margin-bottom:14px;">
+        Upload a CSV file with questions.
+        <a id="sampleCsvLink" href="#" class="text-primary" style="font-weight:600;">Download sample CSV</a> to see the expected format.
+      </div>
+      <div class="import-area" id="dropzone" onclick="document.getElementById('import-file').click()">
+        <input type="file" id="import-file" accept=".csv">
+        <div style="font-size:30px;margin-bottom:8px;">📄</div>
+        <div style="font-weight:600;color:var(--dark);font-size:14px;">Click to select CSV file</div>
+        <div class="text-muted" style="font-size:12px;margin-top:4px;">or drag and drop here</div>
+        <div id="import-filename" class="text-primary" style="font-weight:600;font-size:13px;margin-top:6px;"></div>
+      </div>
+      <div id="import-result" class="hidden" style="margin-top:10px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelImportModal">Cancel</button>
+      <button class="btn btn-primary" id="doImportBtn">Upload &amp; Import</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     SCRIPT
+══════════════════════════════════════════════════════════════════════════ -->
+<script>
+// ════════════════════════════════════════════════════════
+//  Bootstrap — read exam ID from URL
+// ════════════════════════════════════════════════════════
+const EXAM_ID = new URLSearchParams(location.search).get('id');
+if (!EXAM_ID) { alert('No exam ID specified.'); location.href = '/admin/exams'; }
+
+let _exam      = null;
+let _sections  = [];
+let _questions = [];
+let _editingQId   = null;
+let _activeSec    = ''; // '' = all
+let _qmType       = 'MCQ';
+
+// ════════════════════════════════════════════════════════
+//  Core helpers
+// ════════════════════════════════════════════════════════
+async function init() {
+  const r = await fetch('/api/auth/me', { credentials: 'include' });
+  if (!r.ok) return (window.location.href = '/admin');
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name || user.name || 'Admin';
+  document.getElementById('sb-role').textContent = (user.role || '').replace(/_/g, ' ');
+  await loadAll();
+}
+
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/admin';
+};
+
+async function api(method, url, body) {
+  const opts = {
+    method,
+    credentials: 'include',
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  };
+  const r = await fetch(url, opts);
+  if (r.status === 401) { window.location.href = '/admin'; return null; }
+  try { return await r.json(); } catch { return null; }
+}
+
+function toast(msg, type = 'success') {
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadAll() {
+  await loadExam();
+  await loadSections();
+  await loadQuestions();
+}
+
+// ════════════════════════════════════════════════════════
+//  Exam load + header
+// ════════════════════════════════════════════════════════
+async function loadExam() {
+  const data = await api('GET', `/api/exams/${EXAM_ID}`);
+  if (!data) return;
+  _exam = data;
+  renderExamHeader();
+  populateSettings();
+}
+
+function renderExamHeader() {
+  const e = _exam;
+  document.getElementById('exam-code-chip').textContent  = e.code || e.exam_code || 'N/A';
+  document.getElementById('exam-title-chip').textContent = e.title || 'Untitled';
+  document.getElementById('page-title').textContent      = 'Exam: ' + (e.title || '');
+
+  const st  = (e.status || 'draft').toLowerCase();
+  const bdg = document.getElementById('exam-status-badge');
+  bdg.textContent = st.toUpperCase();
+  bdg.className   = 'badge badge-' + st;
+
+  document.getElementById('publishBtn').classList.toggle('hidden',   st !== 'draft');
+  document.getElementById('archiveBtn').classList.toggle('hidden',   st !== 'published');
+  document.getElementById('unpublishBtn').classList.toggle('hidden', st !== 'published');
+}
+
+function populateSettings() {
+  const e   = _exam;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v ?? ''; };
+  const chk = (id, v) => { const el = document.getElementById(id); if (el) el.checked = !!v; };
+
+  set('s-title',        e.title);
+  set('s-desc',         e.description);
+  set('s-instructions', e.instructions);
+  set('s-duration',     e.duration_minutes ?? e.duration);
+  set('s-pass-marks',   e.pass_marks ?? e.passing_score);
+  set('s-neg-marks',    e.negative_marking ?? e.negative_marks_per_wrong ?? 0);
+  set('s-max-attempts', e.max_attempts ?? 1);
+  if (e.start_date) set('s-start-date', e.start_date.slice(0,16));
+  if (e.end_date)   set('s-end-date',   e.end_date.slice(0,16));
+  chk('s-shuffle-q',    e.shuffle_questions);
+  chk('s-shuffle-o',    e.shuffle_options);
+  chk('s-show-result',  e.show_result_immediately ?? e.show_result);
+  chk('s-allow-review', e.allow_review);
+  chk('s-is-public',    e.is_public);
+
+  const color = e.branding_color || '#0078D4';
+  set('s-color',     color);
+  set('s-color-hex', color);
+
+  // Total marks display
+  updateTotalMarksDisplay();
+}
+
+function updateTotalMarksDisplay() {
+  const total = _questions.reduce((s, q) => s + (parseFloat(q.marks) || 1), 0);
+  document.getElementById('display-total-marks').textContent = total || '—';
+}
+
+// Color sync
+document.getElementById('s-color').addEventListener('input', function () {
+  document.getElementById('s-color-hex').value = this.value;
+});
+document.getElementById('s-color-hex').addEventListener('input', function () {
+  if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('s-color').value = this.value;
+});
+
+// Save settings
+document.getElementById('saveSettingsBtn').onclick = async () => {
+  const title = document.getElementById('s-title').value.trim();
+  if (!title) { toast('Title is required', 'error'); return; }
+
+  const body = {
+    title,
+    description:          document.getElementById('s-desc').value,
+    instructions:         document.getElementById('s-instructions').value,
+    duration_minutes:     parseInt(document.getElementById('s-duration').value) || 0,
+    pass_marks:           parseFloat(document.getElementById('s-pass-marks').value) || 0,
+    negative_marking:     parseFloat(document.getElementById('s-neg-marks').value) || 0,
+    max_attempts:         parseInt(document.getElementById('s-max-attempts').value) || 1,
+    start_date:           document.getElementById('s-start-date').value || null,
+    end_date:             document.getElementById('s-end-date').value || null,
+    shuffle_questions:    document.getElementById('s-shuffle-q').checked,
+    shuffle_options:      document.getElementById('s-shuffle-o').checked,
+    show_result_immediately: document.getElementById('s-show-result').checked,
+    allow_review:         document.getElementById('s-allow-review').checked,
+    is_public:            document.getElementById('s-is-public').checked,
+    branding_color:       document.getElementById('s-color-hex').value || document.getElementById('s-color').value,
+  };
+
+  const btn = document.getElementById('saveSettingsBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const res = await api('PUT', `/api/exams/${EXAM_ID}`, body);
+    if (res && !res.error) {
+      toast('Settings saved');
+      _exam = { ..._exam, ...body };
+      renderExamHeader();
+    } else {
+      toast(res?.error || 'Save failed', 'error');
+    }
+  } catch {
+    toast('Save failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Settings';
+  }
+};
+
+// Publish / Archive / Unpublish
+document.getElementById('publishBtn').onclick = async () => {
+  const r = await api('POST', `/api/exams/${EXAM_ID}/publish`);
+  if (r && !r.error) { toast('Exam published!'); _exam.status = 'published'; renderExamHeader(); }
+  else toast(r?.error || 'Failed', 'error');
+};
+document.getElementById('archiveBtn').onclick = async () => {
+  if (!confirm('Archive this exam? It will no longer be accessible to candidates.')) return;
+  const r = await api('POST', `/api/exams/${EXAM_ID}/archive`);
+  if (r && !r.error) { toast('Exam archived', 'warning'); _exam.status = 'archived'; renderExamHeader(); }
+  else toast(r?.error || 'Failed', 'error');
+};
+document.getElementById('unpublishBtn').onclick = async () => {
+  if (!confirm('Unpublish this exam?')) return;
+  const r = await api('POST', `/api/exams/${EXAM_ID}/unpublish`);
+  if (r && !r.error) { toast('Exam moved back to draft', 'warning'); _exam.status = 'draft'; renderExamHeader(); }
+  else toast(r?.error || 'Failed', 'error');
+};
+
+// ════════════════════════════════════════════════════════
+//  Sections
+// ════════════════════════════════════════════════════════
+async function loadSections() {
+  const data = await api('GET', `/api/exams/${EXAM_ID}/sections`);
+  _sections = Array.isArray(data) ? data : (data?.sections || []);
+  renderSections();
+  populateSectionDropdowns();
+}
+
+function renderSections() {
+  const list  = document.getElementById('sections-list');
+  const empty = document.getElementById('sections-empty-msg');
+
+  if (!_sections.length) {
+    list.innerHTML = '';
+    list.appendChild(empty);
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const sorted = [..._sections].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const allChip = `<div class="section-item${!_activeSec ? ' active' : ''}" data-sec="" style="margin-bottom:8px;background:#f8f9fa;cursor:pointer;">
+    <span class="sec-name">All Sections</span>
+    <span class="sec-qlabel">${_questions.length} Q</span>
+  </div>`;
+  const secItems = sorted.map(sec => {
+    const qCount  = _questions.filter(q => String(q.section_id) === String(sec.id)).length;
+    const isActive = String(_activeSec) === String(sec.id);
+    return `<div class="section-item${isActive ? ' active' : ''}" data-sec="${sec.id}" style="cursor:pointer;">
+      <span class="drag-handle" style="pointer-events:none;">⠿</span>
+      <span class="sec-name" style="pointer-events:none;">${esc(sec.title)}</span>
+      ${sec.duration_minutes ? `<span class="text-muted" style="font-size:11px;pointer-events:none;">${sec.duration_minutes}min</span>` : ''}
+      <span class="sec-qlabel" style="pointer-events:none;">${qCount} Q</span>
+      <button class="btn btn-ghost btn-sm" onclick="openEditSection(${sec.id})" style="padding:2px 7px;">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteSection(${sec.id})" style="padding:2px 7px;">Del</button>
+    </div>`;
+  }).join('');
+  list.innerHTML = allChip + secItems;
+}
+
+function filterBySection(id) {
+  _activeSec = id === '' ? '' : String(id);
+  renderSections();
+  renderQuestions();
+  const sel = document.getElementById('q-filter-section');
+  if (sel) sel.value = _activeSec;
+}
+
+function populateSectionDropdowns() {
+  ['qm-section', 'q-filter-section'].forEach(selId => {
+    const sel = document.getElementById(selId);
+    if (!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = selId === 'qm-section'
+      ? '<option value="">— None —</option>'
+      : '<option value="">All Sections</option>';
+    _sections.forEach(s => {
+      const o = document.createElement('option');
+      o.value = s.id; o.textContent = s.title;
+      sel.appendChild(o);
+    });
+    if (prev) sel.value = prev;
+  });
+}
+
+// Section list click — event delegation (works regardless of when items are rendered)
+document.getElementById('sections-list').addEventListener('click', function (e) {
+  const btn = e.target.closest('button');
+  if (btn) return; // Edit / Del buttons handle themselves
+  const item = e.target.closest('[data-sec]');
+  if (!item) return;
+  filterBySection(item.dataset.sec);
+});
+
+// Add section toggle
+document.getElementById('toggleAddSectionBtn').onclick = () => {
+  const form = document.getElementById('add-section-form');
+  const isOpen = form.classList.contains('open');
+  form.classList.toggle('open', !isOpen);
+  document.getElementById('toggleAddSectionBtn').textContent = isOpen ? '+ Add Section' : '✕ Cancel';
+  if (!isOpen) document.getElementById('asf-name').focus();
+};
+document.getElementById('cancelAddSectionBtn').onclick = () => {
+  document.getElementById('add-section-form').classList.remove('open');
+  document.getElementById('toggleAddSectionBtn').textContent = '+ Add Section';
+};
+
+document.getElementById('saveAddSectionBtn').onclick = async () => {
+  const name = document.getElementById('asf-name').value.trim();
+  if (!name) { toast('Section name required', 'error'); return; }
+
+  const body = {
+    title: name,
+    duration_minutes: parseInt(document.getElementById('asf-duration').value) || null,
+    marks_per_question: parseFloat(document.getElementById('asf-mpq').value) || 1,
+    sort_order: _sections.length + 1,
+  };
+  const res = await api('POST', `/api/exams/${EXAM_ID}/sections`, body);
+  if (res && !res.error) {
+    toast('Section added');
+    document.getElementById('asf-name').value = '';
+    document.getElementById('asf-duration').value = '';
+    document.getElementById('asf-mpq').value = '';
+    document.getElementById('add-section-form').classList.remove('open');
+    document.getElementById('toggleAddSectionBtn').textContent = '+ Add Section';
+    await loadSections();
+  } else {
+    toast(res?.error || 'Failed to add section', 'error');
+  }
+};
+
+function openEditSection(id) {
+  const sec = _sections.find(s => s.id == id);
+  if (!sec) return;
+  const name = prompt('Section name:', sec.title);
+  if (name === null) return;
+  api('PUT', `/api/exams/${EXAM_ID}/sections/${id}`, {
+    title: name.trim() || sec.title,
+    duration_minutes: sec.duration_minutes,
+    sort_order: sec.sort_order,
+  }).then(res => {
+    if (res && !res.error) { toast('Section updated'); loadSections(); }
+    else toast(res?.error || 'Failed', 'error');
+  });
+}
+
+async function deleteSection(id) {
+  if (!confirm('Delete this section? Questions will be unassigned (not deleted).')) return;
+  const r = await api('DELETE', `/api/exams/${EXAM_ID}/sections/${id}`);
+  if (r && !r.error) {
+    toast('Section deleted', 'warning');
+    if (String(_activeSec) === String(id)) _activeSec = '';
+    await loadSections();
+    renderQuestions();
+  } else toast(r?.error || 'Failed', 'error');
+}
+
+// ════════════════════════════════════════════════════════
+//  Questions
+// ════════════════════════════════════════════════════════
+const _typeNorm = { 'mcq':'MCQ','multi-mcq':'Multi-MCQ','text':'Text','drag & drop':'Drag & Drop','match':'Match','fill blank':'Fill Blank','hotspot':'Hotspot','file upload':'File Upload' };
+
+async function loadQuestions() {
+  const data = await api('GET', `/api/exams/${EXAM_ID}/questions`);
+  const raw = Array.isArray(data) ? data : (data?.questions || []);
+  _questions = raw.map(q => ({ ...q, type: _typeNorm[q.type?.toLowerCase()] || q.type || 'MCQ' }));
+  renderQuestions();
+  updateTotalMarksDisplay();
+  renderSections(); // refresh q counts
+}
+
+function renderQuestions() {
+  const tbody      = document.getElementById('questions-tbody');
+  const search     = document.getElementById('q-search').value.toLowerCase().trim();
+  const filterSec  = _activeSec;
+  const filterType = document.getElementById('q-filter-type').value;
+
+  let list = _questions.filter(q => {
+    if (search     && !(q.body || '').toLowerCase().includes(search)) return false;
+    if (filterSec  && String(q.section_id) !== String(filterSec)) return false;
+    if (filterType && q.type !== filterType) return false;
+    return true;
+  });
+  list.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+  document.getElementById('q-count-badge').textContent = list.length;
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:32px;">
+      ${_questions.length === 0 ? 'No questions yet. Click <strong>+ Add Question</strong> to begin.' : 'No questions match your filters.'}
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map((q, i) => {
+    const sec  = _sections.find(s => String(s.id) === String(q.section_id));
+    const diff = { easy: 'badge-success', medium: 'badge-warning', hard: 'badge-danger' }[q.difficulty] || 'badge-secondary';
+    const bodyText = esc((q.body || '').substring(0, 80)) + ((q.body || '').length > 80 ? '…' : '');
+    return `<tr>
+      <td><span class="drag-handle" style="color:#bbb;">⠿</span></td>
+      <td>${i + 1}</td>
+      <td><span class="q-body-cell" title="${esc(q.body || '')}">${bodyText}</span></td>
+      <td><span class="qtype">${esc(q.type || 'MCQ')}</span></td>
+      <td>${q.marks ?? 1}</td>
+      <td>${sec ? `<span class="section-badge">${esc(sec.title)}</span>` : '<span class="text-muted">—</span>'}</td>
+      <td><span class="badge ${diff}">${q.difficulty || 'medium'}</span></td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="openQModal(${q.id})">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+['q-search', 'q-filter-type'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input',  renderQuestions);
+  if (el) el.addEventListener('change', renderQuestions);
+});
+document.getElementById('q-filter-section').addEventListener('change', function () {
+  filterBySection(this.value);
+});
+
+async function deleteQuestion(id) {
+  if (!confirm('Delete this question? This cannot be undone.')) return;
+  const r = await api('DELETE', `/api/exams/${EXAM_ID}/questions/${id}`);
+  if (r && !r.error) { toast('Question deleted', 'warning'); await loadQuestions(); }
+  else toast(r?.error || 'Failed', 'error');
+}
+
+// ════════════════════════════════════════════════════════
+//  Question Modal
+// ════════════════════════════════════════════════════════
+document.getElementById('addQuestionBtn').onclick = () => openQModal(null);
+
+const QM_TYPE_META = {
+  'MCQ':         { icon: '🔘', label: 'Multiple Choice (Single Answer)' },
+  'Multi-MCQ':   { icon: '☑️',  label: 'Multiple Choice (Multiple Answers)' },
+  'Text':        { icon: '📝', label: 'Text / Essay' },
+  'Drag & Drop': { icon: '↕️',  label: 'Drag & Drop Order' },
+  'Match':       { icon: '🔗', label: 'Match the Following' },
+  'Fill Blank':  { icon: '✏️',  label: 'Fill in the Blank' },
+  'Hotspot':     { icon: '🎯', label: 'Hotspot / Image Click' },
+  'File Upload': { icon: '📎', label: 'File Upload' },
+};
+
+function openQModal(id) {
+  _editingQId = id;
+  resetQModal();
+
+  if (id) {
+    const q = _questions.find(x => x.id == id);
+    if (!q) return;
+    document.getElementById('qm-modal-title').textContent = 'Edit Question';
+    document.getElementById('qm-editing-id').value        = id;
+    document.getElementById('qm-body').value              = q.body || '';
+    document.getElementById('qm-marks').value             = q.marks ?? 1;
+    document.getElementById('qm-neg-marks').value         = q.negative_marks ?? 0;
+    document.getElementById('qm-time-limit').value        = q.time_limit_seconds || '';
+    document.getElementById('qm-tags').value              = Array.isArray(q.tags) ? q.tags.join(', ') : (q.tags || '');
+    document.getElementById('qm-explanation').value       = q.explanation || '';
+    document.getElementById('qm-section').value           = q.section_id || '';
+    setDifficulty(q.difficulty || 'medium');
+    setQMType(q.type || 'MCQ');
+    loadQOptions(q);
+  } else {
+    document.getElementById('qm-modal-title').textContent = 'Add Question';
+    setQMType('MCQ');
+    addMcqOption(); addMcqOption();
+  }
+  document.getElementById('questionModal').classList.remove('hidden');
+}
+
+function resetQModal() {
+  document.getElementById('qm-editing-id').value   = '';
+  document.getElementById('qm-body').value          = '';
+  document.getElementById('qm-marks').value         = '1';
+  document.getElementById('qm-neg-marks').value     = '0';
+  document.getElementById('qm-time-limit').value    = '';
+  document.getElementById('qm-tags').value          = '';
+  document.getElementById('qm-explanation').value   = '';
+  document.getElementById('qm-fill-answer').value   = '';
+  document.getElementById('qm-hotspot-img').value   = '';
+  document.getElementById('qm-hs-x').value          = '';
+  document.getElementById('qm-hs-y').value          = '';
+  document.getElementById('qm-hs-w').value          = '';
+  document.getElementById('qm-hs-h').value          = '';
+  document.getElementById('qm-upload-instructions').value = '';
+  document.getElementById('qm-upload-maxsize').value = '';
+  document.getElementById('mcq-opts-list').innerHTML  = '';
+  document.getElementById('match-pairs-list').innerHTML = '';
+  document.getElementById('drag-items-list').innerHTML  = '';
+  document.getElementById('hotspot-img-preview').style.display = 'none';
+  setDifficulty('medium');
+}
+
+function setQMType(type) {
+  _qmType = type;
+
+  // Nav buttons
+  document.querySelectorAll('.qm-type-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.type === type);
+  });
+
+  // Header
+  const meta = QM_TYPE_META[type] || { icon: '❓', label: type };
+  document.getElementById('qm-type-icon-display').textContent = meta.icon;
+  document.getElementById('qm-type-label').textContent        = meta.label;
+  document.getElementById('qm-type-pill').textContent         = type;
+
+  // Show/hide sections
+  const sectionMap = {
+    'MCQ':         'MCQ',
+    'Multi-MCQ':   'MCQ',
+    'Text':        'Text',
+    'Drag & Drop': 'Drag',
+    'Match':       'Match',
+    'Fill Blank':  'FillBlank',
+    'Hotspot':     'Hotspot',
+    'File Upload': 'FileUpload',
+  };
+  ['MCQ','Text','Drag','Match','FillBlank','Hotspot','FileUpload'].forEach(s => {
+    document.getElementById('section-' + s).classList.add('hidden');
+  });
+  const target = sectionMap[type];
+  if (target) document.getElementById('section-' + target).classList.remove('hidden');
+
+  // MCQ label
+  if (type === 'Multi-MCQ') {
+    document.getElementById('mcq-opts-label').innerHTML = 'Options <span style="font-size:11px;color:var(--gray);font-weight:400;">(check ALL correct answers)</span>';
+  } else {
+    document.getElementById('mcq-opts-label').innerHTML = 'Options <span style="font-size:11px;color:var(--gray);font-weight:400;">(select the correct answer)</span>';
+  }
+}
+
+// Type nav click
+document.querySelectorAll('.qm-type-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setQMType(btn.dataset.type);
+    document.getElementById('mcq-opts-list').innerHTML  = '';
+    document.getElementById('match-pairs-list').innerHTML = '';
+    document.getElementById('drag-items-list').innerHTML  = '';
+    if (btn.dataset.type === 'MCQ' || btn.dataset.type === 'Multi-MCQ') {
+      addMcqOption(); addMcqOption();
+    } else if (btn.dataset.type === 'Match') {
+      addMatchPair(); addMatchPair();
+    } else if (btn.dataset.type === 'Drag & Drop') {
+      addDragItem(); addDragItem();
+    }
+  });
+});
+
+// Difficulty buttons
+document.querySelectorAll('.diff-btn').forEach(btn => {
+  btn.addEventListener('click', () => setDifficulty(btn.dataset.diff));
+});
+
+function setDifficulty(diff) {
+  document.getElementById('qm-difficulty').value = diff;
+  document.querySelectorAll('.diff-btn').forEach(b => {
+    b.style.background = '';
+    b.style.borderColor = '';
+    b.style.color = '';
+    b.style.fontWeight = '600';
+  });
+  const active = document.querySelector(`.diff-btn[data-diff="${diff}"]`);
+  if (active) {
+    const styles = {
+      easy:   { bg: '#d4edda', border: '#28a745', color: '#155724' },
+      medium: { bg: '#fff3cd', border: '#ffc107', color: '#856404' },
+      hard:   { bg: '#f8d7da', border: '#dc3545', color: '#721c24' },
+    }[diff] || {};
+    active.style.background  = styles.bg;
+    active.style.borderColor = styles.border;
+    active.style.color       = styles.color;
+  }
+}
+
+// Hotspot image preview
+document.getElementById('qm-hotspot-img').addEventListener('blur', function () {
+  const url = this.value.trim();
+  const prev = document.getElementById('hotspot-img-preview');
+  if (url) {
+    document.getElementById('hotspot-preview-img').src = url;
+    prev.style.display = '';
+  } else {
+    prev.style.display = 'none';
+  }
+});
+
+// Load existing question options into modal
+function loadQOptions(q) {
+  const type = q.type;
+  if (type === 'MCQ' || type === 'Multi-MCQ') {
+    const opts = q.options || [];
+    if (!opts.length) { addMcqOption(); addMcqOption(); return; }
+    opts.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    opts.forEach(o => addMcqOption(o.body || o.text || '', !!(o.is_correct ?? o.correct)));
+  } else if (type === 'Match') {
+    const pairs = q.pairs || q.options || [];
+    if (!pairs.length) { addMatchPair(); addMatchPair(); return; }
+    pairs.forEach(p => addMatchPair(p.body || p.left || p.key || '', p.match_key || p.right || p.value || ''));
+  } else if (type === 'Fill Blank') {
+    document.getElementById('qm-fill-answer').value = q.correct_answer || (q.options?.[0]?.body) || '';
+  } else if (type === 'Drag & Drop') {
+    const items = q.items || q.options || [];
+    if (!items.length) { addDragItem(); addDragItem(); return; }
+    items.forEach(it => addDragItem(it.body || it.text || it));
+  } else if (type === 'Hotspot') {
+    const hs = q.hotspot || {};
+    document.getElementById('qm-hotspot-img').value = q.image_url || hs.image_url || '';
+    document.getElementById('qm-hs-x').value = hs.x ?? q.hotspot_x ?? '';
+    document.getElementById('qm-hs-y').value = hs.y ?? q.hotspot_y ?? '';
+    document.getElementById('qm-hs-w').value = hs.width  ?? q.hotspot_w ?? '';
+    document.getElementById('qm-hs-h').value = hs.height ?? q.hotspot_h ?? '';
+    if (q.image_url || hs.image_url) {
+      document.getElementById('hotspot-preview-img').src = q.image_url || hs.image_url;
+      document.getElementById('hotspot-img-preview').style.display = '';
+    }
+  } else if (type === 'File Upload') {
+    document.getElementById('qm-upload-instructions').value = q.upload_instructions || q.instructions || '';
+    document.getElementById('qm-upload-maxsize').value      = q.max_file_size || '';
+  }
+}
+
+// ── MCQ option rows ────────────────────────────────────
+function addMcqOption(text = '', correct = false) {
+  const list  = document.getElementById('mcq-opts-list');
+  const idx   = list.children.length;
+  const type  = _qmType;
+  const itype = type === 'Multi-MCQ' ? 'checkbox' : 'radio';
+  const div   = document.createElement('div');
+  div.className = 'opt-row';
+  div.innerHTML = `
+    <span class="opt-marker">${String.fromCharCode(65 + idx)}.</span>
+    <input type="${itype}" name="opt-correct" value="${idx}" ${correct ? 'checked' : ''} title="Mark as correct">
+    <input type="text" placeholder="Option text…" value="${esc(text)}">
+    <button type="button" class="opt-remove" onclick="this.closest('.opt-row').remove()" title="Remove">✕</button>`;
+  list.appendChild(div);
+}
+document.getElementById('addOptBtn').onclick = () => addMcqOption();
+
+// ── Match pair rows ────────────────────────────────────
+function addMatchPair(left = '', right = '') {
+  const list = document.getElementById('match-pairs-list');
+  const div  = document.createElement('div');
+  div.className = 'match-pair-row';
+  div.innerHTML = `
+    <input type="text" placeholder="Left item" value="${esc(left)}">
+    <input type="text" placeholder="Right match" value="${esc(right)}">
+    <button type="button" class="opt-remove" onclick="this.closest('.match-pair-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
+document.getElementById('addMatchPairBtn').onclick = () => addMatchPair();
+
+// ── Drag & drop item rows ──────────────────────────────
+function addDragItem(text = '') {
+  const list = document.getElementById('drag-items-list');
+  const div  = document.createElement('div');
+  div.className = 'drag-item-row';
+  div.innerHTML = `
+    <span class="di-handle">⠿</span>
+    <input type="text" class="form-control" placeholder="Item text…" value="${esc(text)}" style="flex:1;font-size:13px;">
+    <button type="button" class="opt-remove" onclick="this.closest('.drag-item-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
+document.getElementById('addDragItemBtn').onclick = () => addDragItem();
+
+// ── Close modal ────────────────────────────────────────
+document.getElementById('closeQModal').onclick  = closeQModal;
+document.getElementById('cancelQModal').onclick = closeQModal;
+document.getElementById('questionModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('questionModal')) closeQModal();
+});
+function closeQModal() {
+  document.getElementById('questionModal').classList.add('hidden');
+}
+
+// ── Save question ──────────────────────────────────────
+document.getElementById('saveQBtn').onclick = async () => {
+  const type = _qmType;
+  const body = document.getElementById('qm-body').value.trim();
+  if (!body) { toast('Question body is required', 'error'); return; }
+
+  const payload = {
+    type,
+    body,
+    section_id:          document.getElementById('qm-section').value || null,
+    marks:               parseFloat(document.getElementById('qm-marks').value) || 1,
+    negative_marks:      parseFloat(document.getElementById('qm-neg-marks').value) || 0,
+    time_limit_seconds:  parseInt(document.getElementById('qm-time-limit').value) || null,
+    difficulty:          document.getElementById('qm-difficulty').value || 'medium',
+    tags:                document.getElementById('qm-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+    explanation:         document.getElementById('qm-explanation').value,
+  };
+
+  if (type === 'MCQ' || type === 'Multi-MCQ') {
+    const rows = document.querySelectorAll('#mcq-opts-list .opt-row');
+    payload.options = Array.from(rows).map(row => ({
+      text:    row.querySelector('input[type=text]').value.trim(),
+      correct: row.querySelector('input[type=radio],input[type=checkbox]').checked,
+    }));
+    if (payload.options.length < 2) { toast('Add at least 2 options', 'error'); return; }
+    if (!payload.options.some(o => o.correct)) { toast('Mark at least one correct answer', 'error'); return; }
+
+  } else if (type === 'Match') {
+    const rows = document.querySelectorAll('#match-pairs-list .match-pair-row');
+    payload.pairs = Array.from(rows).map(row => {
+      const ins = row.querySelectorAll('input[type=text]');
+      return { left: ins[0].value.trim(), right: ins[1].value.trim() };
+    });
+    if (!payload.pairs.length) { toast('Add at least one match pair', 'error'); return; }
+
+  } else if (type === 'Fill Blank') {
+    payload.correct_answer = document.getElementById('qm-fill-answer').value.trim();
+    if (!payload.correct_answer) { toast('Correct answer is required', 'error'); return; }
+
+  } else if (type === 'Drag & Drop') {
+    const rows = document.querySelectorAll('#drag-items-list .drag-item-row');
+    payload.items = Array.from(rows).map(row => ({
+      text: row.querySelector('input[type=text]').value.trim(),
+    }));
+    if (payload.items.length < 2) { toast('Add at least 2 items', 'error'); return; }
+
+  } else if (type === 'Hotspot') {
+    const imgUrl = document.getElementById('qm-hotspot-img').value.trim();
+    if (!imgUrl) { toast('Image URL is required for Hotspot questions', 'error'); return; }
+    payload.image_url = imgUrl;
+    payload.hotspot = {
+      x:      parseInt(document.getElementById('qm-hs-x').value) || 0,
+      y:      parseInt(document.getElementById('qm-hs-y').value) || 0,
+      width:  parseInt(document.getElementById('qm-hs-w').value) || 100,
+      height: parseInt(document.getElementById('qm-hs-h').value) || 100,
+    };
+
+  } else if (type === 'File Upload') {
+    payload.upload_instructions = document.getElementById('qm-upload-instructions').value;
+    payload.max_file_size       = document.getElementById('qm-upload-maxsize').value;
+  }
+
+  const btn = document.getElementById('saveQBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  try {
+    const qid = document.getElementById('qm-editing-id').value;
+    let res;
+    if (qid) {
+      res = await api('PUT', `/api/exams/${EXAM_ID}/questions/${qid}`, payload);
+    } else {
+      res = await api('POST', `/api/exams/${EXAM_ID}/questions`, payload);
+    }
+    if (res && !res.error) {
+      toast(qid ? 'Question updated' : 'Question added');
+      closeQModal();
+      await loadQuestions();
+    } else {
+      toast(res?.error || 'Save failed', 'error');
+    }
+  } catch {
+    toast('Save failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Question';
+  }
+};
+
+// ════════════════════════════════════════════════════════
+//  CSV Export
+// ════════════════════════════════════════════════════════
+document.getElementById('exportCsvBtn').onclick = async () => {
+  const btn = document.getElementById('exportCsvBtn');
+  btn.disabled = true; btn.textContent = 'Exporting…';
+  try {
+    const r = await fetch(`/api/exams/${EXAM_ID}/export-csv`, { credentials: 'include' });
+    if (r.status === 401) { window.location.href = '/admin'; return; }
+    if (!r.ok) { toast('Export failed', 'error'); return; }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const examTitle = (_exam?.title || 'exam').replace(/[^a-z0-9]/gi, '_');
+    a.download = `${examTitle}_questions.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast('CSV exported');
+  } catch { toast('Export failed', 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Export CSV'; }
+};
+
+// ════════════════════════════════════════════════════════
+//  CSV Import
+// ════════════════════════════════════════════════════════
+document.getElementById('importCsvBtn').onclick = () => {
+  document.getElementById('import-result').classList.add('hidden');
+  document.getElementById('import-filename').textContent = '';
+  document.getElementById('import-file').value = '';
+  document.getElementById('importModal').classList.remove('hidden');
+};
+document.getElementById('closeImportModal').onclick  = () => document.getElementById('importModal').classList.add('hidden');
+document.getElementById('cancelImportModal').onclick = () => document.getElementById('importModal').classList.add('hidden');
+document.getElementById('importModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('importModal')) document.getElementById('importModal').classList.add('hidden');
+});
+
+document.getElementById('import-file').addEventListener('change', function () {
+  document.getElementById('import-filename').textContent = this.files[0]?.name || '';
+});
+
+document.getElementById('sampleCsvLink').addEventListener('click', e => { e.preventDefault(); downloadSampleCsv(); });
+document.getElementById('downloadSampleCsvBtn').addEventListener('click', e => { e.preventDefault(); downloadSampleCsv(); });
+
+async function downloadSampleCsv() {
+  const r = await fetch('/api/questions/sample-csv', { credentials: 'include' });
+  if (r.status === 401) { window.location.href = '/admin'; return; }
+  if (!r.ok) { toast('Failed to download sample', 'error'); return; }
+  const blob = await r.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'sample-questions.csv';
+  a.click();
+}
+
+document.getElementById('doImportBtn').onclick = async () => {
+  const file = document.getElementById('import-file').files[0];
+  if (!file) { toast('Select a CSV file first', 'error'); return; }
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  const btn = document.getElementById('doImportBtn');
+  btn.disabled = true; btn.textContent = 'Importing…';
+
+  try {
+    const r = await fetch(`/api/questions/import-csv?exam_id=${EXAM_ID}`, {
+      method: 'POST', credentials: 'include', body: fd,
+    });
+    if (r.status === 401) { window.location.href = '/admin'; return; }
+    const res = await r.json();
+    const resultDiv = document.getElementById('import-result');
+    resultDiv.classList.remove('hidden');
+
+    if (res.imported !== undefined) {
+      const errHtml = res.errors?.length
+        ? `<ul style="margin:6px 0 0;padding-left:18px;">${res.errors.map(e => `<li>${esc(e)}</li>`).join('')}</ul>` : '';
+      resultDiv.innerHTML = `<div class="alert alert-success">Imported <strong>${res.imported}</strong> question${res.imported !== 1 ? 's' : ''} successfully.${errHtml}</div>`;
+      toast(`Imported ${res.imported} questions`);
+      await loadQuestions();
+    } else {
+      resultDiv.innerHTML = `<div class="alert alert-danger">${esc(res.error || 'Import failed')}</div>`;
+      toast(res.error || 'Import failed', 'error');
+    }
+  } catch {
+    toast('Import failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Upload & Import';
+  }
+};
+
+// Dropzone drag support
+const dz = document.getElementById('dropzone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.style.borderColor = 'var(--mid)'; });
+dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; });
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.style.borderColor = '';
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const dt = new DataTransfer(); dt.items.add(file);
+    document.getElementById('import-file').files = dt.files;
+    document.getElementById('import-filename').textContent = file.name;
+  }
+});
+
+// ════════════════════════════════════════════════════════
+//  Start
+// ════════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

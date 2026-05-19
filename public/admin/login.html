@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Alaric Exam — Admin Login</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(135deg,#002B5C 0%,#0078D4 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login-box{background:#fff;border-radius:12px;box-shadow:0 16px 60px rgba(0,0,0,.25);width:100%;max-width:400px;padding:40px}
+.logo{text-align:center;margin-bottom:28px}
+.logo h1{font-size:28px;color:#002B5C;font-weight:800}
+.logo h1 span{color:#0078D4}
+.logo p{color:#6c757d;font-size:13px;margin-top:4px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:500;margin-bottom:5px;color:#343a40}
+.form-control{width:100%;padding:10px 12px;border:1px solid #dee2e6;border-radius:8px;font-size:14px;transition:border-color .15s}
+.form-control:focus{outline:none;border-color:#0078D4;box-shadow:0 0 0 3px rgba(0,120,212,.15)}
+.btn{width:100%;padding:11px;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;transition:background .15s}
+.btn-primary{background:#0078D4;color:#fff}
+.btn-primary:hover{background:#006bbd}
+.btn-primary:disabled{background:#9dc3e6;cursor:not-allowed}
+.alert{padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:14px}
+.alert-danger{background:#f8d7da;color:#721c24}
+.alert-info{background:#cce5ff;color:#004085}
+#totp-section{display:none}
+.totp-hint{font-size:12px;color:#6c757d;margin-top:6px;text-align:center}
+.forgot-link{display:block;text-align:center;margin-top:14px;font-size:12px;color:#0078D4;text-decoration:none}
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="logo">
+    <h1>Alaric <span>Exam</span></h1>
+    <p>Admin Portal — Secure Access</p>
+  </div>
+  <div id="alert" class="alert alert-danger" style="display:none"></div>
+  <form id="loginForm">
+    <div id="credentials-section">
+      <div class="form-group">
+        <label>Username or Email</label>
+        <input type="text" id="username" class="form-control" placeholder="Enter username" autocomplete="username" required>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" class="form-control" placeholder="Enter password" autocomplete="current-password" required>
+      </div>
+    </div>
+    <div id="totp-section">
+      <div class="alert alert-info">Two-factor authentication is required for this account.</div>
+      <div class="form-group">
+        <label>Authenticator Code</label>
+        <input type="text" id="totp_code" class="form-control" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
+      </div>
+      <p class="totp-hint">Enter the 6-digit code from your authenticator app.</p>
+    </div>
+    <button type="submit" class="btn btn-primary" id="loginBtn">Sign In</button>
+  </form>
+  <a href="/portal" class="forgot-link">Candidate Portal →</a>
+</div>
+<script>
+const form = document.getElementById('loginForm');
+const alert = document.getElementById('alert');
+const totpSection = document.getElementById('totp-section');
+const credsSection = document.getElementById('credentials-section');
+let requireTotp = false;
+
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Signing in...';
+  alert.style.display = 'none';
+  const body = {
+    username: document.getElementById('username').value,
+    password: document.getElementById('password').value
+  };
+  if (requireTotp) body.totp_code = document.getElementById('totp_code').value;
+  try {
+    const r = await fetch('/api/auth/login', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body), credentials:'include' });
+    const data = await r.json();
+    if (r.ok) {
+      if (data.require_totp) {
+        requireTotp = true;
+        credsSection.style.display = 'none';
+        totpSection.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Verify';
+        document.getElementById('totp_code').focus();
+        return;
+      }
+      localStorage.setItem('alaric_user', JSON.stringify(data.user));
+      window.location.href = '/admin/dashboard';
+    } else {
+      showAlert(data.error || 'Login failed');
+      btn.disabled = false; btn.textContent = requireTotp ? 'Verify' : 'Sign In';
+    }
+  } catch { showAlert('Network error. Please try again.'); btn.disabled = false; btn.textContent = 'Sign In'; }
+});
+
+function showAlert(msg) {
+  alert.textContent = msg; alert.style.display = 'block';
+}
+
+// Redirect if already logged in
+fetch('/api/auth/me', { credentials: 'include' }).then(r => { if (r.ok) window.location.href = '/admin/dashboard'; });
+</script>
+</body>
+</html>

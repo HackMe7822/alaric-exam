@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Question Bank — Alaric Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css"/>
+<style>
+  .options-list { display:flex; flex-direction:column; gap:8px; }
+  .option-row { display:flex; align-items:center; gap:8px; }
+  .option-row input[type=text] { flex:1; }
+  .opt-correct { width:16px; height:16px; cursor:pointer; flex-shrink:0; }
+  .opt-label { font-size:12px; color:var(--gray); min-width:44px; }
+  .match-row { display:grid; grid-template-columns:1fr 1fr auto; gap:8px; align-items:center; margin-bottom:8px; }
+  .tag-list { display:flex; flex-wrap:wrap; gap:4px; }
+  .body-truncate { max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; }
+  .cat-item { display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border); }
+  .cat-item:last-child { border-bottom:none; }
+  .add-to-exam-section-note { font-size:12px; color:var(--gray); margin-top:4px; }
+  .pagination { display:flex; align-items:center; gap:6px; justify-content:flex-end; margin-top:14px; }
+  .page-btn { padding:5px 10px; border:1px solid var(--border); border-radius:5px; background:#fff; cursor:pointer; font-size:13px; }
+  .page-btn.active { background:var(--mid); color:#fff; border-color:var(--mid); }
+  .page-btn:disabled { opacity:.4; cursor:not-allowed; }
+  .select-col { width:36px; text-align:center; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> Alaric <span>Admin</span></div>
+  <nav>
+    <div class="nav-label">Main</div>
+    <a href="/admin/dashboard"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a href="/admin/exams"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Exams</a>
+    <a href="/admin/questions" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Question Bank</a>
+    <a href="/admin/candidates"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Candidates</a>
+    <a href="/admin/checker"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Review Queue</a>
+    <div class="nav-label">Reports</div>
+    <a href="/admin/results"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results</a>
+    <a href="/admin/analytics"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Analytics</a>
+    <div class="nav-label">Config</div>
+    <a href="/admin/users"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
+    <a href="/admin/settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</a>
+    <a href="/admin/email-config"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Config</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h1>Question Bank</h1>
+    <div class="topbar-actions">
+      <button id="logoutBtn" class="btn btn-ghost btn-sm">Logout</button>
+    </div>
+  </div>
+
+  <div id="page">
+
+    <!-- Stats -->
+    <div class="stats-grid" id="stats-grid" style="margin-bottom:20px;">
+      <div class="stat-card"><div class="icon">❓</div><div class="val" id="stat-total">—</div><div class="lbl">Total Questions</div></div>
+      <div class="stat-card"><div class="icon">📝</div><div class="val" id="stat-mcq">—</div><div class="lbl">MCQ</div></div>
+      <div class="stat-card"><div class="icon">☑️</div><div class="val" id="stat-multi">—</div><div class="lbl">Multi-MCQ</div></div>
+      <div class="stat-card"><div class="icon">✏️</div><div class="val" id="stat-text">—</div><div class="lbl">Text / Essay</div></div>
+      <div class="stat-card"><div class="icon">🔀</div><div class="val" id="stat-other">—</div><div class="lbl">Other Types</div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">All Questions</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <a href="/api/questions/sample-csv" class="btn btn-ghost btn-sm" download>⬇ Sample CSV</a>
+          <button class="btn btn-ghost btn-sm" id="importCsvBtn">⬆ Import CSV</button>
+          <button class="btn btn-ghost btn-sm" id="manageCatsBtn">Manage Categories</button>
+          <button class="btn btn-primary btn-sm" id="createQBtn">+ Add Question</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div class="search-input" style="min-width:220px;">
+          <span class="ico">🔍</span>
+          <input type="text" class="form-control" id="f-search" placeholder="Search questions…"/>
+        </div>
+        <select class="form-control" id="f-category" style="width:auto;">
+          <option value="">All Categories</option>
+        </select>
+        <select class="form-control" id="f-type" style="width:auto;">
+          <option value="">All Types</option>
+          <option value="MCQ">MCQ</option>
+          <option value="Multi-MCQ">Multi-MCQ</option>
+          <option value="Text">Text</option>
+          <option value="Drag & Drop">Drag &amp; Drop</option>
+          <option value="Match">Match</option>
+          <option value="Fill Blank">Fill Blank</option>
+          <option value="Hotspot">Hotspot</option>
+          <option value="File Upload">File Upload</option>
+        </select>
+        <select class="form-control" id="f-difficulty" style="width:auto;">
+          <option value="">All Difficulties</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" id="clearFiltersBtn">Clear</button>
+      </div>
+
+      <!-- Table -->
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="select-col"><input type="checkbox" id="selectAll" title="Select all"/></th>
+              <th>Category</th>
+              <th>Question</th>
+              <th>Type</th>
+              <th>Difficulty</th>
+              <th>Tags</th>
+              <th>Usage</th>
+              <th style="width:130px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="qbank-tbody">
+            <tr><td colspan="8" class="text-center text-muted" style="padding:30px;"><span class="spinner"></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination" id="pagination-bar"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CREATE / EDIT QUESTION MODAL ===================== -->
+<div class="modal-overlay hidden" id="qModal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3 id="qm-title">Create Question</h3>
+      <button class="btn-close" id="closeQModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="qm-id"/>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select class="form-control" id="qm-category">
+            <option value="">— Uncategorized —</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Question Type *</label>
+          <select class="form-control" id="qm-type">
+            <option value="MCQ">MCQ (Single Answer)</option>
+            <option value="Multi-MCQ">Multi-MCQ (Multiple Answers)</option>
+            <option value="Text">Text / Essay</option>
+            <option value="Drag & Drop">Drag &amp; Drop</option>
+            <option value="Match">Match the Following</option>
+            <option value="Fill Blank">Fill in the Blank</option>
+            <option value="Hotspot">Hotspot / Image Click</option>
+            <option value="File Upload">File Upload</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Question Body *</label>
+        <textarea class="form-control" id="qm-body" rows="4" placeholder="Enter question text…"></textarea>
+      </div>
+      <div class="form-row-3">
+        <div class="form-group">
+          <label>Marks *</label>
+          <input type="number" class="form-control" id="qm-marks" min="0" step="0.5" value="1"/>
+        </div>
+        <div class="form-group">
+          <label>Negative Marks</label>
+          <input type="number" class="form-control" id="qm-neg-marks" min="0" step="0.5" value="0"/>
+        </div>
+        <div class="form-group">
+          <label>Difficulty</label>
+          <select class="form-control" id="qm-difficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tags (comma-separated)</label>
+          <input type="text" class="form-control" id="qm-tags" placeholder="e.g. algebra, chapter3"/>
+        </div>
+        <div class="form-group">
+          <label>Time Limit (sec, optional)</label>
+          <input type="number" class="form-control" id="qm-time-limit" min="0" placeholder="e.g. 90"/>
+        </div>
+      </div>
+
+      <!-- Dynamic options section -->
+      <!-- MCQ / Multi-MCQ -->
+      <div id="qm-mcq-section">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <label style="margin:0;font-weight:600;" id="qm-opts-label">Options <span class="text-muted" style="font-weight:400;font-size:12px;">(mark correct)</span></label>
+          <button type="button" class="btn btn-outline btn-sm" id="addOptBtn">+ Add Option</button>
+        </div>
+        <div id="opts-list" class="options-list"></div>
+      </div>
+
+      <!-- Match -->
+      <div id="qm-match-section" class="hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <label style="font-weight:600;margin:0;">Match Pairs</label>
+          <button type="button" class="btn btn-outline btn-sm" id="addMatchBtn">+ Add Pair</button>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;font-size:12px;font-weight:600;color:var(--gray);margin-bottom:4px;"><span>Left</span><span>Right</span><span></span></div>
+        <div id="match-list"></div>
+      </div>
+
+      <!-- Fill Blank -->
+      <div id="qm-fill-section" class="hidden">
+        <div class="form-group">
+          <label>Correct Answer</label>
+          <input type="text" class="form-control" id="qm-fill-answer" placeholder="Enter the correct answer"/>
+        </div>
+      </div>
+
+      <!-- Drag & Drop -->
+      <div id="qm-drag-section" class="hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <label style="font-weight:600;margin:0;">Items (in correct order)</label>
+          <button type="button" class="btn btn-outline btn-sm" id="addDragBtn">+ Add Item</button>
+        </div>
+        <div id="drag-list"></div>
+      </div>
+
+      <div class="form-group mt-2">
+        <label>Explanation (shown after submission)</label>
+        <textarea class="form-control" id="qm-explanation" rows="3" placeholder="Optional explanation…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelQModal">Cancel</button>
+      <button class="btn btn-primary" id="saveQBtn">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ADD TO EXAM MODAL ===================== -->
+<div class="modal-overlay hidden" id="addToExamModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Question to Exam</h3>
+      <button class="btn-close" id="closeAddToExamModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="ate-qid"/>
+      <div class="form-group">
+        <label>Select Exam *</label>
+        <select class="form-control" id="ate-exam">
+          <option value="">— Select exam —</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Select Section (optional)</label>
+        <select class="form-control" id="ate-section">
+          <option value="">— No section —</option>
+        </select>
+        <p class="add-to-exam-section-note">Section list loads after choosing an exam.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelAddToExamModal">Cancel</button>
+      <button class="btn btn-primary" id="doAddToExamBtn">Add to Exam</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MANAGE CATEGORIES MODAL ===================== -->
+<div class="modal-overlay hidden" id="catModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Manage Categories</h3>
+      <button class="btn-close" id="closeCatModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <input type="text" class="form-control" id="new-cat-name" placeholder="New category name"/>
+        <button class="btn btn-primary" id="addCatBtn" style="white-space:nowrap;">+ Add</button>
+      </div>
+      <div id="cat-list">
+        <div class="text-center text-muted" style="padding:20px;"><span class="spinner"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== CSV IMPORT MODAL ===================== -->
+<div class="modal-overlay hidden" id="csvModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Import Questions from CSV</h3>
+      <button class="btn-close" id="closeCsvModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="text-muted" style="margin-bottom:14px;font-size:13px;">Upload a CSV file to bulk-import questions into the question bank. Download the <a href="/api/questions/sample-csv" download style="color:var(--mid);">sample CSV</a> to see the expected format.</p>
+      <div class="form-group">
+        <label>CSV File *</label>
+        <input type="file" class="form-control" id="csv-file-input" accept=".csv,text/csv"/>
+      </div>
+      <div class="form-group">
+        <label>Default Category (optional)</label>
+        <select class="form-control" id="csv-category">
+          <option value="">— Uncategorized —</option>
+        </select>
+      </div>
+      <div id="csv-preview" class="hidden" style="margin-top:12px;">
+        <div style="font-size:12px;font-weight:600;color:var(--gray);margin-bottom:6px;">Preview (<span id="csv-row-count">0</span> rows detected)</div>
+        <div style="background:#f8f9fa;border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;max-height:160px;overflow-y:auto;font-family:monospace;white-space:pre-wrap;" id="csv-preview-text"></div>
+      </div>
+      <div id="csv-result" class="hidden" style="margin-top:12px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="cancelCsvModal">Cancel</button>
+      <button class="btn btn-primary" id="doImportCsvBtn">Import Questions</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _questions = [];
+let _categories = [];
+let _exams = [];
+let _editingId = null;
+let _addToExamQId = null;
+let _page = 1;
+const PAGE_SIZE = 20;
+
+// =================== INIT ===================
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;document.getElementById('toast-container').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401){window.location.href='/admin';return null;}return r.json();}
+
+async function loadPage() {
+  await Promise.all([loadCategories(), loadExams()]);
+  await loadQuestions();
+  loadStats();
+}
+
+// =================== LOAD DATA ===================
+async function loadQuestions() {
+  const params = new URLSearchParams();
+  const search = document.getElementById('f-search').value.trim();
+  const category = document.getElementById('f-category').value;
+  const type = document.getElementById('f-type').value;
+  const difficulty = document.getElementById('f-difficulty').value;
+  if (search) params.set('search', search);
+  if (category) params.set('category_id', category);
+  if (type) params.set('type', type);
+  if (difficulty) params.set('difficulty', difficulty);
+  params.set('page', _page);
+  params.set('limit', PAGE_SIZE);
+  const data = await api('GET', `/api/question-bank?${params}`);
+  _questions = Array.isArray(data) ? data : (data?.questions || []);
+  const total = data?.total || _questions.length;
+  renderTable();
+  renderPagination(total);
+}
+
+async function loadCategories() {
+  const data = await api('GET', '/api/question-bank/categories');
+  _categories = Array.isArray(data) ? data : (data?.categories || []);
+  const sel = document.getElementById('f-category');
+  sel.innerHTML = '<option value="">All Categories</option>';
+  _categories.forEach(c => {
+    const o = document.createElement('option'); o.value = c.id; o.textContent = c.name;
+    sel.appendChild(o);
+  });
+  const qmSel = document.getElementById('qm-category');
+  qmSel.innerHTML = '<option value="">— Uncategorized —</option>';
+  _categories.forEach(c => {
+    const o = document.createElement('option'); o.value = c.id; o.textContent = c.name;
+    qmSel.appendChild(o);
+  });
+}
+
+async function loadExams() {
+  const data = await api('GET', '/api/exams?status=published&limit=100');
+  _exams = Array.isArray(data) ? data : (data?.exams || []);
+  const sel = document.getElementById('ate-exam');
+  sel.innerHTML = '<option value="">— Select exam —</option>';
+  _exams.forEach(e => {
+    const o = document.createElement('option'); o.value = e.id; o.textContent = e.title + (e.code ? ` [${e.code}]` : '');
+    sel.appendChild(o);
+  });
+}
+
+// =================== RENDER TABLE ===================
+function renderTable() {
+  const tbody = document.getElementById('qbank-tbody');
+  if (!_questions.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:30px;">No questions found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = _questions.map(q => {
+    const cat = _categories.find(c=>c.id==q.category_id);
+    const diff = {easy:'badge-success',medium:'badge-warning',hard:'badge-danger'}[q.difficulty]||'badge-secondary';
+    const tags = Array.isArray(q.tags) ? q.tags : (q.tags ? q.tags.split(',') : []);
+    const tagHtml = tags.slice(0,3).map(t=>`<span class="tag">${escHtml(t.trim())}</span>`).join('') + (tags.length>3?`<span class="tag">+${tags.length-3}</span>`:'');
+    return `<tr>
+      <td class="select-col"><input type="checkbox" class="row-check" data-id="${q.id}"/></td>
+      <td>${cat?escHtml(cat.name):'<span class="text-muted">—</span>'}</td>
+      <td><span class="body-truncate" title="${escHtml(q.body||'')}">${escHtml((q.body||'').substring(0,70))}${(q.body||'').length>70?'…':''}</span></td>
+      <td><span class="qtype">${escHtml(q.type||'MCQ')}</span></td>
+      <td><span class="badge ${diff}">${q.difficulty||'medium'}</span></td>
+      <td><div class="tag-list">${tagHtml||'<span class="text-muted">—</span>'}</div></td>
+      <td>${q.usage_count||0}</td>
+      <td style="white-space:nowrap;">
+        <button class="btn btn-outline btn-sm" onclick="openQModal(${q.id})">Edit</button>
+        <button class="btn btn-ghost btn-sm" onclick="openAddToExam(${q.id})" title="Add to Exam">+ Exam</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// =================== PAGINATION ===================
+function renderPagination(total) {
+  const pages = Math.ceil(total / PAGE_SIZE);
+  const bar = document.getElementById('pagination-bar');
+  if (pages <= 1) { bar.innerHTML=''; return; }
+  let html = `<span class="text-muted" style="font-size:12px;">Page ${_page} of ${pages}</span>`;
+  html += `<button class="page-btn" onclick="gotoPage(${_page-1})" ${_page===1?'disabled':''}>‹</button>`;
+  for (let i=1;i<=Math.min(pages,7);i++) {
+    html += `<button class="page-btn ${i===_page?'active':''}" onclick="gotoPage(${i})">${i}</button>`;
+  }
+  if (pages>7) html += `<span>…</span><button class="page-btn ${pages===_page?'active':''}" onclick="gotoPage(${pages})">${pages}</button>`;
+  html += `<button class="page-btn" onclick="gotoPage(${_page+1})" ${_page===pages?'disabled':''}>›</button>`;
+  bar.innerHTML = html;
+}
+
+function gotoPage(p) { _page = p; loadQuestions(); }
+
+// =================== FILTERS ===================
+document.getElementById('f-search').addEventListener('input', debounce(()=>{_page=1;loadQuestions();},350));
+document.getElementById('f-category').addEventListener('change', ()=>{_page=1;loadQuestions();});
+document.getElementById('f-type').addEventListener('change', ()=>{_page=1;loadQuestions();});
+document.getElementById('f-difficulty').addEventListener('change', ()=>{_page=1;loadQuestions();});
+document.getElementById('clearFiltersBtn').onclick = () => {
+  document.getElementById('f-search').value='';
+  document.getElementById('f-category').value='';
+  document.getElementById('f-type').value='';
+  document.getElementById('f-difficulty').value='';
+  _page=1; loadQuestions();
+};
+
+// =================== SELECT ALL ===================
+document.getElementById('selectAll').addEventListener('change', function(){
+  document.querySelectorAll('.row-check').forEach(cb=>cb.checked=this.checked);
+});
+
+// =================== Q MODAL ===================
+document.getElementById('createQBtn').onclick = () => openQModal(null);
+
+function openQModal(id) {
+  _editingId = id;
+  resetQModal();
+  if (id) {
+    const q = _questions.find(x=>x.id==id);
+    if (!q) { toast('Question not found','error'); return; }
+    document.getElementById('qm-title').textContent = 'Edit Question';
+    document.getElementById('qm-id').value = id;
+    document.getElementById('qm-category').value = q.category_id || '';
+    document.getElementById('qm-type').value = q.type || 'MCQ';
+    document.getElementById('qm-body').value = q.body || '';
+    document.getElementById('qm-marks').value = q.marks || 1;
+    document.getElementById('qm-neg-marks').value = q.negative_marks || 0;
+    document.getElementById('qm-difficulty').value = q.difficulty || 'medium';
+    document.getElementById('qm-tags').value = Array.isArray(q.tags) ? q.tags.join(', ') : (q.tags||'');
+    document.getElementById('qm-time-limit').value = q.time_limit_seconds || '';
+    document.getElementById('qm-explanation').value = q.explanation || '';
+    updateQTypeUI(q.type);
+    loadQOptions(q);
+  } else {
+    document.getElementById('qm-title').textContent = 'Create Question';
+    updateQTypeUI('MCQ');
+    addOpt(); addOpt();
+  }
+  document.getElementById('qModal').classList.remove('hidden');
+}
+
+function resetQModal() {
+  document.getElementById('qm-id').value='';
+  document.getElementById('qm-category').value='';
+  document.getElementById('qm-type').value='MCQ';
+  document.getElementById('qm-body').value='';
+  document.getElementById('qm-marks').value=1;
+  document.getElementById('qm-neg-marks').value=0;
+  document.getElementById('qm-difficulty').value='medium';
+  document.getElementById('qm-tags').value='';
+  document.getElementById('qm-time-limit').value='';
+  document.getElementById('qm-explanation').value='';
+  document.getElementById('qm-fill-answer').value='';
+  document.getElementById('opts-list').innerHTML='';
+  document.getElementById('match-list').innerHTML='';
+  document.getElementById('drag-list').innerHTML='';
+}
+
+function updateQTypeUI(type) {
+  document.getElementById('qm-mcq-section').classList.toggle('hidden', type!=='MCQ'&&type!=='Multi-MCQ');
+  document.getElementById('qm-match-section').classList.toggle('hidden', type!=='Match');
+  document.getElementById('qm-fill-section').classList.toggle('hidden', type!=='Fill Blank');
+  document.getElementById('qm-drag-section').classList.toggle('hidden', type!=='Drag & Drop');
+  const lbl = document.getElementById('qm-opts-label');
+  lbl.innerHTML = type==='Multi-MCQ'
+    ? 'Options <span class="text-muted" style="font-weight:400;font-size:12px;">(check all correct)</span>'
+    : 'Options <span class="text-muted" style="font-weight:400;font-size:12px;">(mark correct)</span>';
+}
+
+document.getElementById('qm-type').addEventListener('change', function(){
+  updateQTypeUI(this.value);
+  document.getElementById('opts-list').innerHTML='';
+  document.getElementById('match-list').innerHTML='';
+  document.getElementById('drag-list').innerHTML='';
+  if (this.value==='MCQ'||this.value==='Multi-MCQ') { addOpt();addOpt(); }
+  if (this.value==='Match') { addMatchPair();addMatchPair(); }
+  if (this.value==='Drag & Drop') { addDragItem();addDragItem(); }
+});
+
+function loadQOptions(q) {
+  const type = q.type;
+  if (type==='MCQ'||type==='Multi-MCQ') {
+    (q.options||[]).forEach(opt => addOpt(opt.text||opt, opt.correct||false));
+    if (!q.options?.length) { addOpt();addOpt(); }
+  } else if (type==='Match') {
+    (q.pairs||q.options||[]).forEach(p => addMatchPair(p.left||p.key||'',p.right||p.value||''));
+    if (!(q.pairs||q.options)?.length) { addMatchPair();addMatchPair(); }
+  } else if (type==='Fill Blank') {
+    document.getElementById('qm-fill-answer').value = q.correct_answer||(q.options?.[0]?.text)||'';
+  } else if (type==='Drag & Drop') {
+    (q.items||q.options||[]).forEach(it => addDragItem(it.text||it));
+    if (!(q.items||q.options)?.length) { addDragItem();addDragItem(); }
+  }
+}
+
+function addOpt(text='',correct=false) {
+  const list = document.getElementById('opts-list');
+  const type = document.getElementById('qm-type').value;
+  const idx = list.children.length;
+  const div = document.createElement('div'); div.className='option-row';
+  const inputType = type==='Multi-MCQ'?'checkbox':'radio';
+  div.innerHTML=`<span class="opt-label">Opt ${String.fromCharCode(65+idx)}</span>
+    <input type="${inputType}" class="opt-correct" name="opt-correct" value="${idx}" ${correct?'checked':''}/>
+    <input type="text" class="form-control" placeholder="Option text…" value="${escHtml(text)}"/>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.option-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
+
+function addMatchPair(left='',right='') {
+  const list = document.getElementById('match-list');
+  const div = document.createElement('div'); div.className='match-row';
+  div.innerHTML=`<input type="text" class="form-control" placeholder="Left item" value="${escHtml(left)}"/>
+    <input type="text" class="form-control" placeholder="Right item" value="${escHtml(right)}"/>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.match-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
+
+function addDragItem(text='') {
+  const list = document.getElementById('drag-list');
+  const div = document.createElement('div'); div.className='option-row'; div.style.marginBottom='6px';
+  div.innerHTML=`<span class="drag-handle">⠿</span>
+    <input type="text" class="form-control" placeholder="Item text…" value="${escHtml(text)}"/>
+    <button type="button" class="btn btn-ghost btn-sm" onclick="this.closest('.option-row').remove()">✕</button>`;
+  list.appendChild(div);
+}
+
+document.getElementById('addOptBtn').onclick = () => addOpt();
+document.getElementById('addMatchBtn').onclick = () => addMatchPair();
+document.getElementById('addDragBtn').onclick = () => addDragItem();
+document.getElementById('closeQModal').onclick = () => document.getElementById('qModal').classList.add('hidden');
+document.getElementById('cancelQModal').onclick = () => document.getElementById('qModal').classList.add('hidden');
+
+document.getElementById('saveQBtn').onclick = async () => {
+  const type = document.getElementById('qm-type').value;
+  const body = document.getElementById('qm-body').value.trim();
+  if (!body) return toast('Question body required','error');
+  const payload = {
+    category_id: document.getElementById('qm-category').value||null,
+    type,
+    body,
+    marks: parseFloat(document.getElementById('qm-marks').value)||1,
+    negative_marks: parseFloat(document.getElementById('qm-neg-marks').value)||0,
+    difficulty: document.getElementById('qm-difficulty').value,
+    tags: document.getElementById('qm-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
+    time_limit_seconds: parseInt(document.getElementById('qm-time-limit').value)||null,
+    explanation: document.getElementById('qm-explanation').value,
+  };
+  if (type==='MCQ'||type==='Multi-MCQ') {
+    const rows = document.querySelectorAll('#opts-list .option-row');
+    payload.options = Array.from(rows).map(r=>({text:r.querySelector('input[type=text]').value.trim(),correct:r.querySelector('.opt-correct').checked}));
+    if (!payload.options.length) return toast('Add at least one option','error');
+    if (!payload.options.some(o=>o.correct)) return toast('Mark at least one correct option','error');
+  } else if (type==='Match') {
+    const rows = document.querySelectorAll('#match-list .match-row');
+    payload.pairs = Array.from(rows).map(r=>{const ins=r.querySelectorAll('input[type=text]');return{left:ins[0].value.trim(),right:ins[1].value.trim()};});
+  } else if (type==='Fill Blank') {
+    payload.correct_answer = document.getElementById('qm-fill-answer').value.trim();
+  } else if (type==='Drag & Drop') {
+    const rows = document.querySelectorAll('#drag-list .option-row');
+    payload.items = Array.from(rows).map(r=>({text:r.querySelector('input[type=text]').value.trim()}));
+  }
+  const qid = document.getElementById('qm-id').value;
+  let res;
+  if (qid) res = await api('PUT', `/api/question-bank/${qid}`, payload);
+  else res = await api('POST', '/api/question-bank', payload);
+  if (res&&!res.error) {
+    toast(qid?'Question updated':'Question created');
+    document.getElementById('qModal').classList.add('hidden');
+    await loadQuestions();
+  } else toast(res?.error||'Save failed','error');
+};
+
+// =================== DELETE ===================
+async function deleteQuestion(id) {
+  if (!confirm('Delete this question from the bank?')) return;
+  const r = await api('DELETE', `/api/question-bank/${id}`);
+  if (r&&!r.error) { toast('Deleted','warning'); loadQuestions(); }
+  else toast(r?.error||'Failed','error');
+}
+
+// =================== ADD TO EXAM ===================
+function openAddToExam(qid) {
+  _addToExamQId = qid;
+  document.getElementById('ate-qid').value = qid;
+  document.getElementById('ate-exam').value = '';
+  document.getElementById('ate-section').innerHTML = '<option value="">— No section —</option>';
+  document.getElementById('addToExamModal').classList.remove('hidden');
+}
+
+document.getElementById('ate-exam').addEventListener('change', async function(){
+  const sel = document.getElementById('ate-section');
+  sel.innerHTML = '<option value="">— No section —</option>';
+  if (!this.value) return;
+  const data = await api('GET', `/api/exams/${this.value}/sections`);
+  const sections = Array.isArray(data) ? data : (data?.sections||[]);
+  sections.forEach(s => {
+    const o = document.createElement('option'); o.value=s.id; o.textContent=s.name;
+    sel.appendChild(o);
+  });
+});
+
+document.getElementById('closeAddToExamModal').onclick = () => document.getElementById('addToExamModal').classList.add('hidden');
+document.getElementById('cancelAddToExamModal').onclick = () => document.getElementById('addToExamModal').classList.add('hidden');
+
+document.getElementById('doAddToExamBtn').onclick = async () => {
+  const examId = document.getElementById('ate-exam').value;
+  const sectionId = document.getElementById('ate-section').value;
+  if (!examId) return toast('Select an exam','error');
+  const res = await api('POST', '/api/question-bank/add-to-exam', {
+    question_bank_id: _addToExamQId,
+    exam_id: examId,
+    section_id: sectionId||null,
+  });
+  if (res&&!res.error) {
+    toast('Question added to exam'); document.getElementById('addToExamModal').classList.add('hidden');
+  } else toast(res?.error||'Failed','error');
+};
+
+// =================== CATEGORIES ===================
+document.getElementById('manageCatsBtn').onclick = () => { loadCatModal(); document.getElementById('catModal').classList.remove('hidden'); };
+document.getElementById('closeCatModal').onclick = () => document.getElementById('catModal').classList.add('hidden');
+
+async function loadCatModal() {
+  const list = document.getElementById('cat-list');
+  list.innerHTML = '<div class="text-center text-muted" style="padding:20px;"><span class="spinner"></span></div>';
+  const data = await api('GET', '/api/question-bank/categories');
+  const cats = Array.isArray(data) ? data : (data?.categories||[]);
+  if (!cats.length) { list.innerHTML='<p class="text-muted text-center" style="padding:16px;">No categories yet.</p>'; return; }
+  list.innerHTML = cats.map(c=>`<div class="cat-item">
+    <span>${escHtml(c.name)}</span>
+    <span style="display:flex;align-items:center;gap:6px;">
+      <span class="text-muted" style="font-size:12px;">${c.question_count||0} Q</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteCat(${c.id})">Delete</button>
+    </span>
+  </div>`).join('');
+}
+
+document.getElementById('addCatBtn').onclick = async () => {
+  const name = document.getElementById('new-cat-name').value.trim();
+  if (!name) return toast('Enter category name','error');
+  const res = await api('POST', '/api/question-bank/categories', {name});
+  if (res&&!res.error) {
+    toast('Category added'); document.getElementById('new-cat-name').value='';
+    await loadCategories(); loadCatModal();
+  } else toast(res?.error||'Failed','error');
+};
+
+async function deleteCat(id) {
+  if (!confirm('Delete this category?')) return;
+  const r = await api('DELETE', `/api/question-bank/categories/${id}`);
+  if (r&&!r.error) { toast('Category deleted','warning'); await loadCategories(); loadCatModal(); }
+  else toast(r?.error||'Failed','error');
+}
+
+// =================== STATS ===================
+async function loadStats() {
+  const data = await api('GET', '/api/question-bank/stats');
+  if (!data) return;
+  const stats = data.stats || data;
+  document.getElementById('stat-total').textContent = stats.total ?? _questions.length ?? '—';
+  document.getElementById('stat-mcq').textContent = stats.by_type?.MCQ ?? stats.mcq ?? '—';
+  document.getElementById('stat-multi').textContent = stats['by_type']?.['Multi-MCQ'] ?? stats.multi_mcq ?? '—';
+  document.getElementById('stat-text').textContent = stats['by_type']?.Text ?? stats.text ?? '—';
+  const other = (stats.total||0) - ((stats.by_type?.MCQ||0) + (stats['by_type']?.['Multi-MCQ']||0) + (stats['by_type']?.Text||0));
+  document.getElementById('stat-other').textContent = Math.max(0, other);
+}
+
+// =================== CSV IMPORT ===================
+document.getElementById('importCsvBtn').onclick = () => {
+  const catSel = document.getElementById('csv-category');
+  catSel.innerHTML = '<option value="">— Uncategorized —</option>';
+  _categories.forEach(c => { const o=document.createElement('option'); o.value=c.id; o.textContent=c.name; catSel.appendChild(o); });
+  document.getElementById('csv-file-input').value='';
+  document.getElementById('csv-preview').classList.add('hidden');
+  document.getElementById('csv-result').classList.add('hidden');
+  document.getElementById('csvModal').classList.remove('hidden');
+};
+document.getElementById('closeCsvModal').onclick = () => document.getElementById('csvModal').classList.add('hidden');
+document.getElementById('cancelCsvModal').onclick = () => document.getElementById('csvModal').classList.add('hidden');
+
+document.getElementById('csv-file-input').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    const lines = text.trim().split('\n');
+    document.getElementById('csv-row-count').textContent = Math.max(0, lines.length - 1);
+    document.getElementById('csv-preview-text').textContent = lines.slice(0,6).join('\n') + (lines.length>6?'\n…':'');
+    document.getElementById('csv-preview').classList.remove('hidden');
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById('doImportCsvBtn').onclick = async () => {
+  const fileInput = document.getElementById('csv-file-input');
+  const categoryId = document.getElementById('csv-category').value || null;
+  if (!fileInput.files[0]) return toast('Select a CSV file','error');
+  const text = await fileInput.files[0].text();
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return toast('CSV has no data rows','error');
+  const headers = lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/"/g,''));
+  const rows = lines.slice(1);
+  const questions = [];
+  for (const row of rows) {
+    // Simple CSV parse (handles basic quoting)
+    const cols = row.match(/(".*?"|[^,]+)(?=,|$)/g) || row.split(',');
+    const clean = cols.map(c => c.replace(/^"|"$/g,'').trim());
+    const obj = {};
+    headers.forEach((h,i) => { obj[h] = clean[i] || ''; });
+    if (!obj.body && !obj.question) continue;
+    questions.push({
+      body: obj.body || obj.question,
+      type: obj.type || 'MCQ',
+      marks: parseFloat(obj.marks)||1,
+      negative_marks: parseFloat(obj.negative_marks)||0,
+      difficulty: obj.difficulty||'medium',
+      tags: obj.tags ? obj.tags.split(';').map(t=>t.trim()).filter(Boolean) : [],
+      correct_answer: obj.correct_answer || obj.answer || '',
+      explanation: obj.explanation || '',
+      category_id: categoryId,
+    });
+  }
+  if (!questions.length) return toast('No valid questions found in CSV','error');
+  const btn = document.getElementById('doImportCsvBtn');
+  btn.disabled=true; btn.textContent='Importing…';
+  let ok=0, fail=0;
+  for (const q of questions) {
+    const r = await api('POST', '/api/question-bank', q);
+    if (r && !r.error) ok++; else fail++;
+  }
+  btn.disabled=false; btn.textContent='Import Questions';
+  const resDiv = document.getElementById('csv-result');
+  resDiv.className = ok>0?'alert alert-success':'alert alert-danger';
+  resDiv.textContent = `Imported ${ok} question${ok!==1?'s':''}${fail?` (${fail} failed)`:''}`;
+  resDiv.classList.remove('hidden');
+  if (ok>0) { await loadQuestions(); await loadStats(); }
+  toast(`Imported ${ok} of ${questions.length} questions`, ok===questions.length?'success':'warning');
+};
+
+// =================== UTILS ===================
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms);};}
+
+init();
+</script>
+</body>
+</html>

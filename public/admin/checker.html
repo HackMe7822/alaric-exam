@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Review Queue — Alaric Exam Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+.response-preview { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #495057; font-size: 12px; }
+.verdict-group { display: flex; gap: 12px; margin-bottom: 4px; }
+.verdict-option { flex: 1; }
+.verdict-option input[type=radio] { display: none; }
+.verdict-option label {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 10px; border: 2px solid var(--border); border-radius: 8px;
+  cursor: pointer; font-weight: 600; font-size: 13px; transition: all .15s;
+}
+.verdict-option input:checked + label.correct { border-color: var(--success); background: #d4edda; color: #155724; }
+.verdict-option input:checked + label.partial { border-color: var(--warning); background: #fff3cd; color: #856404; }
+.verdict-option input:checked + label.incorrect { border-color: var(--danger); background: #f8d7da; color: #721c24; }
+.verdict-option label:hover { border-color: var(--mid); }
+.full-question { background: #f8f9fa; border-left: 4px solid var(--mid); padding: 14px; border-radius: 0 6px 6px 0; margin-bottom: 16px; font-size: 13.5px; line-height: 1.6; white-space: pre-wrap; }
+.response-box { background: #fffbe6; border: 1px solid #ffc107; border-radius: 6px; padding: 14px; font-size: 13px; line-height: 1.6; max-height: 200px; overflow-y: auto; white-space: pre-wrap; margin-bottom: 16px; }
+.file-response-link { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; background: var(--light); border: 1px solid var(--mid); border-radius: 6px; color: var(--mid); font-weight: 600; text-decoration: none; font-size: 13px; }
+.file-response-link:hover { background: #d0e4f7; }
+.tabs-secondary { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+.tabs-secondary .tab-btn { padding: 7px 16px; font-size: 13px; }
+.status-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.status-pending { background: #fff3cd; color: #856404; }
+.status-in_review { background: #cce5ff; color: #004085; }
+.status-done { background: #d4edda; color: #155724; }
+.status-escalated { background: #f8d7da; color: #721c24; }
+.assign-select { padding: 4px 8px; border: 1px solid var(--border); border-radius: 4px; font-size: 12px; }
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand">
+    <svg width="22" height="22" fill="none" stroke="#00B4D8" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+    Alaric <span>Exam</span>
+  </div>
+  <nav>
+    <div class="nav-label">Navigation</div>
+    <a href="/admin/dashboard"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a href="/admin/exams"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Exams</a>
+    <a href="/admin/questions"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Question Bank</a>
+    <a href="/admin/candidates"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Candidates</a>
+    <a href="/admin/checker" class="active"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Review Queue</a>
+    <a href="/admin/results"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results</a>
+    <a href="/admin/analytics"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21H3"/><path d="M21 3l-9 9-4-4-5 5"/></svg>Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
+    <a href="/admin/settings"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a>
+    <a href="/admin/email-config"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Config</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h1>Review Queue</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+  <div id="page">
+    <!-- Stats Bar -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="lbl">Pending</div><div class="val" id="stat-pending">—</div></div>
+      <div class="stat-card"><div class="lbl">In Review</div><div class="val" id="stat-inreview">—</div></div>
+      <div class="stat-card"><div class="lbl">Graded</div><div class="val" id="stat-done">—</div></div>
+      <div class="stat-card"><div class="lbl">Escalated</div><div class="val" id="stat-escalated">—</div></div>
+    </div>
+
+    <!-- Tabs for manager/admin -->
+    <div class="tabs-secondary" id="queueTabs">
+      <button class="tab-btn active" data-tab="mine" onclick="switchQueueTab('mine',this)">My Queue</button>
+      <button class="tab-btn hidden" id="allQueueTab" data-tab="all" onclick="switchQueueTab('all',this)">All Queue</button>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="padding:14px 20px">
+      <div class="filters-bar" style="margin-bottom:0">
+        <select class="form-control" id="examFilter" style="max-width:260px" onchange="loadQueue()">
+          <option value="">All Exams</option>
+        </select>
+        <label class="form-check" style="margin:0">
+          <input type="checkbox" id="showMineOnly" onchange="loadQueue()">
+          <span>Show only my assignments</span>
+        </label>
+        <button class="btn btn-outline btn-sm" onclick="loadQueue()">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+
+    <!-- Queue Table -->
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title" id="queueTitle">My Review Queue</span>
+        <span class="text-muted" id="queueCount" style="font-size:12px"></span>
+      </div>
+      <div class="tbl-wrap">
+        <table id="queueTable">
+          <thead>
+            <tr>
+              <th>Candidate</th>
+              <th>Exam</th>
+              <th>Question</th>
+              <th>Type</th>
+              <th>Response Preview</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="queueBody">
+            <tr><td colspan="7" class="text-center text-muted" style="padding:30px">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Grade Modal -->
+<div class="modal-overlay hidden" id="gradeModal">
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <h3>Grade Answer</h3>
+      <button class="btn-close" onclick="closeGradeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row mb-2" style="font-size:12px; color:var(--gray)">
+        <div><strong>Candidate:</strong> <span id="gm-candidate"></span></div>
+        <div><strong>Exam:</strong> <span id="gm-exam"></span></div>
+      </div>
+      <div class="form-group">
+        <label>Question <span id="gm-qtype" class="qtype" style="margin-left:6px"></span></label>
+        <div class="full-question" id="gm-question"></div>
+      </div>
+      <div class="form-group">
+        <label>Candidate's Response</label>
+        <div id="gm-response-wrap"></div>
+      </div>
+      <div class="form-group">
+        <label>Verdict <span style="color:var(--danger)">*</span></label>
+        <div class="verdict-group">
+          <div class="verdict-option">
+            <input type="radio" name="verdict" id="v-correct" value="correct" onchange="verdictChanged()">
+            <label for="v-correct" class="correct">✓ Correct</label>
+          </div>
+          <div class="verdict-option">
+            <input type="radio" name="verdict" id="v-partial" value="partial" onchange="verdictChanged()">
+            <label for="v-partial" class="partial">~ Partially Correct</label>
+          </div>
+          <div class="verdict-option">
+            <input type="radio" name="verdict" id="v-incorrect" value="incorrect" onchange="verdictChanged()">
+            <label for="v-incorrect" class="incorrect">✗ Incorrect</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Marks Awarded <span style="color:var(--danger)">*</span></label>
+          <input type="number" class="form-control" id="gm-marks" min="0" step="0.5" placeholder="Enter marks">
+          <small class="text-muted" id="gm-marks-hint"></small>
+        </div>
+        <div class="form-group">
+          <label>Max Marks</label>
+          <input type="number" class="form-control" id="gm-maxmarks" readonly style="background:#f8f9fa">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Remarks <span style="color:var(--danger)">*</span></label>
+        <textarea class="form-control" id="gm-remarks" rows="4" minlength="10" placeholder="Mandatory: explain your grading decision (min 10 characters)"></textarea>
+        <small class="text-muted" id="gm-remarks-counter">0 / 10 min characters</small>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-warning btn-sm hidden" id="escalateBtn" onclick="openEscalateModal()">⚠ Escalate</button>
+      <button class="btn btn-ghost" onclick="closeGradeModal()">Cancel</button>
+      <button class="btn btn-primary" id="submitGradeBtn" onclick="submitGrade()">Submit Grade</button>
+    </div>
+  </div>
+</div>
+
+<!-- Escalate Modal -->
+<div class="modal-overlay hidden" id="escalateModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Escalate for Review</h3>
+      <button class="btn-close" onclick="closeEscalateModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-warning">This will flag the answer for a senior examiner or exam manager to review.</div>
+      <div class="form-group">
+        <label>Reason for Escalation <span style="color:var(--danger)">*</span></label>
+        <textarea class="form-control" id="escalate-reason" rows="4" placeholder="Describe why this answer needs escalation..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeEscalateModal()">Cancel</button>
+      <button class="btn btn-warning" onclick="submitEscalation()">Escalate</button>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Modal (manager/admin only) -->
+<div class="modal-overlay hidden" id="assignModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Assign to Checker</h3>
+      <button class="btn-close" onclick="document.getElementById('assignModal').classList.add('hidden')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Select Checker</label>
+        <select class="form-control" id="assign-checker-select"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="document.getElementById('assignModal').classList.add('hidden')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitAssign()">Assign</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _currentItem = null;
+let _currentTab = 'mine';
+let _checkers = [];
+let _assignItemId = null;
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;document.getElementById('toast-container').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401){window.location.href='/admin';return null;}return r.json();}
+
+// ── Page logic ──────────────────────────────────────────────────────────────
+async function loadPage() {
+  const role = window._user.role;
+  if (role === 'super_admin' || role === 'exam_manager') {
+    document.getElementById('allQueueTab').classList.remove('hidden');
+  }
+  await Promise.all([loadStats(), loadExams(), loadQueue()]);
+  if (role === 'super_admin' || role === 'exam_manager') {
+    loadCheckers();
+  }
+}
+
+async function loadStats() {
+  const data = await api('GET', '/api/checker/stats');
+  if (!data) return;
+  document.getElementById('stat-pending').textContent = data.pending ?? 0;
+  document.getElementById('stat-inreview').textContent = data.in_review ?? 0;
+  document.getElementById('stat-done').textContent = data.done ?? 0;
+  document.getElementById('stat-escalated').textContent = data.escalated ?? 0;
+}
+
+async function loadExams() {
+  const data = await api('GET', '/api/exams?limit=200');
+  if (!data) return;
+  const sel = document.getElementById('examFilter');
+  const exams = data.exams || data.data || data || [];
+  exams.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.id; o.textContent = e.title;
+    sel.appendChild(o);
+  });
+}
+
+async function loadCheckers() {
+  const data = await api('GET', '/api/users?role=checker&limit=100');
+  if (!data) return;
+  _checkers = data.users || data.data || [];
+}
+
+function switchQueueTab(tab, el) {
+  _currentTab = tab;
+  document.querySelectorAll('.tabs-secondary .tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('queueTitle').textContent = tab === 'all' ? 'All Queue' : 'My Review Queue';
+  loadQueue();
+}
+
+async function loadQueue() {
+  const tbody = document.getElementById('queueBody');
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:30px"><span class="spinner"></span></td></tr>';
+  const examId = document.getElementById('examFilter').value;
+  const mineOnly = document.getElementById('showMineOnly').checked;
+  let url = '/api/checker/queue?';
+  if (_currentTab === 'all') url += 'all=1&';
+  if (examId) url += `exam_id=${examId}&`;
+  if (mineOnly) url += 'mine=1&';
+  const data = await api('GET', url);
+  if (!data) return;
+  const items = data.items || data.data || data || [];
+  document.getElementById('queueCount').textContent = `${items.length} item${items.length !== 1 ? 's' : ''}`;
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted" style="padding:30px">No items in queue</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map(item => `
+    <tr>
+      <td><strong>${esc(item.candidate_name || item.candidate?.full_name || '—')}</strong><br><small class="text-muted">${esc(item.candidate_email || item.candidate?.email || '')}</small></td>
+      <td>${esc(item.exam_title || item.exam?.title || '—')}</td>
+      <td class="response-preview" title="${esc(item.question_text || '')}">Q${item.question_number || ''}: ${(item.question_text || '').substring(0, 80)}${(item.question_text || '').length > 80 ? '…' : ''}</td>
+      <td><span class="qtype">${esc(item.question_type || '—')}</span></td>
+      <td class="response-preview">${esc((item.response_preview || item.response_text || '').substring(0, 60))}${(item.response_preview || item.response_text || '').length > 60 ? '…' : ''}</td>
+      <td><span class="status-pill status-${item.status || 'pending'}">${(item.status || 'pending').replace(/_/g,' ')}</span></td>
+      <td>
+        <button class="btn btn-primary btn-sm" onclick="openGradeModal(${item.id})">Grade</button>
+        ${(_currentTab === 'all') ? `<button class="btn btn-outline btn-sm" onclick="openAssignModal(${item.id})" style="margin-left:4px">Assign</button>` : ''}
+      </td>
+    </tr>
+  `).join('');
+  // Store items for quick lookup
+  window._queueItems = {};
+  items.forEach(i => window._queueItems[i.id] = i);
+}
+
+async function openGradeModal(id) {
+  const item = window._queueItems && window._queueItems[id];
+  if (!item) { toast('Item not found','error'); return; }
+  _currentItem = item;
+  document.getElementById('gm-candidate').textContent = item.candidate_name || item.candidate?.full_name || '—';
+  document.getElementById('gm-exam').textContent = item.exam_title || item.exam?.title || '—';
+  document.getElementById('gm-question').textContent = item.question_text || '—';
+  document.getElementById('gm-qtype').textContent = item.question_type || '';
+  document.getElementById('gm-maxmarks').value = item.marks || item.max_marks || '';
+  document.getElementById('gm-marks').value = '';
+  document.getElementById('gm-marks-hint').textContent = `Max: ${item.marks || item.max_marks || '?'} marks`;
+  document.getElementById('gm-remarks').value = '';
+  document.getElementById('gm-remarks-counter').textContent = '0 / 10 min characters';
+  // Clear verdict
+  document.querySelectorAll('input[name=verdict]').forEach(r => r.checked = false);
+  // Response
+  const wrap = document.getElementById('gm-response-wrap');
+  if (item.response_type === 'file' || item.file_url) {
+    wrap.innerHTML = `<a class="file-response-link" href="${esc(item.file_url || '#')}" target="_blank" download>
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Submitted File</a>`;
+  } else {
+    wrap.innerHTML = `<div class="response-box">${esc(item.response_text || item.answer_text || '(No response recorded)')}</div>`;
+  }
+  // Escalate button visibility
+  const role = window._user.role;
+  const escBtn = document.getElementById('escalateBtn');
+  if (role === 'super_admin' || role === 'exam_manager') {
+    escBtn.classList.add('hidden');
+  } else {
+    escBtn.classList.remove('hidden');
+  }
+  document.getElementById('gradeModal').classList.remove('hidden');
+}
+
+function closeGradeModal() {
+  document.getElementById('gradeModal').classList.add('hidden');
+  _currentItem = null;
+}
+
+function verdictChanged() {
+  const v = document.querySelector('input[name=verdict]:checked')?.value;
+  const marksInput = document.getElementById('gm-marks');
+  const maxMarks = parseFloat(document.getElementById('gm-maxmarks').value) || 0;
+  if (v === 'correct') { marksInput.value = maxMarks; }
+  else if (v === 'incorrect') { marksInput.value = 0; }
+  else if (v === 'partial') { marksInput.value = ''; marksInput.focus(); }
+}
+
+document.getElementById('gm-remarks').addEventListener('input', function() {
+  const len = this.value.length;
+  const counter = document.getElementById('gm-remarks-counter');
+  counter.textContent = `${len} / 10 min characters`;
+  counter.style.color = len >= 10 ? 'var(--success)' : 'var(--danger)';
+});
+
+async function submitGrade() {
+  if (!_currentItem) return;
+  const verdict = document.querySelector('input[name=verdict]:checked')?.value;
+  if (!verdict) { toast('Please select a verdict','error'); return; }
+  const marks = document.getElementById('gm-marks').value;
+  if (marks === '' || marks === null) { toast('Please enter marks awarded','error'); return; }
+  const remarks = document.getElementById('gm-remarks').value.trim();
+  if (remarks.length < 10) { toast('Remarks must be at least 10 characters','error'); return; }
+  const btn = document.getElementById('submitGradeBtn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  const result = await api('POST', '/api/checker/grade', {
+    assignment_id: _currentItem.id,
+    verdict,
+    marks_awarded: parseFloat(marks),
+    remarks
+  });
+  btn.disabled = false; btn.textContent = 'Submit Grade';
+  if (!result) return;
+  if (result.error) { toast(result.error, 'error'); return; }
+  toast('Answer graded successfully');
+  closeGradeModal();
+  loadQueue();
+  loadStats();
+}
+
+function openEscalateModal() {
+  document.getElementById('escalate-reason').value = '';
+  document.getElementById('escalateModal').classList.remove('hidden');
+}
+
+function closeEscalateModal() {
+  document.getElementById('escalateModal').classList.add('hidden');
+}
+
+async function submitEscalation() {
+  if (!_currentItem) return;
+  const reason = document.getElementById('escalate-reason').value.trim();
+  if (!reason) { toast('Please enter a reason','error'); return; }
+  const result = await api('POST', '/api/checker/escalate', {
+    assignment_id: _currentItem.id,
+    reason
+  });
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Escalated successfully','warning');
+  closeEscalateModal();
+  closeGradeModal();
+  loadQueue();
+  loadStats();
+}
+
+function openAssignModal(id) {
+  _assignItemId = id;
+  const sel = document.getElementById('assign-checker-select');
+  sel.innerHTML = '<option value="">Select checker…</option>';
+  _checkers.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id; o.textContent = `${c.full_name} (${c.email})`;
+    sel.appendChild(o);
+  });
+  document.getElementById('assignModal').classList.remove('hidden');
+}
+
+async function submitAssign() {
+  const checkerId = document.getElementById('assign-checker-select').value;
+  if (!checkerId) { toast('Please select a checker','error'); return; }
+  const result = await api('POST', '/api/checker/assign', {
+    item_id: _assignItemId,
+    checker_id: parseInt(checkerId)
+  });
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Assigned successfully');
+  document.getElementById('assignModal').classList.add('hidden');
+  loadQueue();
+}
+
+function esc(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Close modals on overlay click
+document.getElementById('gradeModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeGradeModal(); });
+document.getElementById('escalateModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeEscalateModal(); });
+
+init();
+</script>
+</body>
+</html>

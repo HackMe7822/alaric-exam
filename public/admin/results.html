@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Results — Alaric Exam Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+.risk-low { background:#d4edda; color:#155724; }
+.risk-medium { background:#fff3cd; color:#856404; }
+.risk-high { background:#f8d7da; color:#721c24; }
+.pass-badge { background:#d4edda; color:#155724; }
+.fail-badge { background:#f8d7da; color:#721c24; }
+.integrity-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:12px; margin-bottom:16px; }
+.integrity-card { background:#f8f9fa; border-radius:6px; padding:12px 14px; text-align:center; }
+.integrity-card .ic-val { font-size:22px; font-weight:700; color:var(--dark); }
+.integrity-card .ic-lbl { font-size:11px; color:var(--gray); margin-top:2px; }
+.answer-row { background:#f8f9fa; }
+.answer-row td { padding:10px 12px; font-size:12.5px; }
+.answer-q { font-weight:500; color:#212529; max-width:220px; }
+.answer-resp { max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.detail-section { margin-bottom:20px; }
+.detail-section h4 { font-size:13px; font-weight:600; color:var(--dark); padding-bottom:8px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+.candidate-header { display:flex; gap:20px; flex-wrap:wrap; background:var(--light); border-radius:8px; padding:14px 18px; margin-bottom:16px; }
+.candidate-header .ch-block { min-width:140px; }
+.candidate-header .ch-label { font-size:11px; color:var(--gray); text-transform:uppercase; letter-spacing:.05em; }
+.candidate-header .ch-val { font-size:14px; font-weight:600; color:var(--dark); margin-top:2px; }
+.bulk-bar { display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand">
+    <svg width="22" height="22" fill="none" stroke="#00B4D8" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+    Alaric <span>Exam</span>
+  </div>
+  <nav>
+    <div class="nav-label">Navigation</div>
+    <a href="/admin/dashboard"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard</a>
+    <a href="/admin/exams"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>Exams</a>
+    <a href="/admin/questions"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Question Bank</a>
+    <a href="/admin/candidates"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Candidates</a>
+    <a href="/admin/checker"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>Review Queue</a>
+    <a href="/admin/results" class="active"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>Results</a>
+    <a href="/admin/analytics"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 21H3"/><path d="M21 3l-9 9-4-4-5 5"/></svg>Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Users</a>
+    <a href="/admin/settings"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Settings</a>
+    <a href="/admin/email-config"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Email Config</a>
+  </nav>
+  <div class="sidebar-user">
+    <strong id="sb-name">Loading…</strong>
+    <span id="sb-role"></span>
+  </div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h1>Results Management</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+  <div id="page">
+    <!-- Filters -->
+    <div class="card" style="padding:14px 20px">
+      <div class="filters-bar" style="margin-bottom:0">
+        <select class="form-control" id="examFilter" style="max-width:260px" onchange="loadResults()">
+          <option value="">All Exams</option>
+        </select>
+        <select class="form-control" id="statusFilter" style="max-width:180px" onchange="loadResults()">
+          <option value="">All Statuses</option>
+          <option value="in_progress">In Progress</option>
+          <option value="submitted">Submitted</option>
+          <option value="grading">Grading</option>
+          <option value="graded">Graded</option>
+          <option value="published">Published</option>
+        </select>
+        <input type="date" class="form-control" id="dateFrom" style="max-width:150px" onchange="loadResults()">
+        <input type="date" class="form-control" id="dateTo" style="max-width:150px" onchange="loadResults()">
+        <button class="btn btn-outline btn-sm" onclick="clearFilters()">Clear</button>
+      </div>
+    </div>
+
+    <!-- Bulk actions -->
+    <div class="bulk-bar">
+      <button class="btn btn-success btn-sm" onclick="releaseAllGraded()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Release All Graded
+      </button>
+      <span class="text-muted" id="resultCount" style="font-size:12px"></span>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="tbl-wrap">
+        <table id="resultsTable">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll(this)"></th>
+              <th>Candidate</th>
+              <th>Exam</th>
+              <th>Started</th>
+              <th>Submitted</th>
+              <th>Auto Score</th>
+              <th>Final Score</th>
+              <th>Pass/Fail</th>
+              <th>Risk</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <tr><td colspan="11" class="text-center text-muted" style="padding:30px">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submission Detail Modal -->
+<div class="modal-overlay hidden" id="detailModal">
+  <div class="modal modal-xl">
+    <div class="modal-header">
+      <h3>Submission Detail</h3>
+      <button class="btn-close" onclick="closeDetailModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Candidate + Exam header -->
+      <div class="candidate-header" id="dm-header"></div>
+
+      <!-- Answer Breakdown -->
+      <div class="detail-section">
+        <h4>Answer Breakdown</h4>
+        <div class="tbl-wrap">
+          <table id="dm-answers-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Question</th>
+                <th>Response</th>
+                <th>Auto Score</th>
+                <th>Manual Score</th>
+                <th>Verdict</th>
+                <th>Remarks</th>
+              </tr>
+            </thead>
+            <tbody id="dm-answers-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Integrity Report -->
+      <div class="detail-section">
+        <h4>Integrity Report</h4>
+        <div class="integrity-grid" id="dm-integrity-grid"></div>
+        <div class="form-group" style="margin-bottom:0">
+          <label style="font-size:12px; color:var(--gray)">Snapshots</label>
+          <div id="dm-snapshots" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeDetailModal()">Close</button>
+      <button class="btn btn-outline btn-sm" id="dm-autoscore-btn" onclick="triggerAutoScore()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+        Trigger Auto-Score
+      </button>
+      <button class="btn btn-success" id="dm-release-btn" onclick="releaseResult()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        Release Result
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _submissions = {};
+let _currentSubmissionId = null;
+
+// ── Shared helpers ──────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className=`toast ${type}`;t.textContent=msg;document.getElementById('toast-container').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401){window.location.href='/admin';return null;}return r.json();}
+
+// ── Page logic ──────────────────────────────────────────────────────────────
+async function loadPage() {
+  await Promise.all([loadExams(), loadResults()]);
+}
+
+async function loadExams() {
+  const data = await api('GET', '/api/exams?limit=200');
+  if (!data) return;
+  const sel = document.getElementById('examFilter');
+  const exams = data.exams || data.data || data || [];
+  exams.forEach(e => {
+    const o = document.createElement('option');
+    o.value = e.id; o.textContent = e.title;
+    sel.appendChild(o);
+  });
+}
+
+async function loadResults() {
+  const tbody = document.getElementById('resultsBody');
+  tbody.innerHTML = '<tr><td colspan="11" class="text-center" style="padding:30px"><span class="spinner"></span></td></tr>';
+  const examId = document.getElementById('examFilter').value;
+  const status = document.getElementById('statusFilter').value;
+  const dateFrom = document.getElementById('dateFrom').value;
+  const dateTo = document.getElementById('dateTo').value;
+  let url = '/api/submissions?limit=100&';
+  if (examId) url += `exam_id=${examId}&`;
+  if (status) url += `status=${status}&`;
+  if (dateFrom) url += `date_from=${dateFrom}&`;
+  if (dateTo) url += `date_to=${dateTo}&`;
+  const data = await api('GET', url);
+  if (!data) return;
+  const items = data.submissions || data.data || data || [];
+  document.getElementById('resultCount').textContent = `${items.length} submission${items.length !== 1 ? 's' : ''}`;
+  _submissions = {};
+  items.forEach(s => _submissions[s.id] = s);
+  if (!items.length) {
+    tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted" style="padding:30px">No submissions found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = items.map(s => {
+    const passFail = s.passed === true ? '<span class="badge pass-badge">PASS</span>'
+      : s.passed === false ? '<span class="badge fail-badge">FAIL</span>'
+      : '<span class="badge badge-secondary">—</span>';
+    const risk = s.risk_level || 'low';
+    const riskBadge = `<span class="badge risk-${risk}">${risk.toUpperCase()}</span>`;
+    const statusMap = {in_progress:'badge-info',submitted:'badge-warning',grading:'badge-info',graded:'badge-secondary',published:'badge-success'};
+    const statusClass = statusMap[s.status] || 'badge-secondary';
+    return `<tr onclick="openDetail(${s.id})" style="cursor:pointer">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="row-cb" value="${s.id}"></td>
+      <td><strong>${esc(s.candidate_name || s.candidate?.full_name || '—')}</strong><br><small class="text-muted">${esc(s.candidate_email || s.candidate?.email || '')}</small></td>
+      <td>${esc(s.exam_title || s.exam?.title || '—')}</td>
+      <td>${formatDate(s.started_at)}</td>
+      <td>${formatDate(s.submitted_at)}</td>
+      <td>${s.auto_score != null ? s.auto_score : '—'}</td>
+      <td><strong>${s.final_score != null ? s.final_score : (s.total_score != null ? s.total_score : '—')}</strong></td>
+      <td>${passFail}</td>
+      <td>${riskBadge}</td>
+      <td><span class="badge ${statusClass}">${(s.status || '—').replace(/_/g,' ')}</span></td>
+      <td onclick="event.stopPropagation()">
+        <button class="btn btn-outline btn-sm" onclick="openDetail(${s.id})">View</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function clearFilters() {
+  document.getElementById('examFilter').value = '';
+  document.getElementById('statusFilter').value = '';
+  document.getElementById('dateFrom').value = '';
+  document.getElementById('dateTo').value = '';
+  loadResults();
+}
+
+function toggleSelectAll(cb) {
+  document.querySelectorAll('.row-cb').forEach(c => c.checked = cb.checked);
+}
+
+async function releaseAllGraded() {
+  if (!confirm('Release all graded submissions? Candidates will be able to see their results.')) return;
+  const result = await api('POST', '/api/submissions/release-all-graded');
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast(`Released ${result.count || 'all'} results`);
+  loadResults();
+}
+
+async function openDetail(id) {
+  _currentSubmissionId = id;
+  const s = _submissions[id];
+  if (!s) return;
+  // Header
+  document.getElementById('dm-header').innerHTML = `
+    <div class="ch-block"><div class="ch-label">Candidate</div><div class="ch-val">${esc(s.candidate_name || s.candidate?.full_name || '—')}</div></div>
+    <div class="ch-block"><div class="ch-label">Email</div><div class="ch-val">${esc(s.candidate_email || s.candidate?.email || '—')}</div></div>
+    <div class="ch-block"><div class="ch-label">Exam</div><div class="ch-val">${esc(s.exam_title || s.exam?.title || '—')}</div></div>
+    <div class="ch-block"><div class="ch-label">Final Score</div><div class="ch-val">${s.final_score != null ? s.final_score : (s.total_score != null ? s.total_score : '—')} / ${s.max_score || '?'}</div></div>
+    <div class="ch-block"><div class="ch-label">Status</div><div class="ch-val">${(s.status || '—').replace(/_/g,' ')}</div></div>
+    <div class="ch-block"><div class="ch-label">Risk Level</div><div class="ch-val"><span class="badge risk-${s.risk_level || 'low'}">${(s.risk_level || 'low').toUpperCase()}</span></div></div>
+  `;
+  // Load full detail
+  const detail = await api('GET', `/api/submissions/${id}`);
+  if (!detail) return;
+  // Answers
+  const answers = detail.answers || detail.responses || [];
+  const ansBody = document.getElementById('dm-answers-body');
+  if (answers.length) {
+    ansBody.innerHTML = answers.map((a, i) => `
+      <tr>
+        <td>${i+1}</td>
+        <td class="answer-q">${esc((a.question_text || '').substring(0, 80))}${(a.question_text || '').length > 80 ? '…' : ''}</td>
+        <td class="answer-resp">${esc((a.response_text || a.answer_text || '').substring(0, 60))}</td>
+        <td>${a.auto_score != null ? a.auto_score : '—'}</td>
+        <td>${a.manual_score != null ? a.manual_score : '—'}</td>
+        <td>${a.verdict ? `<span class="badge ${a.verdict==='correct'?'badge-success':a.verdict==='incorrect'?'badge-danger':'badge-warning'}">${a.verdict}</span>` : '—'}</td>
+        <td class="text-muted" style="font-size:12px">${esc(a.remarks || '')}</td>
+      </tr>
+    `).join('');
+  } else {
+    ansBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No answers recorded</td></tr>';
+  }
+  // Integrity
+  const integ = detail.integrity || detail.integrity_report || {};
+  document.getElementById('dm-integrity-grid').innerHTML = `
+    <div class="integrity-card"><div class="ic-val">${integ.tab_switches ?? 0}</div><div class="ic-lbl">Tab Switches</div></div>
+    <div class="integrity-card"><div class="ic-val">${integ.fullscreen_exits ?? 0}</div><div class="ic-lbl">Fullscreen Exits</div></div>
+    <div class="integrity-card"><div class="ic-val">${integ.ai_paste_count ?? 0}</div><div class="ic-lbl">AI Paste Flags</div></div>
+    <div class="integrity-card"><div class="ic-val">${integ.snapshots_count ?? (detail.snapshots?.length ?? 0)}</div><div class="ic-lbl">Snapshots</div></div>
+    <div class="integrity-card"><div class="ic-val"><span class="badge risk-${integ.risk_level || 'low'}">${(integ.risk_level || 'low').toUpperCase()}</span></div><div class="ic-lbl">Risk Level</div></div>
+  `;
+  // Snapshots thumbnails
+  const snaps = detail.snapshots || [];
+  const snapWrap = document.getElementById('dm-snapshots');
+  if (snaps.length) {
+    snapWrap.innerHTML = snaps.slice(0, 12).map(sn =>
+      `<img src="${esc(sn.url || sn.path || '')}" style="width:80px;height:55px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" onerror="this.style.display='none'">`
+    ).join('') + (snaps.length > 12 ? `<span class="text-muted" style="font-size:12px;align-self:center">+${snaps.length - 12} more</span>` : '');
+  } else {
+    snapWrap.innerHTML = '<span class="text-muted" style="font-size:12px">No snapshots</span>';
+  }
+  // Button states
+  document.getElementById('dm-release-btn').disabled = (s.status === 'published');
+  document.getElementById('detailModal').classList.remove('hidden');
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModal').classList.add('hidden');
+  _currentSubmissionId = null;
+}
+
+async function releaseResult() {
+  if (!_currentSubmissionId) return;
+  if (!confirm('Release result to candidate?')) return;
+  const result = await api('POST', `/api/submissions/${_currentSubmissionId}/release-result`);
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Result released successfully');
+  document.getElementById('dm-release-btn').disabled = true;
+  loadResults();
+}
+
+async function triggerAutoScore() {
+  if (!_currentSubmissionId) return;
+  const btn = document.getElementById('dm-autoscore-btn');
+  btn.disabled = true; btn.textContent = 'Processing…';
+  const result = await api('POST', `/api/submissions/${_currentSubmissionId}/auto-score`);
+  btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg> Trigger Auto-Score';
+  if (!result) return;
+  if (result.error) { toast(result.error,'error'); return; }
+  toast('Auto-score triggered');
+  closeDetailModal();
+  loadResults();
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  try {
+    const dt = new Date(d);
+    return dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  } catch { return d; }
+}
+
+function esc(s) {
+  if (s === undefined || s === null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+document.getElementById('detailModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeDetailModal(); });
+
+init();
+</script>
+</body>
+</html>

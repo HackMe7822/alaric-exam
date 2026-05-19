@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Users — Alaric Exam</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+  /* Role badge colours */
+  .rb-super_admin  { background:#d6d8d9; color:#1b1e21; }
+  .rb-exam_manager { background:#cce5ff; color:#004085; }
+  .rb-checker      { background:#d1ecf1; color:#0c5460; }
+  .rb-viewer       { background:#e2e3e5; color:#383d41; }
+
+  /* Toggle switch */
+  .tog { position:relative; display:inline-block; width:36px; height:20px; flex-shrink:0; }
+  .tog input { opacity:0; width:0; height:0; }
+  .tog-sl { position:absolute; cursor:pointer; inset:0; background:#ccc; border-radius:20px; transition:.2s; }
+  .tog-sl:before { content:''; position:absolute; width:14px; height:14px; border-radius:50%; left:3px; top:3px; background:#fff; transition:.2s; }
+  .tog input:checked + .tog-sl { background:var(--success); }
+  .tog input:checked + .tog-sl:before { transform:translateX(16px); }
+  .tog-wrap { display:flex; align-items:center; gap:6px; }
+  .tog-lbl { font-size:12px; color:var(--gray); }
+
+  /* 2FA indicators */
+  .tfa-on  { color:var(--success); font-weight:600; font-size:12px; }
+  .tfa-off { color:var(--gray);    font-size:12px; }
+
+  /* Last-login */
+  .ll { color:var(--gray); font-size:12px; }
+
+  /* Actions cell */
+  .acts { display:flex; gap:5px; align-items:center; white-space:nowrap; flex-wrap:wrap; }
+
+  /* Access denied */
+  .access-denied { text-align:center; padding:80px 20px; }
+  .access-denied .ad-icon { font-size:56px; margin-bottom:16px; opacity:.35; }
+  .access-denied h2 { font-size:22px; color:var(--dark); margin-bottom:8px; }
+  .access-denied p  { color:var(--gray); font-size:14px; }
+
+  /* Count label */
+  #count-lbl { font-size:13px; color:var(--gray); margin-left:auto; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<div id="sidebar">
+  <div class="brand"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="#00B4D8" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg><span>Alaric</span> Exam</div>
+  <nav>
+    <div class="nav-label">Main</div>
+    <a href="/admin/dashboard" id="nav-dashboard">📊 Dashboard</a>
+    <a href="/admin/exams" id="nav-exams">📋 Exams</a>
+    <a href="/admin/questions" id="nav-questions">❓ Question Bank</a>
+    <a href="/admin/candidates" id="nav-candidates">👥 Candidates</a>
+    <div class="nav-label">Review</div>
+    <a href="/admin/checker" id="nav-checker">✅ Review Queue</a>
+    <a href="/admin/results" id="nav-results">🏆 Results</a>
+    <a href="/admin/analytics" id="nav-analytics">📈 Analytics</a>
+    <div class="nav-label">Admin</div>
+    <a href="/admin/users" id="nav-users">👤 Users</a>
+    <a href="/admin/email-config" id="nav-email">📧 Email Config</a>
+    <a href="/admin/settings" id="nav-settings">⚙️ Settings</a>
+  </nav>
+  <div class="sidebar-user"><strong id="sb-name">Loading...</strong><span id="sb-role"></span></div>
+</div>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<div id="main">
+  <div id="topbar">
+    <h1>Users</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-primary" id="createUserBtn" style="display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Create User
+      </button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div id="page">
+
+    <!-- Access denied (non-super_admin) -->
+    <div id="access-denied" class="access-denied hidden">
+      <div class="ad-icon">🔒</div>
+      <h2>Access Restricted</h2>
+      <p>User management is only available to Super Admins.</p>
+      <a href="/admin/dashboard" class="btn btn-outline mt-2">Back to Dashboard</a>
+    </div>
+
+    <!-- Users content -->
+    <div id="users-content" class="hidden">
+
+      <!-- Filters bar -->
+      <div class="filters-bar">
+        <div class="search-input" style="max-width:300px">
+          <span class="ico">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </span>
+          <input type="text" class="form-control" id="f-search" placeholder="Search name, username or email…">
+        </div>
+        <select class="form-control" id="f-role" style="width:auto;min-width:150px">
+          <option value="">All Roles</option>
+          <option value="super_admin">Super Admin</option>
+          <option value="exam_manager">Exam Manager</option>
+          <option value="checker">Checker</option>
+          <option value="viewer">Viewer</option>
+        </select>
+        <select class="form-control" id="f-active" style="width:auto;min-width:120px">
+          <option value="">All Users</option>
+          <option value="1">Active</option>
+          <option value="0">Inactive</option>
+        </select>
+        <span id="count-lbl"></span>
+      </div>
+
+      <!-- Table card -->
+      <div class="card">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Full Name</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>2FA</th>
+                <th>Active</th>
+                <th>Last Login</th>
+                <th style="width:200px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-tbody">
+              <tr><td colspan="8" class="text-center text-muted" style="padding:40px"><span class="spinner"></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /users-content -->
+
+  </div><!-- /page -->
+</div>
+
+<!-- ══════════════════ CREATE USER MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="create-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Create User</h3>
+      <button class="btn-close" onclick="closeModal('create-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" class="form-control" id="cu-name" placeholder="e.g. Jane Smith" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Username <span style="color:var(--danger)">*</span></label>
+          <input type="text" class="form-control" id="cu-username" placeholder="jsmith" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Email <span style="color:var(--danger)">*</span></label>
+        <input type="email" class="form-control" id="cu-email" placeholder="jane@example.com">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Role <span style="color:var(--danger)">*</span></label>
+          <select class="form-control" id="cu-role">
+            <option value="viewer">Viewer</option>
+            <option value="checker">Checker</option>
+            <option value="exam_manager">Exam Manager</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Password <span style="color:var(--danger)">*</span></label>
+          <input type="password" class="form-control" id="cu-password" placeholder="Min. 8 characters" autocomplete="new-password">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirm Password <span style="color:var(--danger)">*</span></label>
+        <input type="password" class="form-control" id="cu-confirm" placeholder="Repeat password" autocomplete="new-password">
+      </div>
+      <div id="cu-err" class="alert alert-danger hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-modal')">Cancel</button>
+      <button class="btn btn-primary" id="cu-save-btn">Create User</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ EDIT USER MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Edit User</h3>
+      <button class="btn-close" onclick="closeModal('edit-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="eu-id">
+      <div class="form-group">
+        <label>Full Name <span style="color:var(--danger)">*</span></label>
+        <input type="text" class="form-control" id="eu-name">
+      </div>
+      <div class="form-group">
+        <label>Email <span style="color:var(--danger)">*</span></label>
+        <input type="email" class="form-control" id="eu-email">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Role <span style="color:var(--danger)">*</span></label>
+          <select class="form-control" id="eu-role">
+            <option value="viewer">Viewer</option>
+            <option value="checker">Checker</option>
+            <option value="exam_manager">Exam Manager</option>
+            <option value="super_admin">Super Admin</option>
+          </select>
+        </div>
+        <div class="form-group" style="display:flex;flex-direction:column;justify-content:flex-end;">
+          <label style="margin-bottom:8px">Active</label>
+          <div class="tog-wrap">
+            <label class="tog">
+              <input type="checkbox" id="eu-active">
+              <span class="tog-sl"></span>
+            </label>
+            <span class="tog-lbl" id="eu-active-lbl">Active</span>
+          </div>
+        </div>
+      </div>
+      <div id="eu-err" class="alert alert-danger hidden"></div>
+      <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:4px;display:flex;gap:10px;align-items:center;">
+        <span style="font-size:13px;color:var(--gray);flex:1">Need to change this user's password?</span>
+        <button class="btn btn-warning btn-sm" id="eu-reset-pw-btn">Reset Password</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm btn-danger" id="eu-deactivate-btn" style="margin-right:auto">Deactivate</button>
+      <button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-primary" id="eu-save-btn">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ RESET PASSWORD MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="reset-modal">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <h3>Reset Password</h3>
+      <button class="btn-close" onclick="closeModal('reset-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray);margin-bottom:16px">
+        Set a new password for <strong id="rp-username"></strong>.
+      </p>
+      <div class="form-group">
+        <label>New Password <span style="color:var(--danger)">*</span></label>
+        <input type="password" class="form-control" id="rp-pw" placeholder="Min. 8 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Confirm Password <span style="color:var(--danger)">*</span></label>
+        <input type="password" class="form-control" id="rp-confirm" placeholder="Repeat password">
+      </div>
+      <div id="rp-err" class="alert alert-danger hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('reset-modal')">Cancel</button>
+      <button class="btn btn-warning" id="rp-save-btn">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════ CONFIRM MODAL ══════════════════ -->
+<div class="modal-overlay hidden" id="confirm-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <h3 id="conf-title">Confirm Action</h3>
+      <button class="btn-close" onclick="closeModal('confirm-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="conf-msg" style="font-size:14px;line-height:1.6;color:#333"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">Cancel</button>
+      <button class="btn btn-danger" id="conf-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="tc"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let _users      = [];
+let _editId     = null;
+let _resetId    = null;
+let _confirmCb  = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function esc(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDT(iso){if(!iso)return'<span class="ll">Never</span>';const d=new Date(iso);return`<span class="ll">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span>`;}
+function showErr(id,msg){const el=document.getElementById(id);el.textContent=msg;el.classList.remove('hidden');}
+function clearErr(id){const el=document.getElementById(id);el.textContent='';el.classList.add('hidden');}
+function openModal(id){document.getElementById(id).classList.remove('hidden');}
+function closeModal(id){document.getElementById(id).classList.add('hidden');}
+function roleBadge(role){
+  const labels={super_admin:'Super Admin',exam_manager:'Exam Manager',checker:'Checker',viewer:'Viewer'};
+  return `<span class="badge rb-${esc(role)}">${esc(labels[role]??role)}</span>`;
+}
+
+// ── Common init ───────────────────────────────────────────────────────────────
+async function init() {
+  const r = await fetch('/api/auth/me', {credentials:'include'});
+  if (!r.ok) return window.location.href = '/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  window._user = user;
+  // Highlight active nav
+  const page = location.pathname.split('/').pop();
+  const navEl = document.getElementById('nav-'+page);
+  if (navEl) navEl.classList.add('active');
+  loadPage();
+}
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', {method:'POST',credentials:'include'});
+  window.location.href='/admin';
+};
+function toast(msg,type='success'){const t=document.createElement('div');t.className='toast '+type;t.textContent=msg;document.getElementById('tc').appendChild(t);setTimeout(()=>t.remove(),3500);}
+async function api(method,url,body){const r=await fetch(url,{method,credentials:'include',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});if(r.status===401)window.location.href='/admin';return r;}
+
+// ── Access check ──────────────────────────────────────────────────────────────
+async function loadPage() {
+  if (window._user.role !== 'super_admin') {
+    document.getElementById('access-denied').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('users-content').classList.remove('hidden');
+  document.getElementById('createUserBtn').style.display = '';
+  await loadUsers();
+}
+
+// ── Load users ────────────────────────────────────────────────────────────────
+async function loadUsers() {
+  const tbody = document.getElementById('users-tbody');
+  tbody.innerHTML = '<tr><td colspan="8" class="text-center" style="padding:40px"><span class="spinner"></span></td></tr>';
+  try {
+    const r = await api('GET', '/api/users');
+    const data = await r.json();
+    _users = Array.isArray(data) ? data : (data.users ?? data.data ?? []);
+    renderTable();
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding:40px">Failed to load users.</td></tr>';
+    toast('Failed to load users', 'error');
+  }
+}
+
+// ── Render table ──────────────────────────────────────────────────────────────
+function renderTable() {
+  const search = document.getElementById('f-search').value.toLowerCase().trim();
+  const role   = document.getElementById('f-role').value;
+  const active = document.getElementById('f-active').value;
+  const myId   = window._user?.id;
+
+  const filtered = _users.filter(u => {
+    const n  = (u.full_name ?? u.name ?? '').toLowerCase();
+    const un = (u.username ?? '').toLowerCase();
+    const em = (u.email ?? '').toLowerCase();
+    const ok = !search || n.includes(search) || un.includes(search) || em.includes(search);
+    const rv = !role   || u.role === role;
+    const ia = u.is_active ?? u.active ?? 1;
+    const av = active === '' || (active === '1' ? !!ia : !ia);
+    return ok && rv && av;
+  });
+
+  document.getElementById('count-lbl').textContent = `${filtered.length} user${filtered.length!==1?'s':''}`;
+
+  const tbody = document.getElementById('users-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:40px">
+      ${_users.length===0 ? 'No users found.' : 'No users match your filters.'}
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(u => {
+    const isActive = !!(u.is_active ?? u.active ?? 1);
+    const twoFa    = !!(u.totp_enabled ?? u.two_fa_enabled ?? u['2fa_enabled'] ?? false);
+    const isSelf   = u.id === myId;
+    return `<tr>
+      <td>
+        <strong>${esc(u.full_name ?? u.name ?? '—')}</strong>
+        ${isSelf ? ' <span class="badge badge-info" style="font-size:10px;vertical-align:middle;">You</span>' : ''}
+      </td>
+      <td><code style="font-size:12px;color:var(--gray)">${esc(u.username ?? '—')}</code></td>
+      <td>${esc(u.email ?? '—')}</td>
+      <td>${roleBadge(u.role ?? 'viewer')}</td>
+      <td>
+        ${twoFa
+          ? '<span class="tfa-on" title="2FA enabled">&#10003; On</span>'
+          : '<span class="tfa-off" title="2FA not set up">&#8212; Off</span>'}
+      </td>
+      <td>
+        <div class="tog-wrap">
+          <label class="tog" title="${isActive?'Click to deactivate':'Click to activate'}">
+            <input type="checkbox" ${isActive?'checked':''} ${isSelf?'disabled title="Cannot deactivate yourself"':''}
+              onchange="toggleActive(${u.id},this.checked)">
+            <span class="tog-sl"></span>
+          </label>
+          <span class="tog-lbl">${isActive?'Active':'Inactive'}</span>
+        </div>
+      </td>
+      <td>${fmtDT(u.last_login ?? u.lastLogin)}</td>
+      <td>
+        <div class="acts">
+          <button class="btn btn-outline btn-sm" onclick="openEdit(${u.id})">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Edit
+          </button>
+          <button class="btn btn-warning btn-sm" onclick="openReset(${u.id},'${esc(u.full_name??u.name??'')}')">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Reset PW
+          </button>
+          ${!isSelf ? `<button class="btn btn-danger btn-sm" onclick="confirmDeactivate(${u.id},'${esc(u.full_name??u.name??'')}',${isActive})">
+            ${isActive?'Deactivate':'Activate'}
+          </button>` : ''}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Filter listeners ──────────────────────────────────────────────────────────
+document.getElementById('f-search').addEventListener('input', renderTable);
+document.getElementById('f-role').addEventListener('change', renderTable);
+document.getElementById('f-active').addEventListener('change', renderTable);
+
+// ── Create User ───────────────────────────────────────────────────────────────
+document.getElementById('createUserBtn').onclick = () => {
+  ['cu-name','cu-username','cu-email','cu-password','cu-confirm'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cu-role').value = 'viewer';
+  clearErr('cu-err');
+  openModal('create-modal');
+};
+
+document.getElementById('cu-save-btn').onclick = async () => {
+  clearErr('cu-err');
+  const name     = document.getElementById('cu-name').value.trim();
+  const username = document.getElementById('cu-username').value.trim();
+  const email    = document.getElementById('cu-email').value.trim();
+  const role     = document.getElementById('cu-role').value;
+  const pw       = document.getElementById('cu-password').value;
+  const confirm  = document.getElementById('cu-confirm').value;
+  if (!name||!username||!email||!pw) return showErr('cu-err','All fields are required.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('cu-err','Enter a valid email.');
+  if (pw.length < 8) return showErr('cu-err','Password must be at least 8 characters.');
+  if (pw !== confirm) return showErr('cu-err','Passwords do not match.');
+  const btn = document.getElementById('cu-save-btn');
+  btn.disabled=true; btn.textContent='Creating…';
+  try {
+    const r = await api('POST','/api/users',{full_name:name,username,email,role,password:pw});
+    const d = await r.json();
+    if (!r.ok||d.error) return showErr('cu-err', d.error??d.message??'Failed to create user.');
+    toast('User created successfully');
+    closeModal('create-modal');
+    await loadUsers();
+  } catch(e){ showErr('cu-err','An error occurred. Please try again.'); }
+  finally { btn.disabled=false; btn.textContent='Create User'; }
+};
+
+// ── Edit User ─────────────────────────────────────────────────────────────────
+function openEdit(id) {
+  const u = _users.find(u=>u.id===id);
+  if (!u) return;
+  _editId = id;
+  document.getElementById('eu-id').value    = id;
+  document.getElementById('eu-name').value  = u.full_name ?? u.name ?? '';
+  document.getElementById('eu-email').value = u.email ?? '';
+  document.getElementById('eu-role').value  = u.role ?? 'viewer';
+  const isActive = !!(u.is_active ?? u.active ?? 1);
+  document.getElementById('eu-active').checked = isActive;
+  document.getElementById('eu-active-lbl').textContent = isActive ? 'Active' : 'Inactive';
+  clearErr('eu-err');
+  // Show/hide deactivate button based on self
+  const isSelf = id === window._user?.id;
+  const deactBtn = document.getElementById('eu-deactivate-btn');
+  if (isSelf) { deactBtn.style.display='none'; }
+  else {
+    deactBtn.style.display='';
+    deactBtn.textContent = isActive ? 'Deactivate User' : 'Activate User';
+    deactBtn.className   = isActive ? 'btn btn-danger btn-sm' : 'btn btn-success btn-sm';
+    deactBtn.style.marginRight = 'auto';
+  }
+  openModal('edit-modal');
+}
+
+document.getElementById('eu-active').addEventListener('change', function(){
+  document.getElementById('eu-active-lbl').textContent = this.checked ? 'Active' : 'Inactive';
+});
+
+document.getElementById('eu-save-btn').onclick = async () => {
+  clearErr('eu-err');
+  const name   = document.getElementById('eu-name').value.trim();
+  const email  = document.getElementById('eu-email').value.trim();
+  const role   = document.getElementById('eu-role').value;
+  const active = document.getElementById('eu-active').checked;
+  if (!name||!email) return showErr('eu-err','Name and email are required.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showErr('eu-err','Enter a valid email.');
+  const btn = document.getElementById('eu-save-btn');
+  btn.disabled=true; btn.textContent='Saving…';
+  try {
+    const r = await api('PUT',`/api/users/${_editId}`,{full_name:name,email,role,is_active:active?1:0});
+    const d = await r.json();
+    if (!r.ok||d.error) return showErr('eu-err',d.error??d.message??'Failed to save.');
+    toast('User updated');
+    closeModal('edit-modal');
+    _editId=null;
+    await loadUsers();
+  } catch(e){ showErr('eu-err','An error occurred.'); }
+  finally { btn.disabled=false; btn.textContent='Save Changes'; }
+};
+
+document.getElementById('eu-reset-pw-btn').onclick = () => {
+  const u = _users.find(u=>u.id===_editId);
+  closeModal('edit-modal');
+  openReset(_editId, u?.full_name ?? u?.name ?? '');
+};
+
+document.getElementById('eu-deactivate-btn').onclick = () => {
+  const u = _users.find(u=>u.id===_editId);
+  if (!u) return;
+  const isActive = !!(u.is_active ?? u.active ?? 1);
+  closeModal('edit-modal');
+  confirmDeactivate(_editId, u.full_name ?? u.name ?? '', isActive);
+};
+
+// ── Reset Password ────────────────────────────────────────────────────────────
+function openReset(id, name) {
+  _resetId = id;
+  document.getElementById('rp-username').textContent = name;
+  document.getElementById('rp-pw').value      = '';
+  document.getElementById('rp-confirm').value = '';
+  clearErr('rp-err');
+  openModal('reset-modal');
+}
+
+document.getElementById('rp-save-btn').onclick = async () => {
+  clearErr('rp-err');
+  const pw      = document.getElementById('rp-pw').value;
+  const confirm = document.getElementById('rp-confirm').value;
+  if (!pw) return showErr('rp-err','Enter a new password.');
+  if (pw.length < 8) return showErr('rp-err','Password must be at least 8 characters.');
+  if (pw !== confirm) return showErr('rp-err','Passwords do not match.');
+  const btn = document.getElementById('rp-save-btn');
+  btn.disabled=true; btn.textContent='Resetting…';
+  try {
+    const r = await api('POST',`/api/users/${_resetId}/reset-password`,{password:pw});
+    // Fallback: some servers use PUT
+    let d;
+    if (r.status === 404) {
+      const r2 = await api('PUT',`/api/users/${_resetId}`,{password:pw});
+      d = await r2.json();
+      if (!r2.ok||d.error) return showErr('rp-err',d.error??'Failed to reset password.');
+    } else {
+      d = await r.json();
+      if (!r.ok||d.error) return showErr('rp-err',d.error??'Failed to reset password.');
+    }
+    toast('Password reset successfully');
+    closeModal('reset-modal');
+    _resetId = null;
+  } catch(e){ showErr('rp-err','An error occurred.'); }
+  finally { btn.disabled=false; btn.textContent='Reset Password'; }
+};
+
+// ── Toggle active (inline) ────────────────────────────────────────────────────
+async function toggleActive(id, state) {
+  try {
+    const r = await api('PUT',`/api/users/${id}`,{is_active:state?1:0});
+    const d = await r.json();
+    if (!r.ok||d.error) { toast(d.error??'Update failed','error'); await loadUsers(); return; }
+    const u = _users.find(u=>u.id===id);
+    if (u) { u.is_active = state?1:0; u.active = state?1:0; }
+    toast(state?'User activated':'User deactivated');
+    renderTable();
+  } catch(e){ toast('Failed to update','error'); await loadUsers(); }
+}
+
+// ── Deactivate/Activate confirm ───────────────────────────────────────────────
+function confirmDeactivate(id, name, isActive) {
+  const action = isActive ? 'deactivate' : 'activate';
+  openConfirm(
+    isActive ? 'Deactivate User' : 'Activate User',
+    `Are you sure you want to ${action} "${name}"?`,
+    async () => {
+      const r = await api('PUT',`/api/users/${id}`,{is_active:isActive?0:1});
+      const d = await r.json();
+      if (!r.ok||d.error){ toast(d.error??'Failed','error'); return; }
+      toast(`User ${action}d`);
+      await loadUsers();
+    }
+  );
+}
+
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+function openConfirm(title, msg, cb) {
+  document.getElementById('conf-title').textContent = title;
+  document.getElementById('conf-msg').textContent   = msg;
+  _confirmCb = cb;
+  openModal('confirm-modal');
+}
+document.getElementById('conf-ok').onclick = async () => {
+  if (!_confirmCb) { closeModal('confirm-modal'); return; }
+  const btn = document.getElementById('conf-ok');
+  btn.disabled=true; btn.textContent='Processing…';
+  await _confirmCb();
+  btn.disabled=false; btn.textContent='Confirm';
+  closeModal('confirm-modal');
+  _confirmCb = null;
+};
+
+// Backdrop close
+['create-modal','edit-modal','reset-modal','confirm-modal'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',e=>{ if(e.target===document.getElementById(id)) closeModal(id); });
+});
+
+init();
+</script>
+</body>
+</html>
