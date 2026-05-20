@@ -435,3 +435,46 @@ INSERT OR IGNORE INTO email_templates(code, name, subject, body_html, variables)
   ('access_request_rejected', 'Exam Access Request Update', 'Update on your access request: {{exam_title}}',
    '<p>Dear {{candidate_name}},</p><p>Thank you for your interest in <strong>{{exam_title}}</strong>.</p><p>Unfortunately your access request could not be approved at this time.</p><p>If you believe this is an error please contact your administrator.</p><p>Regards,<br>{{platform_name}} Team</p>',
    '["candidate_name","exam_title"]');
+
+-- 24. Email Profiles (multi-account)
+CREATE TABLE IF NOT EXISTS email_profiles (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  provider TEXT DEFAULT 'smtp' CHECK(provider IN ('azure_graph','smtp')),
+  tenant_id TEXT,
+  client_id TEXT,
+  client_secret TEXT,
+  from_email TEXT,
+  from_name TEXT,
+  reply_to TEXT,
+  smtp_host TEXT,
+  smtp_port INTEGER,
+  smtp_user TEXT,
+  smtp_pass TEXT,
+  smtp_secure INTEGER DEFAULT 1,
+  is_default INTEGER DEFAULT 0,
+  is_active INTEGER DEFAULT 1,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Migrate existing email_config row → profiles (safe: INSERT OR IGNORE on id=1)
+INSERT OR IGNORE INTO email_profiles(id, name, provider, tenant_id, client_id, client_secret, from_email, from_name, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, is_default, is_active)
+SELECT 1, COALESCE(from_name,'Default'), provider, tenant_id, client_id, client_secret, from_email, from_name, smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, 1, 1
+FROM email_config ORDER BY id DESC LIMIT 1;
+
+-- 25. Email Routing (purpose → profile mapping)
+CREATE TABLE IF NOT EXISTS email_routing (
+  purpose TEXT PRIMARY KEY,
+  profile_id INTEGER REFERENCES email_profiles(id) ON DELETE SET NULL,
+  label TEXT NOT NULL
+);
+
+INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('access_approval', 'Access Request Approved');
+INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('access_rejection', 'Access Request Rejected');
+INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('user_onboarding', 'New User Welcome');
+INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('exam_invitation', 'Exam Link Delivery');
+INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('password_reset', 'Password Reset');
+INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('system', 'System Notifications');
+
+ALTER TABLE email_log ADD COLUMN profile_id INTEGER REFERENCES email_profiles(id);

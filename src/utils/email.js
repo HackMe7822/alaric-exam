@@ -2,10 +2,36 @@ const nodemailer = require('nodemailer');
 const axios = require('axios');
 const { getDb } = require('../../database/index');
 
-function getConfig() {
+// ── Profile resolution ────────────────────────────────────────────────────
+
+function getProfileForPurpose(purpose) {
   const db = getDb();
-  return db.prepare('SELECT * FROM email_config ORDER BY id DESC LIMIT 1').get();
+  // 1. Purpose-specific routing
+  if (purpose) {
+    const routed = db.prepare(
+      `SELECT p.* FROM email_profiles p
+       JOIN email_routing r ON r.profile_id = p.id
+       WHERE r.purpose = ? AND p.is_active = 1`
+    ).get(purpose);
+    if (routed) return { ...routed, _src: 'profile' };
+  }
+  // 2. Default active profile
+  const def = db.prepare(`SELECT * FROM email_profiles WHERE is_default=1 AND is_active=1`).get();
+  if (def) return { ...def, _src: 'profile' };
+  // 3. Any active profile
+  const any = db.prepare(`SELECT * FROM email_profiles WHERE is_active=1 ORDER BY id ASC LIMIT 1`).get();
+  if (any) return { ...any, _src: 'profile' };
+  // 4. Legacy fallback (email_config table)
+  const legacy = db.prepare(`SELECT * FROM email_config ORDER BY id DESC LIMIT 1`).get();
+  return legacy ? { ...legacy, _src: 'legacy' } : null;
 }
+
+// Keep backward-compat export for code that calls getConfig() directly
+function getConfig() {
+  return getProfileForPurpose(null);
+}
+
+// ── Transport helpers ────────────────────────────────────────────────────
 
 async function getAzureToken(cfg) {
   const url = `https://login.microsoftonline.com/${cfg.tenant_id}/oauth2/v2.0/token`;
@@ -55,9 +81,17 @@ async function sendViaSmtp(cfg, { to, subject, html, cc, bcc }) {
   });
 }
 
-async function sendEmail({ to, subject, html, cc, bcc, templateCode }) {
-  const cfg = getConfig();
-  if (!cfg || !cfg.is_active) throw new Error('Email not configured or not active');
+// ── Core send function ────────────────────────────────────────────────────
+
+async function sendEmail({ to, subject, html, cc, bcc, templateCode, purpose }) {
+  const cfg = getProfileForPurpose(purpose);
+
+  if (!cfg) throw new Error('No email account configured. Add one in Email Config → Email Accounts.');
+
+  // Legacy email_config still requires explicit is_active=1
+  if (cfg._src === 'legacy' && !cfg.is_active) {
+    throw new Error('Email not configured or not active. Go to Email Config and activate an account.');
+  }
 
   const db = getDb();
   let status = 'sent', errorMsg = null;
@@ -74,23 +108,30 @@ async function sendEmail({ to, subject, html, cc, bcc, templateCode }) {
     throw err;
   } finally {
     const toAddr = Array.isArray(to) ? to[0] : to;
-    db.prepare('INSERT INTO email_log(template_code, to_email, subject, html_body, from_email, status, error_message) VALUES(?,?,?,?,?,?,?)')
-      .run(templateCode || null, toAddr, subject, html || null, cfg.from_email || null, status, errorMsg);
+    const profileId = cfg._src === 'profile' ? cfg.id : null;
+    db.prepare(
+      `INSERT INTO email_log(template_code, to_email, subject, html_body, from_email, status, error_message, profile_id, sent_at)
+       VALUES(?,?,?,?,?,?,?,?,datetime('now'))`
+    ).run(templateCode || null, toAddr, subject, html || null, cfg.from_email || null, status, errorMsg, profileId);
   }
 }
+
+// ── Template helper ────────────────────────────────────────────────────────
 
 function renderTemplate(bodyHtml, vars) {
   return bodyHtml.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
 }
 
-async function sendTemplate(templateCode, to, vars = {}) {
+async function sendTemplate(templateCode, to, vars = {}, purpose) {
   const db = getDb();
   const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code=? AND is_active=1`).get(templateCode);
   if (!tmpl) throw new Error(`Template '${templateCode}' not found or inactive`);
   const html = renderTemplate(tmpl.body_html || '', { platform_name: 'Alaric Exam', year: new Date().getFullYear(), ...vars });
   const subject = renderTemplate(tmpl.subject || '', vars);
-  await sendEmail({ to, subject, html, templateCode });
+  await sendEmail({ to, subject, html, templateCode, purpose });
 }
+
+// ── Connection tester ─────────────────────────────────────────────────────
 
 async function testConnection(cfg) {
   if (cfg.provider === 'azure_graph') {
@@ -132,4 +173,4 @@ async function testConnection(cfg) {
   }
 }
 
-module.exports = { sendEmail, sendTemplate, testConnection, getConfig };
+module.exports = { sendEmail, sendTemplate, testConnection, getConfig, getProfileForPurpose };

@@ -48,51 +48,52 @@
 .provider-note svg { flex-shrink:0; margin-top:1px; }
 .config-actions { display:flex; align-items:center; gap:12px; margin-top:20px; padding-top:16px; border-top:1px solid var(--border); flex-wrap:wrap; }
 
-/* ── Setup guide panels ─────────────────────────────────────────────── */
-.setup-guide { margin-top:20px; border:1px solid #d0e7ff; border-radius:8px; overflow:hidden; }
-.setup-guide summary {
-  display:flex; align-items:center; gap:8px; padding:12px 16px;
-  background:#e8f4ff; cursor:pointer; font-weight:600; font-size:13px; color:#004080;
-  list-style:none; user-select:none;
+/* ── Email Accounts split-pane ────────────────────────────────────────── */
+.accounts-split { display:flex; gap:16px; align-items:flex-start; }
+.accounts-left { width:340px; flex-shrink:0; }
+.accounts-right { flex:1; min-width:0; }
+.profile-list { display:flex; flex-direction:column; gap:0; }
+.profile-row {
+  display:flex; align-items:center; gap:10px; padding:11px 14px;
+  border-bottom:1px solid var(--border); cursor:pointer; transition:background .15s;
 }
-.setup-guide summary::-webkit-details-marker { display:none; }
-.setup-guide summary .guide-arrow { margin-left:auto; transition:transform .2s; font-size:11px; color:#5599cc; }
-.setup-guide[open] summary .guide-arrow { transform:rotate(180deg); }
-.setup-guide-body { padding:18px 20px; background:#fff; border-top:1px solid #d0e7ff; }
-.guide-step { display:flex; gap:12px; margin-bottom:18px; }
-.guide-step:last-child { margin-bottom:0; }
-.guide-step-num {
-  flex-shrink:0; width:26px; height:26px; border-radius:50%;
-  background:var(--mid); color:#fff; font-size:12px; font-weight:700;
-  display:flex; align-items:center; justify-content:center;
+.profile-row:last-child { border-bottom:none; }
+.profile-row:hover { background:#f5f7fa; }
+.profile-row.selected { background:#e8f0fe; border-left:3px solid var(--mid); }
+.profile-avatar {
+  width:36px; height:36px; border-radius:50%; background:var(--mid);
+  color:#fff; font-size:15px; font-weight:700;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0;
 }
-.guide-step-content { flex:1; min-width:0; }
-.guide-step-content h4 { font-size:13px; font-weight:700; margin:0 0 6px; color:var(--dark); }
-.guide-step-content p { font-size:12.5px; color:#444; margin:0 0 8px; line-height:1.55; }
-.guide-step-content p:last-child { margin-bottom:0; }
-.guide-code {
-  background:#0d1117; color:#e6edf3; font-family:monospace; font-size:12px;
-  padding:10px 14px; border-radius:6px; margin:8px 0; white-space:pre; overflow-x:auto;
-  line-height:1.6; position:relative;
+.profile-row-info { flex:1; min-width:0; }
+.profile-row-name { font-weight:600; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.profile-row-email { font-size:11.5px; color:var(--gray); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.profile-row-badges { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.badge-provider {
+  font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px;
+  background:#e8f0fe; color:#1a56db; letter-spacing:.02em;
 }
-.guide-code .cmd-comment { color:#8b949e; }
-.guide-code .cmd-key { color:#79c0ff; }
-.guide-code .cmd-val { color:#a5d6ff; }
-.guide-code .cmd-flag { color:#ffa657; }
-.guide-table { width:100%; border-collapse:collapse; font-size:12.5px; margin:8px 0; }
-.guide-table th { background:#f0f6ff; padding:7px 12px; text-align:left; font-weight:600; color:#004080; border:1px solid #d0e7ff; }
-.guide-table td { padding:7px 12px; border:1px solid #e2ecf9; color:#333; vertical-align:top; }
-.guide-table td code { background:#f0f4ff; padding:1px 5px; border-radius:3px; font-size:11.5px; font-family:monospace; }
-.guide-note { display:flex; gap:8px; padding:10px 12px; border-radius:6px; font-size:12px; margin:8px 0; }
-.guide-note.warn  { background:#fff8e1; border:1px solid #ffe082; color:#7a5c00; }
-.guide-note.info  { background:#e8f4ff; border:1px solid #b3d9ff; color:#004080; }
-.guide-note.ok    { background:#e6f9ee; border:1px solid #a3e4bc; color:#1a5c35; }
-.guide-note.danger{ background:#fff2f2; border:1px solid #ffd0d0; color:#8b0000; }
-.smtp-provider-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; margin:10px 0; }
-.smtp-card { border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-.smtp-card-header { padding:10px 14px; font-weight:700; font-size:13px; display:flex; align-items:center; gap:8px; }
-.smtp-card-body { padding:10px 14px 12px; }
-.smtp-card-body .guide-table { margin:4px 0 0; }
+.badge-provider.azure { background:#e8edff; color:#3730a3; }
+.active-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.active-dot.on { background:#16a34a; }
+.active-dot.off { background:#dc2626; }
+.star-icon { color:#f59e0b; font-size:14px; line-height:1; }
+.profile-empty-state {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding:60px 30px; text-align:center; color:var(--gray);
+}
+.profile-empty-state svg { margin-bottom:14px; opacity:.4; }
+.profile-form-banner {
+  display:none; margin-bottom:14px; padding:10px 14px; border-radius:6px;
+  font-size:13px; font-weight:500;
+}
+.profile-form-banner.success { background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; display:block; }
+.profile-form-banner.error { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; display:block; }
+
+/* ── Email Routing section ────────────────────────────────────────────── */
+.routing-section { margin-top:20px; }
+.routing-purpose { font-family:monospace; font-size:12px; background:#f0f4ff; padding:2px 7px; border-radius:4px; color:#334; }
+.routing-desc { font-size:12.5px; color:#555; }
 </style>
 </head>
 <body>
@@ -129,414 +130,195 @@
   </div>
   <div id="page">
     <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('provider',this)">Provider Config</button>
+      <button class="tab-btn active" onclick="switchTab('provider',this)">Email Accounts</button>
       <button class="tab-btn" onclick="switchTab('templates',this)">Email Templates</button>
       <button class="tab-btn" onclick="switchTab('sendlog',this)">Send Log</button>
     </div>
 
-    <!-- Provider Config Tab -->
+    <!-- Email Accounts Tab -->
     <div id="tab-provider" class="tab-pane active">
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Email Provider</span>
-          <div id="providerActiveBadge"></div>
+
+      <!-- Split pane: left list + right form -->
+      <div class="accounts-split">
+
+        <!-- Left: profile list -->
+        <div class="accounts-left">
+          <div class="card" style="padding:0">
+            <div class="card-header" style="padding:12px 14px">
+              <span class="card-title">Accounts</span>
+              <button class="btn btn-primary btn-sm" onclick="newProfile()">
+                <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                New Account
+              </button>
+            </div>
+            <div class="profile-list" id="profileList">
+              <div class="text-center text-muted" style="padding:24px"><span class="spinner"></span></div>
+            </div>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label>Provider</label>
-          <div class="provider-toggle">
-            <button id="btn-azure" class="active" onclick="switchProvider('azure_graph')">Azure Graph API</button>
-            <button id="btn-smtp" onclick="switchProvider('smtp')">SMTP</button>
-          </div>
-        </div>
+        <!-- Right: profile form -->
+        <div class="accounts-right">
+          <div class="card" id="profileFormCard">
 
-        <!-- Azure Graph Section -->
-        <div id="section-azure_graph" class="provider-section active">
-          <div class="provider-note">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Token is obtained automatically from Microsoft Identity Platform using client credentials flow. No OAuth redirect or user consent needed.
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Tenant ID <span style="color:var(--danger)">*</span></label>
-              <input type="text" class="form-control" id="az-tenant-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+            <!-- Empty state -->
+            <div id="profileEmptyState" class="profile-empty-state">
+              <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.3" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              <p style="font-size:14px;font-weight:600;margin:0 0 6px">No account selected</p>
+              <p style="font-size:13px;margin:0">Select an account or create a new one</p>
             </div>
-            <div class="form-group">
-              <label>Client ID (Application ID) <span style="color:var(--danger)">*</span></label>
-              <input type="text" class="form-control" id="az-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Client Secret <span style="color:var(--danger)">*</span></label>
-            <input type="password" class="form-control" id="az-client-secret" placeholder="●●●●●●●● (enter to update)">
-            <small class="text-muted">Leave blank to keep the existing secret unchanged</small>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>From Email <span style="color:var(--danger)">*</span></label>
-              <input type="email" class="form-control" id="az-from-email" placeholder="noreply@yourdomain.com">
-            </div>
-            <div class="form-group">
-              <label>From Name</label>
-              <input type="text" class="form-control" id="az-from-name" placeholder="Alaric Exam">
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Reply-To</label>
-            <input type="email" class="form-control" id="az-reply-to" placeholder="support@yourdomain.com (optional)">
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Default CC <span class="text-muted" style="font-weight:400">(comma-separated)</span></label>
-              <input type="text" class="form-control" id="az-default-cc" placeholder="cc1@domain.com, cc2@domain.com">
-            </div>
-            <div class="form-group">
-              <label>Default BCC <span class="text-muted" style="font-weight:400">(comma-separated)</span></label>
-              <input type="text" class="form-control" id="az-default-bcc" placeholder="bcc@domain.com">
-            </div>
-          </div>
 
-          <!-- Azure Graph Setup Guide -->
-          <details class="setup-guide">
-            <summary>
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              Microsoft 365 / Azure Graph API — Setup Guide
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <div class="setup-guide-body">
-
-              <!-- Step 1 -->
-              <div class="guide-step">
-                <div class="guide-step-num">1</div>
-                <div class="guide-step-content">
-                  <h4>Register an Azure App &amp; get your credentials</h4>
-                  <p>Open <strong>Azure Portal</strong> → <em>Azure Active Directory</em> → <em>App registrations</em> → <strong>New registration</strong>.</p>
-                  <table class="guide-table">
-                    <tr><th>Field</th><th>Value</th></tr>
-                    <tr><td>Name</td><td><code>Alaric-Exam-Mail</code></td></tr>
-                    <tr><td>Supported account types</td><td>Accounts in this org directory only</td></tr>
-                    <tr><td>Redirect URI</td><td>Leave blank</td></tr>
-                  </table>
-                  <p style="margin-top:8px">After creating, copy <strong>Application (Client) ID</strong> and <strong>Directory (Tenant) ID</strong> — paste them in the fields above.</p>
-                  <p>Go to <em>Certificates &amp; secrets</em> → <em>New client secret</em> → copy the <strong>Value</strong> immediately (shown once only).</p>
-                </div>
+            <!-- Profile form (hidden until selected/new) -->
+            <div id="profileFormInner" style="display:none">
+              <div class="card-header">
+                <span class="card-title" id="profileFormTitle">New Account</span>
               </div>
+              <div style="padding:16px 20px">
+                <div id="profileFormBanner" class="profile-form-banner"></div>
 
-              <!-- Step 2 -->
-              <div class="guide-step">
-                <div class="guide-step-num">2</div>
-                <div class="guide-step-content">
-                  <h4>Grant Mail.Send API permission</h4>
-                  <p>In your app → <em>API permissions</em> → <em>Add a permission</em> → <em>Microsoft Graph</em> → <em>Application permissions</em>.</p>
-                  <table class="guide-table">
-                    <tr><th>Permission</th><th>Type</th><th>Why</th></tr>
-                    <tr><td><code>Mail.Send</code></td><td>Application</td><td>Required to send email on behalf of a mailbox</td></tr>
-                  </table>
-                  <p style="margin-top:8px">Click <strong>Grant admin consent</strong> — status must show a green checkmark.</p>
-                  <div class="guide-note warn">
-                    <span>⚠️</span>
-                    <span>Do <strong>not</strong> add <code>Mail.ReadWrite</code> or <code>Mail.Read</code> — only <code>Mail.Send</code> is needed and fewer permissions is safer.</span>
+                <div class="form-group">
+                  <label>Account Name <span style="color:var(--danger)">*</span></label>
+                  <input type="text" class="form-control" id="pf-name" placeholder="e.g. Primary SMTP, Microsoft 365">
+                </div>
+
+                <div class="form-group">
+                  <label>Provider</label>
+                  <div class="provider-toggle">
+                    <button id="pf-btn-smtp" class="active" onclick="switchProfileProvider('smtp')">SMTP</button>
+                    <button id="pf-btn-azure" onclick="switchProfileProvider('azure_graph')">Azure Graph</button>
                   </div>
                 </div>
-              </div>
 
-              <!-- Step 3 -->
-              <div class="guide-step">
-                <div class="guide-step-num">3</div>
-                <div class="guide-step-content">
-                  <h4>Create a Mail-Enabled Security Group (M365 Admin Center)</h4>
-                  <p>Open <a href="https://admin.microsoft.com" target="_blank" style="color:var(--mid)">admin.microsoft.com</a> → <em>Teams &amp; groups</em> → <em>Active teams &amp; groups</em> → <em>Security</em> → <strong>Add a security group</strong>.</p>
-                  <table class="guide-table">
-                    <tr><th>Field</th><th>Value</th></tr>
-                    <tr><td>Name</td><td><code>Alaric-Exam-Mail-Senders</code></td></tr>
-                    <tr><td>Description</td><td>Allowed mailbox for Alaric Exam email</td></tr>
-                    <tr><td>Type</td><td>Mail-enabled security group</td></tr>
-                  </table>
-                  <p style="margin-top:8px">Add <strong>only</strong> your From Email address (e.g. <code>noreply@yourdomain.onmicrosoft.com</code>) as the sole member.</p>
-                  <div class="guide-note danger">
-                    <span>🚫</span>
-                    <span>Do <strong>not</strong> add admin accounts or other users to this group — this group defines which mailbox the app is allowed to send from.</span>
+                <!-- SMTP fields -->
+                <div id="pf-section-smtp" class="provider-section active">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>SMTP Host <span style="color:var(--danger)">*</span></label>
+                      <input type="text" class="form-control" id="pf-smtp-host" placeholder="smtp.yourdomain.com">
+                    </div>
+                    <div class="form-group">
+                      <label>Port</label>
+                      <input type="number" class="form-control" id="pf-smtp-port" placeholder="587" value="587" min="1" max="65535">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Username</label>
+                      <input type="text" class="form-control" id="pf-smtp-username" placeholder="smtp-user@yourdomain.com">
+                    </div>
+                    <div class="form-group">
+                      <label>Password</label>
+                      <input type="password" class="form-control" id="pf-smtp-password" placeholder="••••••••">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>From Email <span style="color:var(--danger)">*</span></label>
+                      <input type="email" class="form-control" id="pf-smtp-from-email" placeholder="noreply@yourdomain.com">
+                    </div>
+                    <div class="form-group">
+                      <label>From Name</label>
+                      <input type="text" class="form-control" id="pf-smtp-from-name" placeholder="Alaric Exam">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-check">
+                      <input type="checkbox" id="pf-smtp-secure">
+                      <span>Use SSL/TLS (secure)</span>
+                    </label>
                   </div>
                 </div>
-              </div>
 
-              <!-- Step 4 -->
-              <div class="guide-step">
-                <div class="guide-step-num">4</div>
-                <div class="guide-step-content">
-                  <h4>Connect Exchange Online PowerShell (one-time setup)</h4>
-                  <p>Open <strong>PowerShell as Administrator</strong> and run:</p>
-                  <div class="guide-code"><span class="cmd-comment"># Install Exchange module (skip if already installed)</span>
-Install-Module ExchangeOnlineManagement
-<span class="cmd-comment"># Connect (login with Global Admin account)</span>
-Connect-ExchangeOnline</div>
-                  <p>Also install Microsoft Graph module to look up your group ID:</p>
-                  <div class="guide-code">Install-Module Microsoft.Graph -Scope CurrentUser -Force
-Connect-MgGraph -Scopes <span class="cmd-val">"Group.Read.All"</span>
-<span class="cmd-comment"># Verify the group — SecurityEnabled and MailEnabled must both be True</span>
-Get-MgGroup -Filter <span class="cmd-val">"displayName eq 'Alaric-Exam-Mail-Senders'"</span> | Select Id,DisplayName,MailEnabled,SecurityEnabled</div>
-                </div>
-              </div>
-
-              <!-- Step 5 -->
-              <div class="guide-step">
-                <div class="guide-step-num">5</div>
-                <div class="guide-step-content">
-                  <h4>Apply Application Access Policy (critical security lock)</h4>
-                  <p>This restricts your Azure app so it can <em>only</em> send from your designated mailbox — not from any mailbox in your tenant.</p>
-                  <div class="guide-code"><span class="cmd-comment"># Replace YOUR_APP_CLIENT_ID and YOUR_GROUP_EMAIL below</span>
-New-ApplicationAccessPolicy <span class="cmd-flag">`</span>
-  -AppId <span class="cmd-val">"YOUR_APP_CLIENT_ID"</span> <span class="cmd-flag">`</span>
-  -PolicyScopeGroupId <span class="cmd-val">"Alaric-Exam-Mail-Senders@yourdomain.onmicrosoft.com"</span> <span class="cmd-flag">`</span>
-  -AccessRight RestrictAccess <span class="cmd-flag">`</span>
-  -Description <span class="cmd-val">"Restrict Alaric Exam app to noreply mailbox only"</span></div>
-                </div>
-              </div>
-
-              <!-- Step 6 -->
-              <div class="guide-step">
-                <div class="guide-step-num">6</div>
-                <div class="guide-step-content">
-                  <h4>Verify the policy (do not skip)</h4>
-                  <p>Test that the allowed mailbox passes and a blocked mailbox fails:</p>
-                  <div class="guide-code"><span class="cmd-comment"># ✅ Should return AccessGranted : True</span>
-Test-ApplicationAccessPolicy <span class="cmd-flag">`</span>
-  -AppId <span class="cmd-val">"YOUR_APP_CLIENT_ID"</span> <span class="cmd-flag">`</span>
-  -Identity <span class="cmd-val">"noreply@yourdomain.onmicrosoft.com"</span>
-
-<span class="cmd-comment"># ❌ Should return AccessGranted : False</span>
-Test-ApplicationAccessPolicy <span class="cmd-flag">`</span>
-  -AppId <span class="cmd-val">"YOUR_APP_CLIENT_ID"</span> <span class="cmd-flag">`</span>
-  -Identity <span class="cmd-val">"admin@yourdomain.onmicrosoft.com"</span></div>
-                  <div class="guide-note ok">
-                    <span>✅</span>
-                    <span>If the allowed mailbox returns <code>AccessGranted : True</code> and the admin returns <code>AccessGranted : False</code> — your security setup is complete.</span>
+                <!-- Azure Graph fields -->
+                <div id="pf-section-azure_graph" class="provider-section">
+                  <div class="provider-note">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Token is obtained automatically via client credentials flow. No OAuth redirect needed.
                   </div>
-                  <p style="margin-top:8px">Once verified, paste your <strong>Tenant ID</strong>, <strong>Client ID</strong>, and <strong>Client Secret</strong> in the fields above, enter your From Email, and click <strong>Save Config</strong> then <strong>Activate</strong>.</p>
-                </div>
-              </div>
-
-            </div>
-          </details>
-        </div>
-
-        <!-- SMTP Section -->
-        <div id="section-smtp" class="provider-section">
-          <div class="form-row">
-            <div class="form-group">
-              <label>SMTP Host <span style="color:var(--danger)">*</span></label>
-              <input type="text" class="form-control" id="smtp-host" placeholder="smtp.yourdomain.com">
-            </div>
-            <div class="form-group">
-              <label>Port <span style="color:var(--danger)">*</span></label>
-              <input type="number" class="form-control" id="smtp-port" placeholder="587" min="1" max="65535">
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Username</label>
-              <input type="text" class="form-control" id="smtp-username" placeholder="smtp-user@yourdomain.com">
-            </div>
-            <div class="form-group">
-              <label>Password</label>
-              <input type="password" class="form-control" id="smtp-password" placeholder="●●●●●●●● (enter to update)">
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-check">
-              <input type="checkbox" id="smtp-secure">
-              <span>Use SSL/TLS (secure)</span>
-            </label>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>From Email <span style="color:var(--danger)">*</span></label>
-              <input type="email" class="form-control" id="smtp-from-email" placeholder="noreply@yourdomain.com">
-            </div>
-            <div class="form-group">
-              <label>From Name</label>
-              <input type="text" class="form-control" id="smtp-from-name" placeholder="Alaric Exam">
-            </div>
-          </div>
-
-          <!-- SMTP Setup Guide -->
-          <details class="setup-guide">
-            <summary>
-              <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              SMTP Setup Guide — Gmail, Outlook, and more
-              <span class="guide-arrow">▼</span>
-            </summary>
-            <div class="setup-guide-body">
-              <p style="font-size:13px;color:#444;margin:0 0 16px">Use these settings for your email provider. Enter the values into the fields above.</p>
-
-              <div class="smtp-provider-grid">
-
-                <!-- Gmail -->
-                <div class="smtp-card">
-                  <div class="smtp-card-header" style="background:#fce8e6;color:#c5221f;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M20 18V6l-8 5-8-5v12h16z" fill="#ea4335"/><path d="M4 6l8 5 8-5H4z" fill="#fbbc04"/></svg>
-                    Gmail
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>Tenant ID <span style="color:var(--danger)">*</span></label>
+                      <input type="text" class="form-control" id="pf-az-tenant-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                      <label>Client ID <span style="color:var(--danger)">*</span></label>
+                      <input type="text" class="form-control" id="pf-az-client-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx">
+                    </div>
                   </div>
-                  <div class="smtp-card-body">
-                    <table class="guide-table">
-                      <tr><th>Setting</th><th>Value</th></tr>
-                      <tr><td>SMTP Host</td><td><code>smtp.gmail.com</code></td></tr>
-                      <tr><td>Port</td><td><code>587</code> (TLS) or <code>465</code> (SSL)</td></tr>
-                      <tr><td>SSL/TLS</td><td>Yes (port 465) or STARTTLS (port 587)</td></tr>
-                      <tr><td>Username</td><td>Your full Gmail address</td></tr>
-                      <tr><td>Password</td><td>App Password (not your login password)</td></tr>
-                    </table>
-                    <div class="guide-note warn" style="margin-top:10px">
-                      <span>⚠️</span>
-                      <div><strong>App Password required.</strong> Gmail blocks regular passwords for SMTP. Go to <strong>Google Account → Security → 2-Step Verification → App passwords</strong> and create one for "Mail". Use that 16-character password here.</div>
+                  <div class="form-group">
+                    <label>Client Secret <span style="color:var(--danger)">*</span></label>
+                    <input type="password" class="form-control" id="pf-az-client-secret" placeholder="••••••••">
+                    <small class="text-muted">Leave blank to keep existing secret unchanged</small>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>From Email <span style="color:var(--danger)">*</span></label>
+                      <input type="email" class="form-control" id="pf-az-from-email" placeholder="noreply@yourdomain.com">
+                    </div>
+                    <div class="form-group">
+                      <label>From Name</label>
+                      <input type="text" class="form-control" id="pf-az-from-name" placeholder="Alaric Exam">
                     </div>
                   </div>
                 </div>
 
-                <!-- Outlook / Microsoft 365 -->
-                <div class="smtp-card">
-                  <div class="smtp-card-header" style="background:#e8f0fe;color:#0067b8;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="16" rx="2" fill="#0067b8"/><path d="M2 8l10 6 10-6" stroke="#fff" stroke-width="1.5"/></svg>
-                    Outlook / Microsoft 365
-                  </div>
-                  <div class="smtp-card-body">
-                    <table class="guide-table">
-                      <tr><th>Setting</th><th>Value</th></tr>
-                      <tr><td>SMTP Host</td><td><code>smtp.office365.com</code></td></tr>
-                      <tr><td>Port</td><td><code>587</code></td></tr>
-                      <tr><td>SSL/TLS</td><td>STARTTLS (leave SSL checkbox unchecked)</td></tr>
-                      <tr><td>Username</td><td>Your full Outlook/M365 email</td></tr>
-                      <tr><td>Password</td><td>Your account password or App Password</td></tr>
-                    </table>
-                    <div class="guide-note info" style="margin-top:10px">
-                      <span>💡</span>
-                      <div>If your org uses MFA, you may need to create an <strong>App Password</strong> or use the Azure Graph option above (recommended for Microsoft 365).</div>
-                    </div>
-                  </div>
+                <!-- Action row -->
+                <div class="config-actions" style="margin-top:16px;padding-top:14px">
+                  <button class="btn btn-primary" onclick="saveProfile()">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                    Save
+                  </button>
+                  <button class="btn btn-outline btn-sm" id="pfTestBtn" onclick="testProfile()" style="display:none">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10a2 2 0 01-2-2.18v-3a2 2 0 012.44-1.95l3 .68a2 2 0 011.52 1.36l.76 2.3a2 2 0 01-.46 2l-.61.61a16 16 0 006.11 6.11l.61-.61a2 2 0 012-.46l2.3.76a2 2 0 011.36 1.52z"/></svg>
+                    Test Connection
+                  </button>
+                  <button class="btn btn-outline btn-sm" id="pfDefaultBtn" onclick="setDefaultProfile()" style="display:none">
+                    &#9733; Set as Default
+                  </button>
+                  <button class="btn btn-outline btn-sm" id="pfToggleBtn" onclick="toggleProfileActive()" style="display:none">
+                    Enable/Disable
+                  </button>
+                  <button class="btn btn-danger btn-sm" id="pfDeleteBtn" onclick="deleteProfile()" style="display:none">
+                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+                    Delete
+                  </button>
                 </div>
-
-                <!-- Yahoo Mail -->
-                <div class="smtp-card">
-                  <div class="smtp-card-header" style="background:#f3eeff;color:#5f01d1;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#5f01d1"/><path d="M8 7l4 6 4-6M12 13v4" stroke="#fff" stroke-width="1.8"/></svg>
-                    Yahoo Mail
-                  </div>
-                  <div class="smtp-card-body">
-                    <table class="guide-table">
-                      <tr><th>Setting</th><th>Value</th></tr>
-                      <tr><td>SMTP Host</td><td><code>smtp.mail.yahoo.com</code></td></tr>
-                      <tr><td>Port</td><td><code>587</code> or <code>465</code></td></tr>
-                      <tr><td>SSL/TLS</td><td>Yes</td></tr>
-                      <tr><td>Username</td><td>Your Yahoo email address</td></tr>
-                      <tr><td>Password</td><td>App Password</td></tr>
-                    </table>
-                    <div class="guide-note warn" style="margin-top:10px">
-                      <span>⚠️</span>
-                      <div>Go to <strong>Yahoo Account Security → Generate app password</strong> to get a password for use here.</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Amazon SES -->
-                <div class="smtp-card">
-                  <div class="smtp-card-header" style="background:#fff4e8;color:#c45900;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="2" y="6" width="20" height="12" rx="2" fill="#ff9900"/><path d="M6 10l6 4 6-4" stroke="#fff" stroke-width="1.5"/></svg>
-                    Amazon SES
-                  </div>
-                  <div class="smtp-card-body">
-                    <table class="guide-table">
-                      <tr><th>Setting</th><th>Value</th></tr>
-                      <tr><td>SMTP Host</td><td><code>email-smtp.us-east-1.amazonaws.com</code> <span style="font-size:11px;color:#888">(change region)</span></td></tr>
-                      <tr><td>Port</td><td><code>587</code> or <code>465</code></td></tr>
-                      <tr><td>SSL/TLS</td><td>Yes</td></tr>
-                      <tr><td>Username</td><td>SES SMTP username (from IAM)</td></tr>
-                      <tr><td>Password</td><td>SES SMTP password (from IAM)</td></tr>
-                    </table>
-                    <div class="guide-note info" style="margin-top:10px">
-                      <span>💡</span>
-                      <div>Generate SMTP credentials in <strong>AWS Console → SES → SMTP Settings → Create SMTP Credentials</strong>. Verify your From Email domain in SES before sending.</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- SendGrid -->
-                <div class="smtp-card">
-                  <div class="smtp-card-header" style="background:#e8f9f5;color:#1a7f64;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#1a7f64"/><path d="M8 12h8M12 8v8" stroke="#fff" stroke-width="2"/></svg>
-                    SendGrid
-                  </div>
-                  <div class="smtp-card-body">
-                    <table class="guide-table">
-                      <tr><th>Setting</th><th>Value</th></tr>
-                      <tr><td>SMTP Host</td><td><code>smtp.sendgrid.net</code></td></tr>
-                      <tr><td>Port</td><td><code>587</code></td></tr>
-                      <tr><td>SSL/TLS</td><td>STARTTLS (SSL checkbox unchecked)</td></tr>
-                      <tr><td>Username</td><td><code>apikey</code> (literally the word "apikey")</td></tr>
-                      <tr><td>Password</td><td>Your SendGrid API Key</td></tr>
-                    </table>
-                    <div class="guide-note info" style="margin-top:10px">
-                      <span>💡</span>
-                      <div>Create an API key in <strong>SendGrid Dashboard → Settings → API Keys</strong> with <em>Mail Send</em> permission only.</div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Custom / Other -->
-                <div class="smtp-card">
-                  <div class="smtp-card-header" style="background:#f0f0f0;color:#333;">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-                    Custom / Other Provider
-                  </div>
-                  <div class="smtp-card-body">
-                    <table class="guide-table">
-                      <tr><th>Setting</th><th>Notes</th></tr>
-                      <tr><td>SMTP Host</td><td>Get from your provider's docs (e.g. <code>mail.yourdomain.com</code>)</td></tr>
-                      <tr><td>Port</td><td><code>587</code> for STARTTLS · <code>465</code> for SSL · <code>25</code> for unencrypted</td></tr>
-                      <tr><td>SSL/TLS</td><td>Check the box if using port 465; leave unchecked for 587</td></tr>
-                      <tr><td>Username</td><td>Usually your full email address</td></tr>
-                      <tr><td>Password</td><td>Email account password or dedicated SMTP password</td></tr>
-                    </table>
-                    <div class="guide-note info" style="margin-top:10px">
-                      <span>💡</span>
-                      <div>After saving, use <strong>Test Connection</strong> to verify credentials, then <strong>Send Test Email</strong> to confirm delivery end-to-end.</div>
-                    </div>
-                  </div>
-                </div>
-
-              </div><!-- /smtp-provider-grid -->
+              </div>
             </div>
-          </details>
-        </div>
-
-        <div class="config-actions">
-          <button class="btn btn-primary" onclick="saveEmailConfig()">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save Config
-          </button>
-          <button class="btn btn-success" onclick="toggleActivate()" id="activateBtn">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
-            <span id="activateBtnLabel">Activate</span>
-          </button>
-          <button class="btn btn-outline btn-sm" onclick="testEmailConnection(event)">
-            <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10a2 2 0 01-2-2.18v-3a2 2 0 012.44-1.95l3 .68a2 2 0 011.52 1.36l.76 2.3a2 2 0 01-.46 2l-.61.61a16 16 0 006.11 6.11l.61-.61a2 2 0 012-.46l2.3.76a2 2 0 011.36 1.52z"/></svg>
-            Test Connection
-          </button>
-        </div>
-
-        <!-- Send Test Email row -->
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-          <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Send Test Email</label>
-          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <input type="email" id="testEmailAddr" class="form-control" placeholder="recipient@example.com" style="max-width:280px;flex:1">
-            <button class="btn btn-outline btn-sm" onclick="sendTestEmail(event)" style="white-space:nowrap">
-              <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              Send Test Email
-            </button>
           </div>
-          <small class="text-muted" style="display:block;margin-top:4px">Sends a real email using your saved config to verify delivery end-to-end. Config must be saved first.</small>
         </div>
       </div>
-    </div>
+
+      <!-- Email Routing section (full width, below split) -->
+      <div class="routing-section">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Email Routing</span>
+          </div>
+          <div style="padding:0 20px 6px;font-size:13px;color:var(--gray)">
+            Choose which email account sends each type of notification. Leave as Default to use the default account.
+          </div>
+          <div class="tbl-wrap">
+            <table id="routingTable">
+              <thead>
+                <tr>
+                  <th>Purpose</th>
+                  <th>Description</th>
+                  <th style="width:220px">Send Via</th>
+                </tr>
+              </thead>
+              <tbody id="routingTableBody">
+                <tr><td colspan="3" class="text-center text-muted" style="padding:20px"><span class="spinner"></span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div style="padding:12px 20px;border-top:1px solid var(--border)">
+            <button class="btn btn-primary btn-sm" onclick="saveRouting()">Save Routing</button>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-provider -->
 
     <!-- Templates Tab -->
     <div id="tab-templates" class="tab-pane">
@@ -716,6 +498,22 @@ let _previewTimer = null;
 let _templates = {};
 let _logEntries = [];
 
+// ── Email Accounts state ────────────────────────────────────────────────────
+let _profiles = [];
+let _selectedProfileId = null;
+let _isNewProfile = false;
+let _currentProfileProvider = 'smtp';
+let _routing = {};
+
+const ROUTING_META = {
+  access_approval:    'Sent when an access request is approved',
+  access_rejection:   'Sent when an access request is rejected',
+  user_onboarding:    'Welcome email sent to new users',
+  exam_invitation:    'Invitation sent to candidates for an exam',
+  password_reset:     'Password reset / OTP email',
+  system:             'System alerts and admin notifications',
+};
+
 const TEMPLATE_VARS = {
   candidate_name: 'Full name of the candidate',
   candidate_email: 'Candidate email address',
@@ -758,149 +556,317 @@ function switchTab(name, el) {
   document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'provider') loadEmailAccounts();
   if (name === 'templates') loadTemplates();
   if (name === 'sendlog') loadSendLog();
 }
 
 // ── Page init ──────────────────────────────────────────────────────────────
 async function loadPage() {
-  await loadEmailConfig();
+  await loadEmailAccounts();
 }
 
-async function loadEmailConfig() {
-  const data = await api('GET', '/api/settings/email-config');
-  if (!data) return;
-  _currentProvider = data.provider || 'azure_graph';
-  switchProvider(_currentProvider, false);
-  // Azure
-  if (data.tenant_id) document.getElementById('az-tenant-id').value = data.tenant_id;
-  if (data.client_id) document.getElementById('az-client-id').value = data.client_id;
-  if (data.from_email) document.getElementById('az-from-email').value = data.from_email;
-  if (data.from_name) document.getElementById('az-from-name').value = data.from_name;
-  if (data.reply_to) document.getElementById('az-reply-to').value = data.reply_to;
-  if (data.default_cc) document.getElementById('az-default-cc').value = Array.isArray(data.default_cc) ? data.default_cc.join(', ') : data.default_cc;
-  if (data.default_bcc) document.getElementById('az-default-bcc').value = Array.isArray(data.default_bcc) ? data.default_bcc.join(', ') : data.default_bcc;
-  // SMTP
-  if (data.smtp_host) document.getElementById('smtp-host').value = data.smtp_host;
-  if (data.smtp_port) document.getElementById('smtp-port').value = data.smtp_port;
-  if (data.smtp_user) document.getElementById('smtp-username').value = data.smtp_user;
-  if (data.smtp_secure !== undefined) document.getElementById('smtp-secure').checked = !!data.smtp_secure;
-  if (data.provider === 'smtp' && data.from_email) document.getElementById('smtp-from-email').value = data.from_email;
-  if (data.provider === 'smtp' && data.from_name) document.getElementById('smtp-from-name').value = data.from_name;
-  // Status badge + activate button state
-  updateStatusBadge(data.is_active, data.provider);
-  setActivateBtn(!!data.is_active);
+// ── Email Accounts ──────────────────────────────────────────────────────────
+async function loadEmailAccounts() {
+  const [profilesData, routingData] = await Promise.all([
+    api('GET', '/api/settings/email-profiles'),
+    api('GET', '/api/settings/email-routing'),
+  ]);
+  if (!profilesData) return;
+  _profiles = Array.isArray(profilesData) ? profilesData : (profilesData.profiles || profilesData.data || []);
+  _routing = routingData && !routingData.error ? (routingData.routing || routingData || {}) : {};
+  renderProfileList(_profiles);
+  renderRoutingTable(_routing, _profiles);
+
+  // Update topbar badge from default profile
+  const def = _profiles.find(p => p.is_default);
+  if (def) {
+    updateStatusBadge(def.is_active, def.provider);
+  } else if (_profiles.length === 0) {
+    const el = document.getElementById('emailStatusBadge');
+    el.innerHTML = '<span class="status-badge-inactive"><span class="status-dot dot-inactive"></span>No accounts configured</span>';
+  }
 }
 
+function renderProfileList(profiles) {
+  const el = document.getElementById('profileList');
+  if (!profiles.length) {
+    el.innerHTML = '<div class="text-center text-muted" style="padding:24px;font-size:13px">No accounts yet.<br>Click "New Account" to add one.</div>';
+    return;
+  }
+  el.innerHTML = profiles.map(p => {
+    const initial = (p.name || p.account_name || '?')[0].toUpperCase();
+    const name = esc(p.name || p.account_name || 'Unnamed');
+    const provider = (p.provider || 'smtp').toLowerCase();
+    const provLabel = provider === 'azure_graph' ? 'Azure' : 'SMTP';
+    const provClass = provider === 'azure_graph' ? 'azure' : '';
+    const fromEmail = esc(p.from_email || '');
+    const isDefault = p.is_default;
+    const isActive = p.is_active || p.active;
+    const isSelected = p.id === _selectedProfileId;
+    return `<div class="profile-row${isSelected ? ' selected' : ''}" onclick="selectProfile(${p.id})">
+      <div class="profile-avatar">${initial}</div>
+      <div class="profile-row-info">
+        <div class="profile-row-name">${name}</div>
+        <div class="profile-row-email">${fromEmail}</div>
+      </div>
+      <div class="profile-row-badges">
+        <span class="badge-provider ${provClass}">${provLabel}</span>
+        ${isDefault ? '<span class="star-icon" title="Default account">&#9733;</span>' : ''}
+        <span class="active-dot ${isActive ? 'on' : 'off'}" title="${isActive ? 'Active' : 'Inactive'}"></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function selectProfile(id) {
+  _selectedProfileId = id;
+  _isNewProfile = false;
+  const p = _profiles.find(x => x.id === id);
+  if (!p) return;
+
+  // Highlight in list
+  document.querySelectorAll('.profile-row').forEach(r => r.classList.remove('selected'));
+  const rows = document.querySelectorAll('.profile-row');
+  rows.forEach(r => {
+    if (r.getAttribute('onclick') === `selectProfile(${id})`) r.classList.add('selected');
+  });
+
+  showProfileForm();
+  document.getElementById('profileFormTitle').textContent = p.name || p.account_name || 'Account';
+
+  const provider = (p.provider || 'smtp');
+  switchProfileProvider(provider);
+
+  if (provider === 'smtp') {
+    document.getElementById('pf-smtp-host').value = p.smtp_host || '';
+    document.getElementById('pf-smtp-port').value = p.smtp_port || 587;
+    document.getElementById('pf-smtp-username').value = p.smtp_user || p.smtp_username || '';
+    document.getElementById('pf-smtp-password').value = '';
+    document.getElementById('pf-smtp-from-email').value = p.from_email || '';
+    document.getElementById('pf-smtp-from-name').value = p.from_name || '';
+    document.getElementById('pf-smtp-secure').checked = !!p.smtp_secure;
+  } else {
+    document.getElementById('pf-az-tenant-id').value = p.tenant_id || '';
+    document.getElementById('pf-az-client-id').value = p.client_id || '';
+    document.getElementById('pf-az-client-secret').value = '';
+    document.getElementById('pf-az-from-email').value = p.from_email || '';
+    document.getElementById('pf-az-from-name').value = p.from_name || '';
+  }
+  document.getElementById('pf-name').value = p.name || p.account_name || '';
+  clearProfileBanner();
+
+  // Show/hide action buttons for existing profile
+  document.getElementById('pfTestBtn').style.display = '';
+  document.getElementById('pfDefaultBtn').style.display = p.is_default ? 'none' : '';
+  document.getElementById('pfToggleBtn').style.display = '';
+  const isActive = p.is_active || p.active;
+  document.getElementById('pfToggleBtn').textContent = isActive ? 'Disable' : 'Enable';
+  // Show delete only if not the only profile
+  document.getElementById('pfDeleteBtn').style.display = _profiles.length > 1 ? '' : 'none';
+}
+
+function newProfile() {
+  _selectedProfileId = null;
+  _isNewProfile = true;
+
+  // Deselect list
+  document.querySelectorAll('.profile-row').forEach(r => r.classList.remove('selected'));
+
+  showProfileForm();
+  document.getElementById('profileFormTitle').textContent = 'New Account';
+
+  // Clear all fields
+  document.getElementById('pf-name').value = '';
+  switchProfileProvider('smtp');
+  document.getElementById('pf-smtp-host').value = '';
+  document.getElementById('pf-smtp-port').value = '587';
+  document.getElementById('pf-smtp-username').value = '';
+  document.getElementById('pf-smtp-password').value = '';
+  document.getElementById('pf-smtp-from-email').value = '';
+  document.getElementById('pf-smtp-from-name').value = '';
+  document.getElementById('pf-smtp-secure').checked = false;
+  document.getElementById('pf-az-tenant-id').value = '';
+  document.getElementById('pf-az-client-id').value = '';
+  document.getElementById('pf-az-client-secret').value = '';
+  document.getElementById('pf-az-from-email').value = '';
+  document.getElementById('pf-az-from-name').value = '';
+  clearProfileBanner();
+
+  // Hide existing-only buttons
+  document.getElementById('pfTestBtn').style.display = 'none';
+  document.getElementById('pfDefaultBtn').style.display = 'none';
+  document.getElementById('pfToggleBtn').style.display = 'none';
+  document.getElementById('pfDeleteBtn').style.display = 'none';
+}
+
+function showProfileForm() {
+  document.getElementById('profileEmptyState').style.display = 'none';
+  document.getElementById('profileFormInner').style.display = '';
+}
+
+function switchProfileProvider(provider) {
+  _currentProfileProvider = provider;
+  document.querySelectorAll('#profileFormInner .provider-section').forEach(s => s.classList.remove('active'));
+  const sec = document.getElementById('pf-section-' + provider);
+  if (sec) sec.classList.add('active');
+  document.getElementById('pf-btn-smtp').classList.toggle('active', provider === 'smtp');
+  document.getElementById('pf-btn-azure').classList.toggle('active', provider === 'azure_graph');
+}
+
+function clearProfileBanner() {
+  const b = document.getElementById('profileFormBanner');
+  b.className = 'profile-form-banner';
+  b.textContent = '';
+}
+
+function showProfileBanner(msg, type) {
+  const b = document.getElementById('profileFormBanner');
+  b.className = 'profile-form-banner ' + type;
+  b.textContent = msg;
+  b.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+async function saveProfile() {
+  const name = document.getElementById('pf-name').value.trim();
+  if (!name) { showProfileBanner('Account Name is required.', 'error'); return; }
+
+  const body = { name, provider: _currentProfileProvider };
+
+  if (_currentProfileProvider === 'smtp') {
+    const host = document.getElementById('pf-smtp-host').value.trim();
+    if (!host) { showProfileBanner('SMTP Host is required.', 'error'); return; }
+    body.smtp_host = host;
+    body.smtp_port = parseInt(document.getElementById('pf-smtp-port').value) || 587;
+    body.smtp_username = document.getElementById('pf-smtp-username').value.trim();
+    const pass = document.getElementById('pf-smtp-password').value;
+    if (pass) body.smtp_password = pass;
+    body.smtp_secure = document.getElementById('pf-smtp-secure').checked;
+    body.from_email = document.getElementById('pf-smtp-from-email').value.trim();
+    body.from_name = document.getElementById('pf-smtp-from-name').value.trim();
+  } else {
+    const tenantId = document.getElementById('pf-az-tenant-id').value.trim();
+    const clientId = document.getElementById('pf-az-client-id').value.trim();
+    if (!tenantId || !clientId) { showProfileBanner('Tenant ID and Client ID are required.', 'error'); return; }
+    body.tenant_id = tenantId;
+    body.client_id = clientId;
+    const secret = document.getElementById('pf-az-client-secret').value;
+    if (secret) body.client_secret = secret;
+    body.from_email = document.getElementById('pf-az-from-email').value.trim();
+    body.from_name = document.getElementById('pf-az-from-name').value.trim();
+  }
+
+  let result;
+  if (_isNewProfile) {
+    result = await api('POST', '/api/settings/email-profiles', body);
+  } else {
+    result = await api('PUT', `/api/settings/email-profiles/${_selectedProfileId}`, body);
+  }
+  if (!result) return;
+  if (result.error) { showProfileBanner(result.error, 'error'); return; }
+
+  showProfileBanner(_isNewProfile ? 'Account created successfully.' : 'Account saved.', 'success');
+  toast(_isNewProfile ? 'Account created' : 'Account saved');
+
+  if (_isNewProfile && result.id) {
+    _selectedProfileId = result.id;
+    _isNewProfile = false;
+  }
+  await loadEmailAccounts();
+  // Re-select
+  if (_selectedProfileId) selectProfile(_selectedProfileId);
+}
+
+async function testProfile() {
+  if (!_selectedProfileId) return;
+  const btn = document.getElementById('pfTestBtn');
+  btn.disabled = true;
+  btn.textContent = 'Testing…';
+  const result = await api('POST', `/api/settings/email-profiles/${_selectedProfileId}/test`, {});
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10a2 2 0 01-2-2.18v-3a2 2 0 012.44-1.95l3 .68a2 2 0 011.52 1.36l.76 2.3a2 2 0 01-.46 2l-.61.61a16 16 0 006.11 6.11l.61-.61a2 2 0 012-.46l2.3.76a2 2 0 011.36 1.52z"/></svg> Test Connection';
+  if (!result) return;
+  if (result.error) { toast('Test failed: ' + result.error, 'error'); return; }
+  toast(result.message || 'Connection test successful', 'success');
+}
+
+async function setDefaultProfile() {
+  if (!_selectedProfileId) return;
+  const result = await api('POST', `/api/settings/email-profiles/${_selectedProfileId}/set-default`, {});
+  if (!result) return;
+  if (result.error) { toast(result.error, 'error'); return; }
+  toast('Default account updated');
+  await loadEmailAccounts();
+  if (_selectedProfileId) selectProfile(_selectedProfileId);
+}
+
+async function toggleProfileActive() {
+  if (!_selectedProfileId) return;
+  const result = await api('POST', `/api/settings/email-profiles/${_selectedProfileId}/toggle`, {});
+  if (!result) return;
+  if (result.error) { toast(result.error, 'error'); return; }
+  toast('Account status updated');
+  await loadEmailAccounts();
+  if (_selectedProfileId) selectProfile(_selectedProfileId);
+}
+
+async function deleteProfile() {
+  if (!_selectedProfileId) return;
+  const p = _profiles.find(x => x.id === _selectedProfileId);
+  const name = p ? (p.name || p.account_name || 'this account') : 'this account';
+  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+  const result = await api('DELETE', `/api/settings/email-profiles/${_selectedProfileId}`, null);
+  if (!result && result !== null) return;
+  if (result && result.error) { toast(result.error, 'error'); return; }
+  toast('Account deleted');
+  _selectedProfileId = null;
+  _isNewProfile = false;
+  document.getElementById('profileEmptyState').style.display = '';
+  document.getElementById('profileFormInner').style.display = 'none';
+  await loadEmailAccounts();
+}
+
+function renderRoutingTable(routing, profiles) {
+  const tbody = document.getElementById('routingTableBody');
+  const purposes = Object.keys(ROUTING_META);
+  tbody.innerHTML = purposes.map(purpose => {
+    const desc = ROUTING_META[purpose];
+    const currentVal = routing[purpose] || '';
+    const opts = `<option value="">( Default account )</option>` +
+      profiles.map(p => {
+        const pname = esc(p.name || p.account_name || 'Unnamed');
+        const sel = String(currentVal) === String(p.id) ? ' selected' : '';
+        return `<option value="${p.id}"${sel}>${pname}</option>`;
+      }).join('');
+    return `<tr>
+      <td><span class="routing-purpose">${esc(purpose)}</span></td>
+      <td class="routing-desc">${esc(desc)}</td>
+      <td><select class="form-control" id="routing-${esc(purpose)}" style="font-size:13px">${opts}</select></td>
+    </tr>`;
+  }).join('');
+}
+
+async function saveRouting() {
+  const body = {};
+  Object.keys(ROUTING_META).forEach(purpose => {
+    const sel = document.getElementById('routing-' + purpose);
+    if (sel) body[purpose] = sel.value || null;
+  });
+  const result = await api('PUT', '/api/settings/email-routing', body);
+  if (!result) return;
+  if (result.error) { toast(result.error, 'error'); return; }
+  toast('Email routing saved');
+}
+
+// ── Status badge ───────────────────────────────────────────────────────────
 function updateStatusBadge(active, provider) {
   const el = document.getElementById('emailStatusBadge');
-  const pBadge = document.getElementById('providerActiveBadge');
   const provLabel = provider === 'azure_graph' ? 'Azure Graph' : 'SMTP';
   if (active) {
     el.innerHTML = `<span class="status-badge-active"><span class="status-dot dot-active"></span>Active (${provLabel})</span>`;
-    if (pBadge) pBadge.innerHTML = `<span class="badge badge-success">Active</span>`;
   } else {
     el.innerHTML = `<span class="status-badge-inactive"><span class="status-dot dot-inactive"></span>Not Active</span>`;
-    if (pBadge) pBadge.innerHTML = `<span class="badge badge-warning">Not Active</span>`;
   }
-}
-
-function switchProvider(provider, doLoad = true) {
-  _currentProvider = provider;
-  document.querySelectorAll('.provider-section').forEach(s => s.classList.remove('active'));
-  document.getElementById('section-' + provider)?.classList.add('active');
-  document.getElementById('btn-azure').classList.toggle('active', provider === 'azure_graph');
-  document.getElementById('btn-smtp').classList.toggle('active', provider === 'smtp');
-}
-
-async function saveEmailConfig() {
-  const body = { provider: _currentProvider };
-  if (_currentProvider === 'azure_graph') {
-    body.tenant_id = document.getElementById('az-tenant-id').value.trim();
-    body.client_id = document.getElementById('az-client-id').value.trim();
-    const secret = document.getElementById('az-client-secret').value;
-    if (secret) body.client_secret = secret;
-    body.from_email = document.getElementById('az-from-email').value.trim();
-    body.from_name = document.getElementById('az-from-name').value.trim();
-    body.reply_to = document.getElementById('az-reply-to').value.trim() || undefined;
-    const cc = document.getElementById('az-default-cc').value.trim();
-    const bcc = document.getElementById('az-default-bcc').value.trim();
-    if (cc) body.default_cc = cc.split(',').map(s => s.trim()).filter(Boolean);
-    if (bcc) body.default_bcc = bcc.split(',').map(s => s.trim()).filter(Boolean);
-  } else {
-    body.smtp_host = document.getElementById('smtp-host').value.trim();
-    body.smtp_port = parseInt(document.getElementById('smtp-port').value) || 587;
-    body.smtp_username = document.getElementById('smtp-username').value.trim();
-    const pass = document.getElementById('smtp-password').value;
-    if (pass) body.smtp_password = pass;
-    body.smtp_secure = document.getElementById('smtp-secure').checked;
-    body.from_email = document.getElementById('smtp-from-email').value.trim();
-    body.from_name = document.getElementById('smtp-from-name').value.trim();
-  }
-  const result = await api('PUT', '/api/settings/email-config', body);
-  if (!result) return;
-  if (result.error) { toast(result.error,'error'); return; }
-  toast('Email configuration saved');
-}
-
-async function toggleActivate() {
-  const btn = document.getElementById('activateBtn');
-  const isActive = btn.dataset.active === '1';
-  btn.disabled = true;
-  document.getElementById('activateBtnLabel').textContent = isActive ? 'Deactivating…' : 'Activating…';
-  const result = await api('POST', '/api/settings/email-config/activate', { active: !isActive });
-  btn.disabled = false;
-  if (!result) return;
-  if (result.error) { toast(result.error, 'error'); return; }
-  const nowActive = result.is_active === 1;
-  setActivateBtn(nowActive);
-  updateStatusBadge(nowActive, _currentProvider);
-  toast(nowActive ? 'Email provider activated — platform will now send real emails' : 'Email provider deactivated — no emails will be sent', nowActive ? 'success' : 'info');
-}
-
-function setActivateBtn(active) {
-  const btn = document.getElementById('activateBtn');
-  btn.dataset.active = active ? '1' : '0';
-  btn.className = active ? 'btn btn-danger' : 'btn btn-success';
-  document.getElementById('activateBtnLabel').textContent = active ? 'Deactivate' : 'Activate';
-}
-
-async function sendTestEmail(evt) {
-  const btn = evt?.target?.closest('button');
-  const to = document.getElementById('testEmailAddr').value.trim();
-  if (!to) { toast('Enter a recipient email address', 'error'); return; }
-  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px"></span> Sending…'; }
-  const result = await api('POST', '/api/settings/email-config/send-test', { to });
-  if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send Test Email'; }
-  if (!result) return;
-  if (result.error) { toast(`Send failed: ${result.error}`, 'error'); return; }
-  toast(result.message || 'Test email sent — check your inbox', 'success');
-}
-
-async function testEmailConnection() {
-  const btn = event?.target?.closest('button');
-  if (btn) { btn.disabled = true; btn.textContent = 'Testing…'; }
-  const body = { provider: _currentProvider };
-  if (_currentProvider === 'azure_graph') {
-    body.tenant_id = document.getElementById('az-tenant-id').value.trim();
-    body.client_id = document.getElementById('az-client-id').value.trim();
-    const secret = document.getElementById('az-client-secret').value;
-    if (secret) body.client_secret = secret;
-    body.from_email = document.getElementById('az-from-email').value.trim();
-  } else {
-    body.smtp_host = document.getElementById('smtp-host').value.trim();
-    body.smtp_port = parseInt(document.getElementById('smtp-port').value) || 587;
-    body.smtp_username = document.getElementById('smtp-username').value.trim();
-    const pass = document.getElementById('smtp-password').value;
-    if (pass) body.smtp_password = pass;
-    body.smtp_secure = document.getElementById('smtp-secure').checked;
-    body.from_email = document.getElementById('smtp-from-email').value.trim();
-  }
-  const result = await api('POST', '/api/settings/email-config/test', body);
-  if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.95 10a2 2 0 01-2-2.18v-3a2 2 0 012.44-1.95l3 .68a2 2 0 011.52 1.36l.76 2.3a2 2 0 01-.46 2l-.61.61a16 16 0 006.11 6.11l.61-.61a2 2 0 012-.46l2.3.76a2 2 0 011.36 1.52z"/></svg> Test Connection'; }
-  if (!result) return;
-  if (result.error) { toast(`Test failed: ${result.error}`, 'error'); return; }
-  toast(result.message || 'Connection test successful', 'success');
 }
 
 // ── Templates ──────────────────────────────────────────────────────────────

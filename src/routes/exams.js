@@ -361,20 +361,17 @@ router.post('/:id/access-requests/:reqId/approve', auth, requireRole('exam_manag
 
   // Send approval email
   try {
-    const cfg = db.prepare(`SELECT * FROM email_config ORDER BY id DESC LIMIT 1`).get();
-    if (cfg?.is_active) {
-      const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_approved' AND is_active=1`).get();
-      if (tmpl) {
-        const html = tmpl.body_html
-          .replace(/\{\{candidate_name\}\}/g, request.name)
-          .replace(/\{\{exam_title\}\}/g, exam.title)
-          .replace(/\{\{exam_link\}\}/g, `<a href="${examUrl}">${examUrl}</a>`)
-          .replace(/\{\{expires_at\}\}/g, new Date(expires_at).toLocaleString())
-          .replace(/\{\{duration\}\}/g, exam.duration_minutes)
-          .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
-        const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam.title);
-        await sendEmail({ to: request.email, subject, html, templateCode: 'access_request_approved' });
-      }
+    const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_approved' AND is_active=1`).get();
+    if (tmpl) {
+      const html = tmpl.body_html
+        .replace(/\{\{candidate_name\}\}/g, request.name)
+        .replace(/\{\{exam_title\}\}/g, exam.title)
+        .replace(/\{\{exam_link\}\}/g, `<a href="${examUrl}">${examUrl}</a>`)
+        .replace(/\{\{expires_at\}\}/g, new Date(expires_at).toLocaleString())
+        .replace(/\{\{duration\}\}/g, exam.duration_minutes)
+        .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
+      const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam.title);
+      await sendEmail({ to: request.email, subject, html, templateCode: 'access_request_approved', purpose: 'access_approval' });
     }
   } catch (emailErr) {
     console.error('Failed to send approval email:', emailErr.message);
@@ -402,22 +399,19 @@ router.post('/:id/access-requests/:reqId/reject', auth, requireRole('exam_manage
 
   // Send rejection email
   try {
-    const cfg = db.prepare(`SELECT * FROM email_config ORDER BY id DESC LIMIT 1`).get();
-    if (cfg?.is_active) {
-      const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_rejected' AND is_active=1`).get();
-      if (tmpl) {
-        let html = tmpl.body_html
-          .replace(/\{\{candidate_name\}\}/g, request.name)
-          .replace(/\{\{exam_title\}\}/g, exam?.title || '')
-          .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
-        if (reason) {
-          html = html.replace(/\{\{#reason\}\}([\s\S]*?)\{\{\/reason\}\}/g, '$1').replace(/\{\{reason\}\}/g, reason);
-        } else {
-          html = html.replace(/\{\{#reason\}\}[\s\S]*?\{\{\/reason\}\}/g, '');
-        }
-        const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam?.title || '');
-        await sendEmail({ to: request.email, subject, html, templateCode: 'access_request_rejected' });
+    const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_rejected' AND is_active=1`).get();
+    if (tmpl) {
+      let html = tmpl.body_html
+        .replace(/\{\{candidate_name\}\}/g, request.name)
+        .replace(/\{\{exam_title\}\}/g, exam?.title || '')
+        .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
+      if (reason) {
+        html = html.replace(/\{\{#reason\}\}([\s\S]*?)\{\{\/reason\}\}/g, '$1').replace(/\{\{reason\}\}/g, reason);
+      } else {
+        html = html.replace(/\{\{#reason\}\}[\s\S]*?\{\{\/reason\}\}/g, '');
       }
+      const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam?.title || '');
+      await sendEmail({ to: request.email, subject, html, templateCode: 'access_request_rejected', purpose: 'access_rejection' });
     }
   } catch (emailErr) {
     console.error('Failed to send rejection email:', emailErr.message);

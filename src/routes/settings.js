@@ -120,7 +120,10 @@ router.post('/email-config/test', auth, requireSuperAdmin, async (req, res) => {
 // POST /api/settings/email-config/send-test  — send a real email to verify delivery
 router.post('/email-config/send-test', auth, requireSuperAdmin, async (req, res) => {
   const db = getDb();
-  const saved = db.prepare('SELECT * FROM email_config ORDER BY id DESC LIMIT 1').get();
+  // Use profile system first, fall back to legacy email_config
+  const saved = db.prepare('SELECT * FROM email_profiles WHERE is_default=1 AND is_active=1').get()
+    || db.prepare('SELECT * FROM email_profiles WHERE is_active=1 ORDER BY id ASC LIMIT 1').get()
+    || db.prepare('SELECT * FROM email_config ORDER BY id DESC LIMIT 1').get();
   if (!saved) return res.status(400).json({ error: 'No email configuration saved yet.' });
 
   const { to } = req.body;
@@ -201,7 +204,8 @@ router.get('/email-log', auth, requireRole('super_admin'), (req, res) => {
   const db = getDb();
   const { status, date, limit = 200 } = req.query;
   // Exclude html_body from list (fetched individually on demand)
-  let sql = 'SELECT id, template_code, to_email, subject, from_email, status, error_message, sent_at, created_at FROM email_log WHERE 1=1';
+  let sql = `SELECT l.id, l.template_code, l.to_email, l.subject, l.from_email, l.status, l.error_message, l.sent_at, l.created_at, l.profile_id, p.name as profile_name
+     FROM email_log l LEFT JOIN email_profiles p ON p.id=l.profile_id WHERE 1=1`;
   const params = [];
   if (status) { sql += ' AND status=?'; params.push(status); }
   if (date) { sql += ' AND DATE(created_at)=?'; params.push(date); }
@@ -314,6 +318,141 @@ router.delete('/gdpr-erase/:candidateId', auth, requireSuperAdmin, (req, res) =>
     db.prepare('DELETE FROM candidates WHERE id=?').run(id);
   })();
   audit(req.user.id, 'gdpr_erase', 'candidate', id, {}, req);
+  res.json({ ok: true });
+});
+
+// ── Email Profiles ────────────────────────────────────────────────────────
+
+// GET /api/settings/email-profiles
+router.get('/email-profiles', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const profiles = db.prepare(
+    `SELECT p.*,
+       (SELECT GROUP_CONCAT(r.purpose) FROM email_routing r WHERE r.profile_id=p.id) as used_for
+     FROM email_profiles p ORDER BY p.is_default DESC, p.id ASC`
+  ).all();
+  res.json(profiles.map(p => ({ ...p, client_secret: p.client_secret ? '••••••••' : null, smtp_pass: p.smtp_pass ? '••••••••' : null })));
+});
+
+// POST /api/settings/email-profiles
+router.post('/email-profiles', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const { name, provider, tenant_id, client_id, client_secret, from_email, from_name, reply_to,
+          smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  const isFirst = !db.prepare('SELECT id FROM email_profiles LIMIT 1').get();
+  const r = db.prepare(
+    `INSERT INTO email_profiles(name,provider,tenant_id,client_id,client_secret,from_email,from_name,reply_to,
+       smtp_host,smtp_port,smtp_user,smtp_pass,smtp_secure,is_default,is_active,updated_at)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,datetime('now'))`
+  ).run(name, provider||'smtp', tenant_id||null, client_id||null, client_secret||null,
+        from_email||null, from_name||null, reply_to||null,
+        smtp_host||null, smtp_port||null, smtp_user||null, smtp_pass||null,
+        smtp_secure===false||smtp_secure===0 ? 0 : 1, isFirst ? 1 : 0);
+  audit(req.user.id, 'create_email_profile', 'email_profiles', r.lastInsertRowid, { name }, req);
+  res.json({ ok: true, id: r.lastInsertRowid });
+});
+
+// PUT /api/settings/email-profiles/:id
+router.put('/email-profiles/:id', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  const existing = db.prepare('SELECT * FROM email_profiles WHERE id=?').get(id);
+  if (!existing) return res.status(404).json({ error: 'Profile not found' });
+  const { name, provider, tenant_id, client_id, client_secret, from_email, from_name, reply_to,
+          smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure } = req.body;
+  const newSecret = (client_secret && client_secret !== '••••••••') ? client_secret : existing.client_secret;
+  const newPass   = (smtp_pass && smtp_pass !== '••••••••')   ? smtp_pass   : existing.smtp_pass;
+  db.prepare(
+    `UPDATE email_profiles SET name=?,provider=?,tenant_id=?,client_id=?,client_secret=?,
+       from_email=?,from_name=?,reply_to=?,smtp_host=?,smtp_port=?,smtp_user=?,smtp_pass=?,
+       smtp_secure=?,updated_at=datetime('now') WHERE id=?`
+  ).run(name||existing.name, provider||existing.provider, tenant_id||null, client_id||null, newSecret,
+        from_email||null, from_name||null, reply_to||null,
+        smtp_host||null, smtp_port||null, smtp_user||null, newPass,
+        smtp_secure===false||smtp_secure===0 ? 0 : 1, id);
+  audit(req.user.id, 'update_email_profile', 'email_profiles', id, { name }, req);
+  res.json({ ok: true });
+});
+
+// DELETE /api/settings/email-profiles/:id
+router.delete('/email-profiles/:id', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  const p = db.prepare('SELECT * FROM email_profiles WHERE id=?').get(id);
+  if (!p) return res.status(404).json({ error: 'Profile not found' });
+  const total = db.prepare('SELECT COUNT(*) as c FROM email_profiles').get().c;
+  if (total <= 1) return res.status(400).json({ error: 'Cannot delete the only email account' });
+  db.prepare('UPDATE email_routing SET profile_id=NULL WHERE profile_id=?').run(id);
+  db.prepare('DELETE FROM email_profiles WHERE id=?').run(id);
+  if (p.is_default) {
+    const next = db.prepare('SELECT id FROM email_profiles ORDER BY id ASC LIMIT 1').get();
+    if (next) db.prepare('UPDATE email_profiles SET is_default=1 WHERE id=?').run(next.id);
+  }
+  audit(req.user.id, 'delete_email_profile', 'email_profiles', id, { name: p.name }, req);
+  res.json({ ok: true });
+});
+
+// POST /api/settings/email-profiles/:id/set-default
+router.post('/email-profiles/:id/set-default', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  if (!db.prepare('SELECT id FROM email_profiles WHERE id=?').get(id)) return res.status(404).json({ error: 'Profile not found' });
+  db.prepare('UPDATE email_profiles SET is_default=0').run();
+  db.prepare('UPDATE email_profiles SET is_default=1 WHERE id=?').run(id);
+  audit(req.user.id, 'set_default_email_profile', 'email_profiles', id, {}, req);
+  res.json({ ok: true });
+});
+
+// POST /api/settings/email-profiles/:id/toggle
+router.post('/email-profiles/:id/toggle', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  const p = db.prepare('SELECT * FROM email_profiles WHERE id=?').get(id);
+  if (!p) return res.status(404).json({ error: 'Profile not found' });
+  const newState = p.is_active ? 0 : 1;
+  db.prepare(`UPDATE email_profiles SET is_active=?,updated_at=datetime('now') WHERE id=?`).run(newState, id);
+  res.json({ ok: true, is_active: newState });
+});
+
+// POST /api/settings/email-profiles/:id/test
+router.post('/email-profiles/:id/test', auth, requireSuperAdmin, async (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  const p = db.prepare('SELECT * FROM email_profiles WHERE id=?').get(id);
+  if (!p) return res.status(404).json({ error: 'Profile not found' });
+  try {
+    await testConnection(p);
+    res.json({ ok: true, message: 'Connection successful' });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// ── Email Routing ─────────────────────────────────────────────────────────
+
+// GET /api/settings/email-routing
+router.get('/email-routing', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const rows = db.prepare(
+    `SELECT r.purpose, r.label, r.profile_id, p.name as profile_name
+     FROM email_routing r LEFT JOIN email_profiles p ON p.id=r.profile_id
+     ORDER BY r.rowid ASC`
+  ).all();
+  res.json(rows);
+});
+
+// PUT /api/settings/email-routing
+router.put('/email-routing', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const updates = req.body;
+  const upd = db.prepare('UPDATE email_routing SET profile_id=? WHERE purpose=?');
+  db.transaction(() => {
+    for (const [purpose, profileId] of Object.entries(updates)) {
+      upd.run(profileId || null, purpose);
+    }
+  })();
+  audit(req.user.id, 'update_email_routing', 'email_routing', null, updates, req);
   res.json({ ok: true });
 });
 
