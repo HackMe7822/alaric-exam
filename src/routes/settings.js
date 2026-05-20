@@ -4,7 +4,7 @@ const { getDb } = require('../../database/index');
 const auth = require('../middleware/auth');
 const { requireRole, requireSuperAdmin } = require('../middleware/roles');
 const { audit } = require('../utils/audit');
-const { testConnection, getConfig } = require('../utils/email');
+const { testConnection, getConfig, sendEmail } = require('../utils/email');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 
@@ -440,6 +440,28 @@ router.post('/email-profiles/:id/test', auth, requireSuperAdmin, async (req, res
   try {
     await testConnection(p);
     res.json({ ok: true, message: 'Connection successful' });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/settings/email-profiles/:id/send-test-email
+router.post('/email-profiles/:id/send-test-email', auth, requireSuperAdmin, async (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Recipient email (to) is required' });
+  const p = db.prepare('SELECT * FROM email_profiles WHERE id=?').get(id);
+  if (!p) return res.status(404).json({ error: 'Profile not found' });
+  try {
+    await sendEmail({
+      to,
+      subject: 'Alaric Exam — Email Delivery Test',
+      html: `<p>This is a delivery test from <strong>Alaric Exam</strong> using the account <strong>${p.name || p.from_email}</strong>.</p><p>If you received this, your email configuration is working correctly.</p>`,
+      templateCode: 'delivery_test',
+      purpose: null,
+    });
+    res.json({ ok: true, message: `Test email sent to ${to}` });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

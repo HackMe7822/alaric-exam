@@ -512,6 +512,19 @@ Test-ApplicationAccessPolicy -AppId <span class="cmd-val">"YOUR_APP_CLIENT_ID"</
                     Delete
                   </button>
                 </div>
+
+                <!-- Send Test Email -->
+                <div id="pfSendTestRow" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+                  <label style="font-size:12px;font-weight:600;color:var(--gray);display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em">Send Test Email</label>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="email" id="pfTestEmailAddr" class="form-control" placeholder="recipient@example.com" style="max-width:280px;flex:1">
+                    <button class="btn btn-outline btn-sm" onclick="sendProfileTestEmail(event)" style="white-space:nowrap">
+                      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      Send Test Email
+                    </button>
+                  </div>
+                  <small class="text-muted" style="display:block;margin-top:4px">Sends a real email to verify delivery. Save config first.</small>
+                </div>
               </div>
             </div>
           </div>
@@ -891,8 +904,8 @@ function selectProfile(id) {
   document.getElementById('pfToggleBtn').style.display = '';
   const isActive = p.is_active || p.active;
   document.getElementById('pfToggleBtn').textContent = isActive ? 'Disable' : 'Enable';
-  // Show delete only if not the only profile
   document.getElementById('pfDeleteBtn').style.display = _profiles.length > 1 ? '' : 'none';
+  document.getElementById('pfSendTestRow').style.display = '';
 }
 
 function newProfile() {
@@ -927,6 +940,7 @@ function newProfile() {
   document.getElementById('pfDefaultBtn').style.display = 'none';
   document.getElementById('pfToggleBtn').style.display = 'none';
   document.getElementById('pfDeleteBtn').style.display = 'none';
+  document.getElementById('pfSendTestRow').style.display = 'none';
 }
 
 function showProfileForm() {
@@ -967,9 +981,9 @@ async function saveProfile() {
     if (!host) { showProfileBanner('SMTP Host is required.', 'error'); return; }
     body.smtp_host = host;
     body.smtp_port = parseInt(document.getElementById('pf-smtp-port').value) || 587;
-    body.smtp_username = document.getElementById('pf-smtp-username').value.trim();
+    body.smtp_user = document.getElementById('pf-smtp-username').value.trim();
     const pass = document.getElementById('pf-smtp-password').value;
-    if (pass) body.smtp_password = pass;
+    if (pass) body.smtp_pass = pass;
     body.smtp_secure = document.getElementById('pf-smtp-secure').checked;
     body.from_email = document.getElementById('pf-smtp-from-email').value.trim();
     body.from_name = document.getElementById('pf-smtp-from-name').value.trim();
@@ -1017,6 +1031,22 @@ async function testProfile() {
   if (!result) return;
   if (result.error) { toast('Test failed: ' + result.error, 'error'); return; }
   toast(result.message || 'Connection test successful', 'success');
+}
+
+async function sendProfileTestEmail(event) {
+  if (!_selectedProfileId) return;
+  const btn = event.currentTarget;
+  const input = document.getElementById('pfTestEmailAddr');
+  const to = input.value.trim();
+  if (!to) { input.focus(); toast('Enter a recipient email address', 'error'); return; }
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  const result = await api('POST', `/api/settings/email-profiles/${_selectedProfileId}/send-test-email`, { to });
+  btn.disabled = false;
+  btn.textContent = 'Send Test Email';
+  if (!result) return;
+  if (result.error) { toast('Send failed: ' + result.error, 'error'); return; }
+  toast(result.message || 'Test email sent', 'success');
 }
 
 async function setDefaultProfile() {
