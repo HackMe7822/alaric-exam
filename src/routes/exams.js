@@ -393,7 +393,7 @@ router.post('/:id/access-requests/:reqId/approve', auth, requireRole('exam_manag
       html: tmpl.body_html
         .replace(/\{\{candidate_name\}\}/g, request.name)
         .replace(/\{\{exam_title\}\}/g, exam.title)
-        .replace(/\{\{exam_link\}\}/g, `<a href="${examUrl}">${examUrl}</a>`)
+        .replace(/\{\{exam_link\}\}/g, examUrl)
         .replace(/\{\{expires_at\}\}/g, new Date(expires_at).toLocaleString())
         .replace(/\{\{duration\}\}/g, exam.duration_minutes)
         .replace(/\{\{platform_name\}\}/g, 'Alaric Exam'),

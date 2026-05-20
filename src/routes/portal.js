@@ -1,45 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { getDb } = require('../../database/index');
+const { buildExamUrl } = require('../utils/linkgen');
+const { sendEmail } = require('../utils/email');
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-
-// Simple OTP store (in-memory for dev; use DB for production)
-const otpStore = new Map(); // email -> {otp, expires}
-
-// POST /api/portal/request-otp
-router.post('/request-otp', (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ error: 'Email required' });
-
-  const db = getDb();
-  const candidate = db.prepare('SELECT * FROM candidates WHERE email=? AND is_active=1').get(email.toLowerCase().trim());
-  if (!candidate) return res.status(404).json({ error: 'No candidate found with this email' });
-
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiry = parseInt(db.prepare(`SELECT value FROM settings WHERE key='candidate_otp_expiry'`).get()?.value || '10');
-  otpStore.set(email.toLowerCase(), { otp, expires: Date.now() + expiry * 60 * 1000, candidate_id: candidate.id });
-
-  // In production this would send via email; for now log to console
-  console.log(`[Portal OTP] ${email}: ${otp} (expires in ${expiry} min)`);
-
-  res.json({ ok: true, message: 'OTP sent to your email', debug_otp: process.env.NODE_ENV === 'development' ? otp : undefined });
-});
-
-// POST /api/portal/verify-otp
-router.post('/verify-otp', (req, res) => {
-  const { email, otp } = req.body;
-  if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
-
-  const entry = otpStore.get(email.toLowerCase());
-  if (!entry || entry.otp !== otp || Date.now() > entry.expires) {
-    return res.status(401).json({ error: 'Invalid or expired OTP' });
-  }
-  otpStore.delete(email.toLowerCase());
-
-  const token = jwt.sign({ sub: entry.candidate_id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '4h' });
-  res.json({ token });
-});
 
 function candidateAuth(req, res, next) {
   const token = req.cookies?.portal_token || (req.headers.authorization || '').replace('Bearer ', '');
@@ -54,42 +18,154 @@ function candidateAuth(req, res, next) {
   }
 }
 
+// POST /api/portal/request-otp
+router.post('/request-otp', (req, res) => {
+  const db = getDb();
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ error: 'Email required' });
+
+  const cleanEmail = email.toLowerCase().trim();
+  const candidate = db.prepare('SELECT * FROM candidates WHERE email=? AND is_active=1').get(cleanEmail);
+  if (!candidate) return res.status(404).json({ error: 'No account found with this email. Please register first.' });
+
+  // Rate limit: 1 OTP per 60s
+  const recent = db.prepare(
+    `SELECT id FROM email_otps WHERE email=? AND purpose='portal_login' AND datetime(created_at) > datetime('now','-60 seconds')`
+  ).get(cleanEmail);
+  if (recent) return res.status(429).json({ error: 'Please wait 60 seconds before requesting another code.' });
+
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expires_at = new Date(Date.now() + 10 * 60000).toISOString();
+  const payload = JSON.stringify({ candidate_id: candidate.id });
+
+  db.prepare(`DELETE FROM email_otps WHERE email=? AND purpose='portal_login'`).run(cleanEmail);
+  db.prepare(`INSERT INTO email_otps(email, otp_code, expires_at, purpose, payload) VALUES(?,?,?,?,?)`)
+    .run(cleanEmail, otp, expires_at, 'portal_login', payload);
+
+  res.json({ ok: true });
+
+  setImmediate(async () => {
+    try {
+      const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:20px">
+        <h2 style="color:#4f46e5;margin-bottom:4px">Sign in to Alaric Exam</h2>
+        <p>Hi ${candidate.name},</p>
+        <p>Your sign-in code is:</p>
+        <div style="background:#f3f4f6;border-radius:12px;padding:28px;text-align:center;margin:24px 0">
+          <span style="font-size:40px;font-weight:800;letter-spacing:10px;color:#111827;font-family:monospace">${otp}</span>
+        </div>
+        <p style="color:#6b7280;font-size:14px">This code expires in <strong>10 minutes</strong>.</p>
+        <p style="color:#6b7280;font-size:14px">If you did not request this, please ignore this email.</p>
+      </div>`;
+      await sendEmail({ to: cleanEmail, subject: `${otp} — your Alaric Exam sign-in code`, html, templateCode: 'portal_otp', purpose: 'system' });
+    } catch (e) {
+      console.error('[portal] OTP email error:', e.message);
+    }
+  });
+});
+
+// POST /api/portal/verify-otp
+router.post('/verify-otp', (req, res) => {
+  const db = getDb();
+  const { email, otp } = req.body;
+  if (!email || !otp) return res.status(400).json({ error: 'Email and OTP required' });
+
+  const cleanEmail = email.toLowerCase().trim();
+  const record = db.prepare(`SELECT * FROM email_otps WHERE email=? AND purpose='portal_login'`).get(cleanEmail);
+  if (!record) return res.status(401).json({ error: 'Code expired or not found. Please request a new one.' });
+
+  if (new Date(record.expires_at) < new Date()) {
+    db.prepare(`DELETE FROM email_otps WHERE id=?`).run(record.id);
+    return res.status(401).json({ error: 'Code has expired. Please request a new one.' });
+  }
+  if (record.attempts >= 3) {
+    db.prepare(`DELETE FROM email_otps WHERE id=?`).run(record.id);
+    return res.status(401).json({ error: 'Too many incorrect attempts. Please request a new code.' });
+  }
+  if (record.otp_code !== otp.trim()) {
+    db.prepare(`UPDATE email_otps SET attempts=attempts+1 WHERE id=?`).run(record.id);
+    const remaining = 2 - record.attempts;
+    return res.status(401).json({ error: `Incorrect code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.` });
+  }
+
+  db.prepare(`DELETE FROM email_otps WHERE id=?`).run(record.id);
+  const { candidate_id } = JSON.parse(record.payload);
+  const candidate = db.prepare('SELECT id, name, email, phone FROM candidates WHERE id=?').get(candidate_id);
+  if (!candidate) return res.status(404).json({ error: 'Account not found.' });
+
+  const token = jwt.sign({ sub: candidate.id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
+  res.json({ token, candidate });
+});
+
 // GET /api/portal/profile
 router.get('/profile', candidateAuth, (req, res) => {
   const db = getDb();
-  const c = db.prepare('SELECT id, name, email, phone, employee_id FROM candidates WHERE id=?').get(req.candidateId);
+  const c = db.prepare('SELECT id, name, email, phone, employee_id, created_at FROM candidates WHERE id=?').get(req.candidateId);
   if (!c) return res.status(404).json({ error: 'Not found' });
   res.json(c);
+});
+
+// PUT /api/portal/profile
+router.put('/profile', candidateAuth, (req, res) => {
+  const db = getDb();
+  const { name, phone } = req.body;
+  if (!name) return res.status(400).json({ error: 'Name is required' });
+  db.prepare(`UPDATE candidates SET name=?, phone=?, updated_at=datetime('now') WHERE id=?`).run(name.trim(), phone?.trim() || null, req.candidateId);
+  res.json({ ok: true });
+});
+
+// GET /api/portal/requests — access requests for this candidate (by email)
+router.get('/requests', candidateAuth, (req, res) => {
+  const db = getDb();
+  const c = db.prepare('SELECT email FROM candidates WHERE id=?').get(req.candidateId);
+  if (!c) return res.json([]);
+  const rows = db.prepare(`
+    SELECT r.id, r.status, r.created_at, r.email_verified, r.phone, r.link_token,
+      e.title as exam_title, e.code, e.duration_minutes, e.total_marks, e.pass_marks
+    FROM exam_access_requests r
+    JOIN exams e ON e.id=r.exam_id
+    WHERE r.email=?
+    ORDER BY r.created_at DESC
+  `).all(c.email);
+  res.json(rows.map(r => ({
+    ...r,
+    exam_url: r.link_token ? buildExamUrl(r.link_token) : null,
+  })));
+});
+
+// GET /api/portal/my-exams — active (non-expired, non-revoked) exam links by email
+router.get('/my-exams', candidateAuth, (req, res) => {
+  const db = getDb();
+  const c = db.prepare('SELECT email FROM candidates WHERE id=?').get(req.candidateId);
+  if (!c) return res.json([]);
+  const links = db.prepare(`
+    SELECT el.token, el.expires_at, el.used_at, el.is_revoked,
+      e.id as exam_id, e.title, e.code, e.duration_minutes, e.total_marks, e.pass_marks
+    FROM exam_links el
+    JOIN exams e ON e.id=el.exam_id
+    WHERE el.candidate_email=? AND el.is_revoked=0
+      AND datetime(el.expires_at) > datetime('now')
+    ORDER BY el.created_at DESC
+  `).all(c.email);
+  res.json(links.map(l => ({ ...l, exam_url: buildExamUrl(l.token) })));
 });
 
 // GET /api/portal/history
 router.get('/history', candidateAuth, (req, res) => {
   const db = getDb();
-  const submissions = db.prepare(`SELECT s.*, e.title as exam_title, e.total_marks, e.pass_marks
+  const rows = db.prepare(`
+    SELECT s.id, s.started_at, s.completed_at, s.score, s.passed, s.result_released,
+      e.title as exam_title, e.code, e.total_marks, e.pass_marks, e.show_result_immediately
     FROM submissions s JOIN exams e ON e.id=s.exam_id
-    WHERE s.candidate_id=? ORDER BY s.started_at DESC`).all(req.candidateId);
-  res.json(submissions);
+    WHERE s.candidate_id=? ORDER BY s.started_at DESC
+  `).all(req.candidateId);
+  res.json(rows);
 });
 
-// GET /api/portal/result/:submissionId
-router.get('/result/:id', candidateAuth, (req, res) => {
-  const db = getDb();
-  const sub = db.prepare('SELECT s.*, e.title, e.total_marks, e.pass_marks, e.show_result_immediately FROM submissions s JOIN exams e ON e.id=s.exam_id WHERE s.id=? AND s.candidate_id=?').get(parseInt(req.params.id), req.candidateId);
-  if (!sub) return res.status(404).json({ error: 'Not found' });
-  if (!sub.result_released && !sub.show_result_immediately) return res.status(403).json({ error: 'Results not yet released' });
-
-  const answers = db.prepare(`SELECT a.*, q.body, q.type, q.marks, q.explanation,
-    (SELECT json_group_array(json_object('id',o.id,'body',o.body,'is_correct',o.is_correct)) FROM question_options o WHERE o.question_id=a.question_id) as options_json
-    FROM answers a JOIN questions q ON q.id=a.question_id WHERE a.submission_id=? ORDER BY q.sort_order`).all(sub.id);
-
-  answers.forEach(a => { try { a.options = JSON.parse(a.options_json||'[]'); } catch { a.options=[]; } delete a.options_json; });
-  res.json({ ...sub, answers });
-});
-
-// GET /api/portal/badges
-router.get('/badges', candidateAuth, (req, res) => {
-  const db = getDb();
-  res.json(db.prepare('SELECT * FROM gamification WHERE candidate_id=? ORDER BY earned_at DESC').all(req.candidateId));
+// POST /api/portal/logout
+router.post('/logout', (req, res) => {
+  res.clearCookie('portal_token');
+  res.json({ ok: true });
 });
 
 module.exports = router;

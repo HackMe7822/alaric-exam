@@ -1190,6 +1190,11 @@
 
   // ===== STEP 3: SHOW =====
   function goToStep3(data) {
+    // Store portal token if returned
+    if (data.portal_token) {
+      localStorage.setItem('portal_token', data.portal_token);
+      document.cookie = 'portal_token=' + data.portal_token + ';path=/;max-age=' + (7*24*3600) + ';samesite=lax';
+    }
     showStep(3);
     if (data.open_test && data.url) {
       document.getElementById('success-icon-svg').innerHTML = '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>';
@@ -1202,8 +1207,12 @@
     } else {
       document.getElementById('success-icon-svg').innerHTML = '<polyline points="20 6 9 17 4 12"/>';
       document.getElementById('success-title').textContent = 'Access Request Submitted!';
-      document.getElementById('success-subtitle').textContent = "We'll email you when your request is approved. Please keep an eye on your inbox.";
+      document.getElementById('success-subtitle').textContent = "We’ll email you when your request is approved. Your account is ready — you can track your request status in the Candidate Portal.";
       document.getElementById('success-exam-link-wrap').style.display = 'none';
+      // Redirect to portal after 3 seconds if we have a token
+      if (data.portal_token) {
+        setTimeout(function() { window.location.href = '/portal'; }, 3000);
+      }
     }
   }
 

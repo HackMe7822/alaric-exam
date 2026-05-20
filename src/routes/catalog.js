@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const jwt = require('jsonwebtoken');
 const { getDb } = require('../../database/index');
 const { generateToken, buildExamUrl } = require('../utils/linkgen');
 const { sendEmail, logEmailEvent } = require('../utils/email');
@@ -162,19 +163,36 @@ router.post('/verify-otp', async (req, res) => {
   const exam = db.prepare(`SELECT id, title, is_open_test FROM exams WHERE id=?`).get(exam_id);
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
+  // Create or find candidate record
+  let candidate = db.prepare('SELECT id FROM candidates WHERE email=?').get(record.email);
+  if (!candidate) {
+    const r = db.prepare(
+      `INSERT INTO candidates(name, email, phone, is_active, created_at, updated_at) VALUES(?,?,?,1,datetime('now'),datetime('now'))`
+    ).run(name, record.email, phone || null);
+    candidate = { id: r.lastInsertRowid };
+  } else {
+    // Update name/phone if registering for first time
+    db.prepare(`UPDATE candidates SET name=?, phone=COALESCE(phone,?), updated_at=datetime('now') WHERE id=?`)
+      .run(name, phone || null, candidate.id);
+  }
+
+  // Issue portal JWT and set cookie
+  const portalToken = jwt.sign({ sub: candidate.id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.cookie('portal_token', portalToken, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
+
   if (exam.is_open_test) {
     const token = generateToken();
     const expires_at = new Date(Date.now() + 72 * 3600000).toISOString();
-    db.prepare(`INSERT INTO exam_links(token, exam_id, candidate_name, candidate_email, expires_at) VALUES(?,?,?,?,?)`)
-      .run(token, exam.id, name, record.email, expires_at);
-    return res.json({ ok: true, open_test: true, url: buildExamUrl(token) });
+    db.prepare(`INSERT INTO exam_links(token, exam_id, candidate_id, candidate_name, candidate_email, expires_at) VALUES(?,?,?,?,?,?)`)
+      .run(token, exam.id, candidate.id, name, record.email, expires_at);
+    return res.json({ ok: true, open_test: true, url: buildExamUrl(token), portal_token: portalToken });
   }
 
   // Create verified access request
   db.prepare(`INSERT INTO exam_access_requests(exam_id, name, email, phone, message, email_verified, ip_address) VALUES(?,?,?,?,?,1,?)`)
     .run(exam_id, name, record.email, phone, message, ip_address || req.ip);
 
-  res.json({ ok: true });
+  res.json({ ok: true, portal_token: portalToken, redirect: '/portal' });
 
   // Send confirmation email in background
   setImmediate(async () => {
