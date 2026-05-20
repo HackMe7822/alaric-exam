@@ -70,6 +70,9 @@ async function sendViaSmtp(cfg, { to, subject, html, cc, bcc }) {
     secure: cfg.smtp_secure === 1 || cfg.smtp_secure === true,
     auth: cfg.smtp_user ? { user: cfg.smtp_user, pass: cfg.smtp_pass } : undefined,
     tls: { rejectUnauthorized: false },
+    connectionTimeout: 20000,
+    socketTimeout: 30000,
+    greetingTimeout: 15000,
   });
   await transporter.sendMail({
     from: cfg.from_name ? `"${cfg.from_name}" <${cfg.from_email}>` : cfg.from_email,
@@ -79,6 +82,29 @@ async function sendViaSmtp(cfg, { to, subject, html, cc, bcc }) {
     subject,
     html,
   });
+}
+
+// ── Standalone log writer — call this whenever you want to record an email event
+// even without actually sending (e.g. template not found, config missing, skipped)
+function logEmailEvent({ templateCode, to, subject, html, purpose, status, errorMsg, profileId }) {
+  try {
+    const db = getDb();
+    let resolvedProfileId = profileId || null;
+    let fromEmail = null;
+    if (!resolvedProfileId && status !== 'skipped') {
+      try {
+        const cfg = getProfileForPurpose(purpose);
+        if (cfg?._src === 'profile') resolvedProfileId = cfg.id;
+        fromEmail = cfg?.from_email || null;
+      } catch (_) {}
+    }
+    db.prepare(
+      `INSERT INTO email_log(template_code, to_email, subject, html_body, from_email, status, error_message, profile_id, sent_at)
+       VALUES(?,?,?,?,?,?,?,?,datetime('now'))`
+    ).run(templateCode || null, to || null, subject || null, html || null, fromEmail, status, errorMsg || null, resolvedProfileId);
+  } catch (e) {
+    console.error('Failed to write email log:', e.message);
+  }
 }
 
 // ── Core send function ────────────────────────────────────────────────────
@@ -108,11 +134,11 @@ async function sendEmail({ to, subject, html, cc, bcc, templateCode, purpose }) 
     throw err;
   } finally {
     const toAddr = Array.isArray(to) ? to[0] : to;
-    const profileId = cfg._src === 'profile' ? cfg.id : null;
-    db.prepare(
-      `INSERT INTO email_log(template_code, to_email, subject, html_body, from_email, status, error_message, profile_id, sent_at)
-       VALUES(?,?,?,?,?,?,?,?,datetime('now'))`
-    ).run(templateCode || null, toAddr, subject, html || null, cfg.from_email || null, status, errorMsg, profileId);
+    logEmailEvent({
+      templateCode, to: toAddr, subject, html, purpose,
+      status, errorMsg,
+      profileId: cfg._src === 'profile' ? cfg.id : null,
+    });
   }
 }
 
@@ -173,4 +199,4 @@ async function testConnection(cfg) {
   }
 }
 
-module.exports = { sendEmail, sendTemplate, testConnection, getConfig, getProfileForPurpose };
+module.exports = { sendEmail, sendTemplate, testConnection, getConfig, getProfileForPurpose, logEmailEvent };

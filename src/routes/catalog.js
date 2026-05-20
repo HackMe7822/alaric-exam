@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getDb } = require('../../database/index');
 const { generateToken, buildExamUrl } = require('../utils/linkgen');
+const { sendEmail, logEmailEvent } = require('../utils/email');
 
 // GET /api/catalog — public exam catalog
 router.get('/', (req, res) => {
@@ -29,7 +30,7 @@ router.post('/request-access', (req, res) => {
   // If open test, generate link directly and return it
   if (exam.is_open_test) {
     const token = generateToken();
-    const expires_at = new Date(Date.now() + 72 * 3600000).toISOString(); // 72h
+    const expires_at = new Date(Date.now() + 72 * 3600000).toISOString();
     db.prepare(`INSERT INTO exam_links(token, exam_id, candidate_name, candidate_email, expires_at)
       VALUES(?,?,?,?,?)`)
       .run(token, exam.id, name.trim(), email.trim().toLowerCase(), expires_at);
@@ -46,7 +47,30 @@ router.post('/request-access', (req, res) => {
   db.prepare(`INSERT INTO exam_access_requests(exam_id, name, email, message) VALUES(?,?,?,?)`)
     .run(exam.id, name.trim(), email.trim().toLowerCase(), message?.trim() || null);
 
+  // Respond immediately, send confirmation email in background
   res.json({ ok: true });
+
+  const cleanName  = name.trim();
+  const cleanEmail = email.trim().toLowerCase();
+
+  setImmediate(async () => {
+    try {
+      const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_received' AND is_active=1`).get();
+      if (!tmpl) {
+        logEmailEvent({ templateCode: 'access_request_received', to: cleanEmail, status: 'failed',
+          errorMsg: `Template 'access_request_received' not found or inactive`, purpose: 'access_request_received' });
+        return;
+      }
+      const html = tmpl.body_html
+        .replace(/\{\{candidate_name\}\}/g, cleanName)
+        .replace(/\{\{exam_title\}\}/g, exam.title)
+        .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
+      const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam.title);
+      await sendEmail({ to: cleanEmail, subject, html, templateCode: 'access_request_received', purpose: 'access_request_received' });
+    } catch (e) {
+      console.error('Confirmation email error:', e.message);
+    }
+  });
 });
 
 module.exports = router;

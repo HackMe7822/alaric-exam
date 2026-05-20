@@ -478,3 +478,10 @@ INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('password_reset', 'P
 INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('system', 'System Notifications');
 
 ALTER TABLE email_log ADD COLUMN profile_id INTEGER REFERENCES email_profiles(id);
+
+INSERT OR IGNORE INTO email_routing(purpose, label) VALUES ('access_request_received', 'Access Request Confirmation (to requester)');
+
+INSERT OR IGNORE INTO email_templates(code, name, subject, body_html, variables) VALUES
+  ('access_request_received', 'Access Request Received', 'We received your access request: {{exam_title}}',
+   '<p>Dear <strong>{{candidate_name}}</strong>,</p><p>Thank you for requesting access to <strong>{{exam_title}}</strong>.</p><p>Your request has been received and is pending review by our admin team. Once approved you will receive a separate email with your unique exam link.</p><p>If you have any questions please contact your administrator.</p><p>Regards,<br><strong>{{platform_name}} Team</strong></p>',
+   '["candidate_name","exam_title","platform_name"]');
