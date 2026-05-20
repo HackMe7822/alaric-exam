@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const { getDb } = require('../../database/index');
 const { buildExamUrl } = require('../utils/linkgen');
 const { sendEmail } = require('../utils/email');
@@ -166,6 +167,111 @@ router.get('/history', candidateAuth, (req, res) => {
 router.post('/logout', (req, res) => {
   res.clearCookie('portal_token');
   res.json({ ok: true });
+});
+
+/* ─── GOOGLE OAUTH ─── */
+router.get('/auth/google', (req, res) => {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  if (!clientId) return res.redirect('/portal?oauth_error=' + encodeURIComponent('Google login is not configured yet.'));
+  const base = process.env.APP_URL || 'http://localhost:3000';
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: `${base}/api/portal/auth/google/callback`,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'online',
+    prompt: 'select_account',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params}`);
+});
+
+router.get('/auth/google/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) return res.redirect('/portal?oauth_error=' + encodeURIComponent(error || 'Authentication cancelled.'));
+  try {
+    const base = process.env.APP_URL || 'http://localhost:3000';
+    const tokenResp = await axios.post('https://oauth2.googleapis.com/token', {
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: `${base}/api/portal/auth/google/callback`,
+      grant_type: 'authorization_code',
+    });
+    const userResp = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${tokenResp.data.access_token}` },
+    });
+    const { email, name } = userResp.data;
+    if (!email) throw new Error('No email returned from Google');
+
+    const db = getDb();
+    const cleanEmail = email.toLowerCase().trim();
+    let candidate = db.prepare('SELECT id FROM candidates WHERE email=?').get(cleanEmail);
+    if (!candidate) {
+      const r = db.prepare(`INSERT INTO candidates(name, email, is_active, created_at, updated_at) VALUES(?,?,1,datetime('now'),datetime('now'))`).run(name || cleanEmail, cleanEmail);
+      candidate = { id: r.lastInsertRowid };
+    }
+    const token = jwt.sign({ sub: candidate.id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
+    res.redirect('/portal?token=' + encodeURIComponent(token));
+  } catch (e) {
+    console.error('[portal] Google OAuth error:', e.message);
+    res.redirect('/portal?oauth_error=' + encodeURIComponent('Google sign-in failed. Please try again.'));
+  }
+});
+
+/* ─── MICROSOFT OAUTH ─── */
+router.get('/auth/microsoft', (req, res) => {
+  const clientId = process.env.MICROSOFT_CLIENT_ID;
+  if (!clientId) return res.redirect('/portal?oauth_error=' + encodeURIComponent('Microsoft login is not configured yet.'));
+  const base = process.env.APP_URL || 'http://localhost:3000';
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: `${base}/api/portal/auth/microsoft/callback`,
+    response_type: 'code',
+    scope: 'openid email profile User.Read',
+    response_mode: 'query',
+    prompt: 'select_account',
+  });
+  res.redirect(`https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`);
+});
+
+router.get('/auth/microsoft/callback', async (req, res) => {
+  const { code, error } = req.query;
+  if (error || !code) return res.redirect('/portal?oauth_error=' + encodeURIComponent(error || 'Authentication cancelled.'));
+  try {
+    const base = process.env.APP_URL || 'http://localhost:3000';
+    const tokenResp = await axios.post(
+      'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+      new URLSearchParams({
+        code,
+        client_id: process.env.MICROSOFT_CLIENT_ID,
+        client_secret: process.env.MICROSOFT_CLIENT_SECRET,
+        redirect_uri: `${base}/api/portal/auth/microsoft/callback`,
+        grant_type: 'authorization_code',
+        scope: 'openid email profile User.Read',
+      }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    const userResp = await axios.get('https://graph.microsoft.com/v1.0/me', {
+      headers: { Authorization: `Bearer ${tokenResp.data.access_token}` },
+    });
+    const { mail, userPrincipalName, displayName } = userResp.data;
+    const email = (mail || userPrincipalName || '').toLowerCase().trim();
+    if (!email) throw new Error('No email returned from Microsoft');
+
+    const db = getDb();
+    let candidate = db.prepare('SELECT id FROM candidates WHERE email=?').get(email);
+    if (!candidate) {
+      const r = db.prepare(`INSERT INTO candidates(name, email, is_active, created_at, updated_at) VALUES(?,?,1,datetime('now'),datetime('now'))`).run(displayName || email, email);
+      candidate = { id: r.lastInsertRowid };
+    }
+    const token = jwt.sign({ sub: candidate.id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
+    res.redirect('/portal?token=' + encodeURIComponent(token));
+  } catch (e) {
+    console.error('[portal] Microsoft OAuth error:', e.message);
+    res.redirect('/portal?oauth_error=' + encodeURIComponent('Microsoft sign-in failed. Please try again.'));
+  }
 });
 
 module.exports = router;

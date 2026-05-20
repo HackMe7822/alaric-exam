@@ -780,9 +780,6 @@
         </div>
         <div class="tc-error" id="err-tc">You must agree to the Terms &amp; Conditions to proceed.</div>
 
-        <!-- reCAPTCHA -->
-        <div id="recaptcha-container"></div>
-
         <!-- Submit -->
         <button type="button" class="btn-submit-primary" id="btn-step1-submit">
           Send Verification Code
@@ -875,9 +872,6 @@
   // ===== STATE =====
   var examId = null;
   var examData = null;
-  var captchaSiteKey = null;
-  var captchaToken = null;
-  var captchaWidgetId = null;
   var otpId = null;
   var formData = {};
   var resendTimer = null;
@@ -891,25 +885,9 @@
     if (!examId) {
       showExamPanelError();
     } else {
-      loadConfig();
       loadExam();
     }
     bindEvents();
-  }
-
-  // ===== API CALLS =====
-  async function loadConfig() {
-    try {
-      var r = await fetch('/api/catalog/config');
-      if (!r.ok) return;
-      var data = await r.json();
-      captchaSiteKey = data.recaptcha_site_key || null;
-      if (captchaSiteKey) {
-        loadRecaptcha();
-      }
-    } catch (e) {
-      // reCAPTCHA not required; proceed without
-    }
   }
 
   async function loadExam() {
@@ -921,24 +899,6 @@
     } catch (e) {
       showExamPanelError();
     }
-  }
-
-  // ===== RECAPTCHA =====
-  function loadRecaptcha() {
-    window.onRecaptchaReady = function () {
-      var container = document.getElementById('recaptcha-container');
-      if (!container) return;
-      captchaWidgetId = window.grecaptcha.render(container, {
-        sitekey: captchaSiteKey,
-        callback: function (token) { captchaToken = token; },
-        'expired-callback': function () { captchaToken = null; }
-      });
-    };
-    var script = document.createElement('script');
-    script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaReady&render=explicit';
-    script.async = true;
-    script.defer = true;
-    document.head.appendChild(script);
   }
 
   // ===== EXAM PANEL =====
@@ -1046,11 +1006,6 @@
     var valid = validateStep1();
     if (!valid) return;
 
-    if (captchaSiteKey && !captchaToken) {
-      showError('step1-error', 'Please complete the reCAPTCHA verification before submitting.');
-      return;
-    }
-
     var name = document.getElementById('field-name').value.trim();
     var email = document.getElementById('field-email').value.trim();
     var phone = document.getElementById('field-phone').value.trim();
@@ -1069,7 +1024,6 @@
         phone: phone,
         message: message
       };
-      if (captchaToken) payload.captcha_token = captchaToken;
 
       var r = await fetch('/api/catalog/begin-registration', {
         method: 'POST',
@@ -1081,10 +1035,6 @@
       if (!r.ok) {
         showError('step1-error', data.error || 'Something went wrong. Please try again.');
         setButtonReady(btn, 'Send Verification Code');
-        if (captchaSiteKey && window.grecaptcha) {
-          window.grecaptcha.reset(captchaWidgetId);
-          captchaToken = null;
-        }
         return;
       }
 
@@ -1209,9 +1159,8 @@
       document.getElementById('success-title').textContent = 'Access Request Submitted!';
       document.getElementById('success-subtitle').textContent = "We’ll email you when your request is approved. Your account is ready — you can track your request status in the Candidate Portal.";
       document.getElementById('success-exam-link-wrap').style.display = 'none';
-      // Redirect to portal after 3 seconds if we have a token
       if (data.portal_token) {
-        setTimeout(function() { window.location.href = '/portal'; }, 3000);
+        window.location.href = '/portal';
       }
     }
   }
@@ -1255,7 +1204,6 @@
         phone: formData.phone,
         message: formData.message
       };
-      if (captchaToken) payload.captcha_token = captchaToken;
 
       var r = await fetch('/api/catalog/begin-registration', {
         method: 'POST',
@@ -1288,13 +1236,9 @@
   function restartFlow() {
     clearResendTimer();
     otpId = null;
-    captchaToken = null;
     clearError('step1-error');
     clearError('step2-error');
     document.getElementById('otp-input').value = '';
-    if (captchaSiteKey && window.grecaptcha) {
-      window.grecaptcha.reset(captchaWidgetId);
-    }
     showStep(1);
     setTimeout(function () { document.getElementById('field-email').focus(); }, 80);
   }
