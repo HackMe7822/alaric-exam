@@ -4,7 +4,7 @@ const { getDb } = require('../../database/index');
 const auth = require('../middleware/auth');
 const { requireRole, requireSuperAdmin } = require('../middleware/roles');
 const { audit } = require('../utils/audit');
-const { testConnection, getConfig, sendEmail } = require('../utils/email');
+const { testConnection, getConfig, sendEmail, sendEmailWithProfile } = require('../utils/email');
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 
@@ -347,24 +347,24 @@ router.get('/email-profiles', auth, requireSuperAdmin, (req, res) => {
        (SELECT GROUP_CONCAT(r.purpose) FROM email_routing r WHERE r.profile_id=p.id) as used_for
      FROM email_profiles p ORDER BY p.is_default DESC, p.id ASC`
   ).all();
-  res.json(profiles.map(p => ({ ...p, client_secret: p.client_secret ? '••••••••' : null, smtp_pass: p.smtp_pass ? '••••••••' : null })));
+  res.json(profiles.map(p => ({ ...p, client_secret: p.client_secret ? '••••••••' : null, smtp_pass: p.smtp_pass ? '••••••••' : null, api_key: p.api_key ? '••••••••' : null })));
 });
 
 // POST /api/settings/email-profiles
 router.post('/email-profiles', auth, requireSuperAdmin, (req, res) => {
   const db = getDb();
   const { name, provider, tenant_id, client_id, client_secret, from_email, from_name, reply_to,
-          smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure } = req.body;
+          smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, api_key } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
   const isFirst = !db.prepare('SELECT id FROM email_profiles LIMIT 1').get();
   const r = db.prepare(
     `INSERT INTO email_profiles(name,provider,tenant_id,client_id,client_secret,from_email,from_name,reply_to,
-       smtp_host,smtp_port,smtp_user,smtp_pass,smtp_secure,is_default,is_active,updated_at)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,datetime('now'))`
+       smtp_host,smtp_port,smtp_user,smtp_pass,smtp_secure,api_key,is_default,is_active,updated_at)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,datetime('now'))`
   ).run(name, provider||'smtp', tenant_id||null, client_id||null, client_secret||null,
         from_email||null, from_name||null, reply_to||null,
         smtp_host||null, smtp_port||null, smtp_user||null, smtp_pass||null,
-        smtp_secure===false||smtp_secure===0 ? 0 : 1, isFirst ? 1 : 0);
+        smtp_secure===false||smtp_secure===0 ? 0 : 1, api_key||null, isFirst ? 1 : 0);
   audit(req.user.id, 'create_email_profile', 'email_profiles', r.lastInsertRowid, { name }, req);
   res.json({ ok: true, id: r.lastInsertRowid });
 });
@@ -376,17 +376,18 @@ router.put('/email-profiles/:id', auth, requireSuperAdmin, (req, res) => {
   const existing = db.prepare('SELECT * FROM email_profiles WHERE id=?').get(id);
   if (!existing) return res.status(404).json({ error: 'Profile not found' });
   const { name, provider, tenant_id, client_id, client_secret, from_email, from_name, reply_to,
-          smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure } = req.body;
+          smtp_host, smtp_port, smtp_user, smtp_pass, smtp_secure, api_key } = req.body;
   const newSecret = (client_secret && client_secret !== '••••••••') ? client_secret : existing.client_secret;
   const newPass   = (smtp_pass && smtp_pass !== '••••••••')   ? smtp_pass   : existing.smtp_pass;
+  const newApiKey = (api_key && api_key !== '••••••••')       ? api_key     : existing.api_key;
   db.prepare(
     `UPDATE email_profiles SET name=?,provider=?,tenant_id=?,client_id=?,client_secret=?,
        from_email=?,from_name=?,reply_to=?,smtp_host=?,smtp_port=?,smtp_user=?,smtp_pass=?,
-       smtp_secure=?,updated_at=datetime('now') WHERE id=?`
+       smtp_secure=?,api_key=?,updated_at=datetime('now') WHERE id=?`
   ).run(name||existing.name, provider||existing.provider, tenant_id||null, client_id||null, newSecret,
         from_email||null, from_name||null, reply_to||null,
         smtp_host||null, smtp_port||null, smtp_user||null, newPass,
-        smtp_secure===false||smtp_secure===0 ? 0 : 1, id);
+        smtp_secure===false||smtp_secure===0 ? 0 : 1, newApiKey||null, id);
   audit(req.user.id, 'update_email_profile', 'email_profiles', id, { name }, req);
   res.json({ ok: true });
 });
@@ -454,12 +455,10 @@ router.post('/email-profiles/:id/send-test-email', auth, requireSuperAdmin, asyn
   const p = db.prepare('SELECT * FROM email_profiles WHERE id=?').get(id);
   if (!p) return res.status(404).json({ error: 'Profile not found' });
   try {
-    await sendEmail({
+    await sendEmailWithProfile(p, {
       to,
       subject: 'Alaric Exam — Email Delivery Test',
       html: `<p>This is a delivery test from <strong>Alaric Exam</strong> using the account <strong>${p.name || p.from_email}</strong>.</p><p>If you received this, your email configuration is working correctly.</p>`,
-      templateCode: 'delivery_test',
-      purpose: null,
     });
     res.json({ ok: true, message: `Test email sent to ${to}` });
   } catch (e) {

@@ -98,6 +98,46 @@ async function sendViaAzure(cfg, { to, subject, html, cc, bcc }) {
   });
 }
 
+async function sendViaResend(cfg, { to, subject, html, cc, bcc }) {
+  const toList = Array.isArray(to) ? to : [to];
+  const body = {
+    from: cfg.from_name ? `${cfg.from_name} <${cfg.from_email}>` : cfg.from_email,
+    to: toList, subject, html,
+  };
+  if (cc?.length) body.cc = Array.isArray(cc) ? cc : [cc];
+  if (bcc?.length) body.bcc = Array.isArray(bcc) ? bcc : [bcc];
+  const resp = await axios.post('https://api.resend.com/emails', body, {
+    headers: { Authorization: `Bearer ${cfg.api_key}`, 'Content-Type': 'application/json' },
+    validateStatus: () => true,
+  });
+  if (resp.status >= 400) {
+    const msg = resp.data?.message || resp.data?.name || `HTTP ${resp.status}`;
+    throw new Error(`Resend: ${msg}`);
+  }
+}
+
+async function sendViaSendGrid(cfg, { to, subject, html, cc, bcc }) {
+  const toList = Array.isArray(to) ? to : [to];
+  const personalizations = [{ to: toList.map(a => ({ email: a })) }];
+  if (cc?.length) personalizations[0].cc = (Array.isArray(cc) ? cc : [cc]).map(a => ({ email: a }));
+  if (bcc?.length) personalizations[0].bcc = (Array.isArray(bcc) ? bcc : [bcc]).map(a => ({ email: a }));
+  const msg = {
+    personalizations,
+    from: cfg.from_name ? { email: cfg.from_email, name: cfg.from_name } : { email: cfg.from_email },
+    subject,
+    content: [{ type: 'text/html', value: html }],
+  };
+  const resp = await axios.post('https://api.sendgrid.com/v3/mail/send', msg, {
+    headers: { Authorization: `Bearer ${cfg.api_key}`, 'Content-Type': 'application/json' },
+    validateStatus: () => true,
+  });
+  if (resp.status >= 400) {
+    const errs = resp.data?.errors;
+    const msg2 = errs?.[0]?.message || `HTTP ${resp.status}`;
+    throw new Error(`SendGrid: ${msg2}`);
+  }
+}
+
 async function sendViaSmtp(cfg, { to, subject, html, cc, bcc }) {
   const transporter = nodemailer.createTransport({
     host: cfg.smtp_host,
@@ -160,9 +200,13 @@ async function sendEmail({ to, subject, html, cc, bcc, templateCode, purpose }) 
   // Attempt delivery
   let status = 'sent', errorMsg = null;
   try {
-    console.log(`[EMAIL] sending via ${cfg.provider} host=${cfg.smtp_host || 'azure'} port=${cfg.smtp_port}`);
+    console.log(`[EMAIL] sending via ${cfg.provider}`);
     if (cfg.provider === 'azure_graph') {
       await sendViaAzure(cfg, { to, subject, html, cc, bcc });
+    } else if (cfg.provider === 'resend') {
+      await sendViaResend(cfg, { to, subject, html, cc, bcc });
+    } else if (cfg.provider === 'sendgrid') {
+      await sendViaSendGrid(cfg, { to, subject, html, cc, bcc });
     } else {
       await sendViaSmtp(cfg, { to, subject, html, cc, bcc });
     }
@@ -171,6 +215,28 @@ async function sendEmail({ to, subject, html, cc, bcc, templateCode, purpose }) 
     status = 'failed';
     errorMsg = err.message;
     console.error(`[EMAIL] send failed logId=${logId}:`, err.message);
+    throw err;
+  } finally {
+    _updateLog(db, logId, status, errorMsg);
+  }
+}
+
+// Send using a specific profile object directly (bypasses routing — for testing a specific account)
+async function sendEmailWithProfile(cfg, { to, subject, html, cc, bcc, templateCode }) {
+  const db = getDb();
+  const toAddr = Array.isArray(to) ? to[0] : to;
+  const profileId = cfg._src === 'profile' ? cfg.id : null;
+  const logId = _insertLog(db, { templateCode: templateCode || 'delivery_test', to: toAddr, subject, html, fromEmail: cfg.from_email, profileId });
+  let status = 'sent', errorMsg = null;
+  try {
+    if (cfg.provider === 'azure_graph') await sendViaAzure(cfg, { to, subject, html, cc, bcc });
+    else if (cfg.provider === 'resend') await sendViaResend(cfg, { to, subject, html, cc, bcc });
+    else if (cfg.provider === 'sendgrid') await sendViaSendGrid(cfg, { to, subject, html, cc, bcc });
+    else await sendViaSmtp(cfg, { to, subject, html, cc, bcc });
+    console.log(`[EMAIL] sendWithProfile sent OK logId=${logId}`);
+  } catch (err) {
+    status = 'failed'; errorMsg = err.message;
+    console.error(`[EMAIL] sendWithProfile failed logId=${logId}:`, err.message);
     throw err;
   } finally {
     _updateLog(db, logId, status, errorMsg);
@@ -198,6 +264,22 @@ async function testConnection(cfg) {
   if (cfg.provider === 'azure_graph') {
     if (!cfg.tenant_id || !cfg.client_id || !cfg.client_secret) throw new Error('Tenant ID, Client ID and Client Secret are required');
     await getAzureToken(cfg);
+  } else if (cfg.provider === 'resend') {
+    if (!cfg.api_key) throw new Error('API key is required');
+    const resp = await axios.get('https://api.resend.com/domains', {
+      headers: { Authorization: `Bearer ${cfg.api_key}` },
+      validateStatus: () => true,
+    });
+    if (resp.status === 401 || resp.status === 403) throw new Error('Invalid API key — get yours at resend.com/api-keys');
+    if (resp.status >= 500) throw new Error('Resend API error, please try again');
+  } else if (cfg.provider === 'sendgrid') {
+    if (!cfg.api_key) throw new Error('API key is required');
+    const resp = await axios.get('https://api.sendgrid.com/v3/user/profile', {
+      headers: { Authorization: `Bearer ${cfg.api_key}` },
+      validateStatus: () => true,
+    });
+    if (resp.status === 401 || resp.status === 403) throw new Error('Invalid API key — get yours at app.sendgrid.com/settings/api_keys');
+    if (resp.status >= 500) throw new Error('SendGrid API error, please try again');
   } else {
     if (!cfg.smtp_host) throw new Error('SMTP host is required');
     if (!cfg.smtp_user) throw new Error('SMTP username is required');
@@ -235,4 +317,4 @@ async function testConnection(cfg) {
   }
 }
 
-module.exports = { sendEmail, sendTemplate, testConnection, getConfig, getProfileForPurpose, logEmailEvent };
+module.exports = { sendEmail, sendEmailWithProfile, sendTemplate, testConnection, getConfig, getProfileForPurpose, logEmailEvent };

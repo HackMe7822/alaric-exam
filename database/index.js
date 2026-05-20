@@ -30,7 +30,39 @@ function initDb() {
       }
     }
   }
+  // JS migration: expand email_profiles to support api_key + resend/sendgrid providers
+  migrateEmailProfiles(d);
   console.log('Database initialized at', path.resolve(DB_PATH));
+}
+
+function migrateEmailProfiles(d) {
+  try {
+    const row = d.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='email_profiles'").get();
+    if (!row || row.sql.includes("'resend'")) return; // not yet created or already migrated
+    d.transaction(() => {
+      d.prepare(`CREATE TABLE IF NOT EXISTS _ep_v2 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+        provider TEXT DEFAULT 'smtp' CHECK(provider IN ('azure_graph','smtp','resend','sendgrid')),
+        tenant_id TEXT, client_id TEXT, client_secret TEXT,
+        from_email TEXT, from_name TEXT, reply_to TEXT,
+        smtp_host TEXT, smtp_port INTEGER, smtp_user TEXT, smtp_pass TEXT,
+        smtp_secure INTEGER DEFAULT 1, api_key TEXT,
+        is_default INTEGER DEFAULT 0, is_active INTEGER DEFAULT 1,
+        created_at TEXT DEFAULT (datetime('now')), updated_at TEXT DEFAULT (datetime('now'))
+      )`).run();
+      d.prepare(`INSERT OR IGNORE INTO _ep_v2(id,name,provider,tenant_id,client_id,client_secret,
+        from_email,from_name,reply_to,smtp_host,smtp_port,smtp_user,smtp_pass,smtp_secure,
+        api_key,is_default,is_active,created_at,updated_at)
+        SELECT id,name,provider,tenant_id,client_id,client_secret,
+          from_email,from_name,reply_to,smtp_host,smtp_port,smtp_user,smtp_pass,smtp_secure,
+          NULL,is_default,is_active,created_at,updated_at FROM email_profiles`).run();
+      d.prepare('DROP TABLE email_profiles').run();
+      d.prepare('ALTER TABLE _ep_v2 RENAME TO email_profiles').run();
+    })();
+    console.log('Database: email_profiles migrated (api_key + resend/sendgrid support)');
+  } catch (e) {
+    console.error('Database: email_profiles migration failed:', e.message);
+  }
 }
 
 module.exports = { getDb, initDb };

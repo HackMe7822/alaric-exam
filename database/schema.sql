@@ -440,7 +440,7 @@ INSERT OR IGNORE INTO email_templates(code, name, subject, body_html, variables)
 CREATE TABLE IF NOT EXISTS email_profiles (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
-  provider TEXT DEFAULT 'smtp' CHECK(provider IN ('azure_graph','smtp')),
+  provider TEXT DEFAULT 'smtp' CHECK(provider IN ('azure_graph','smtp','resend','sendgrid')),
   tenant_id TEXT,
   client_id TEXT,
   client_secret TEXT,
@@ -452,6 +452,7 @@ CREATE TABLE IF NOT EXISTS email_profiles (
   smtp_user TEXT,
   smtp_pass TEXT,
   smtp_secure INTEGER DEFAULT 1,
+  api_key TEXT,
   is_default INTEGER DEFAULT 0,
   is_active INTEGER DEFAULT 1,
   created_at TEXT DEFAULT (datetime('now')),

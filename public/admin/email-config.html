@@ -74,6 +74,8 @@
   background:#e8f0fe; color:#1a56db; letter-spacing:.02em;
 }
 .badge-provider.azure { background:#e8edff; color:#3730a3; }
+.badge-provider.resend { background:#fff0f5; color:#9d174d; }
+.badge-provider.sendgrid { background:#ecfdf5; color:#065f46; }
 .active-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .active-dot.on { background:#16a34a; }
 .active-dot.off { background:#dc2626; }
@@ -233,10 +235,13 @@
                   <label>Provider</label>
                   <div class="provider-toggle">
                     <button id="pf-btn-smtp" class="active" onclick="switchProfileProvider('smtp')">SMTP</button>
+                    <button id="pf-btn-resend" onclick="switchProfileProvider('resend')">Resend</button>
+                    <button id="pf-btn-sendgrid" onclick="switchProfileProvider('sendgrid')">SendGrid</button>
                     <button id="pf-btn-azure" onclick="switchProfileProvider('azure_graph')">Azure Graph</button>
                   </div>
                 </div>
 
+                <!-- Note: SMTP is blocked on Render/most cloud hosts. Use Resend, SendGrid, or Azure Graph instead. -->
                 <!-- SMTP fields -->
                 <div id="pf-section-smtp" class="provider-section active">
                   <div class="form-row">
@@ -387,6 +392,80 @@
                 </div>
 
                 <!-- Azure Graph fields -->
+                <!-- Resend fields -->
+                <div id="pf-section-resend" class="provider-section">
+                  <div class="provider-note">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    Resend uses HTTP API — works on Render, Railway, Vercel, and all cloud hosts. Free tier: 3,000 emails/month.
+                  </div>
+                  <div class="form-group">
+                    <label>API Key <span style="color:var(--danger)">*</span></label>
+                    <input type="password" class="form-control" id="pf-resend-api-key" placeholder="re_xxxxxxxxxxxxxxxx" autocomplete="new-password">
+                    <small class="text-muted">Leave blank to keep existing key. Get yours at resend.com/api-keys</small>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>From Email <span style="color:var(--danger)">*</span></label>
+                      <input type="email" class="form-control" id="pf-resend-from-email" placeholder="noreply@yourdomain.com">
+                      <small class="text-muted">Must be a verified domain in your Resend account</small>
+                    </div>
+                    <div class="form-group">
+                      <label>From Name</label>
+                      <input type="text" class="form-control" id="pf-resend-from-name" placeholder="Alaric Exam">
+                    </div>
+                  </div>
+                  <details class="setup-guide">
+                    <summary>
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      Resend Setup Guide
+                      <span class="guide-arrow">▼</span>
+                    </summary>
+                    <div class="setup-guide-body">
+                      <div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-content"><h4>Create a free account</h4><p>Go to <strong>resend.com</strong> and sign up. The free plan includes 3,000 emails/month.</p></div></div>
+                      <div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-content"><h4>Add and verify your domain</h4><p>Go to <strong>Domains</strong> and add your sending domain (e.g. <code>yourdomain.com</code>). Add the DNS records shown. You can also use <code>onboarding@resend.dev</code> to test without a domain.</p></div></div>
+                      <div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-content"><h4>Create an API key</h4><p>Go to <strong>API Keys</strong> → <strong>Create API Key</strong>. Select <em>Sending access</em>. Copy the key and paste it above.</p></div></div>
+                      <div class="guide-step"><div class="guide-step-num">4</div><div class="guide-step-content"><h4>Set From Email</h4><p>Use an address on your verified domain, e.g. <code>noreply@yourdomain.com</code>. Save and click <strong>Test Connection</strong> to verify.</p></div></div>
+                    </div>
+                  </details>
+                </div>
+
+                <!-- SendGrid fields -->
+                <div id="pf-section-sendgrid" class="provider-section">
+                  <div class="provider-note">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    SendGrid uses HTTP API — works on all cloud hosts. Free tier: 100 emails/day.
+                  </div>
+                  <div class="form-group">
+                    <label>API Key <span style="color:var(--danger)">*</span></label>
+                    <input type="password" class="form-control" id="pf-sg-api-key" placeholder="SG.xxxxxxxxxxxxxxxx" autocomplete="new-password">
+                    <small class="text-muted">Leave blank to keep existing key. Get yours at app.sendgrid.com/settings/api_keys</small>
+                  </div>
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label>From Email <span style="color:var(--danger)">*</span></label>
+                      <input type="email" class="form-control" id="pf-sg-from-email" placeholder="noreply@yourdomain.com">
+                      <small class="text-muted">Must be verified in your SendGrid Sender Identity</small>
+                    </div>
+                    <div class="form-group">
+                      <label>From Name</label>
+                      <input type="text" class="form-control" id="pf-sg-from-name" placeholder="Alaric Exam">
+                    </div>
+                  </div>
+                  <details class="setup-guide">
+                    <summary>
+                      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                      SendGrid Setup Guide
+                      <span class="guide-arrow">▼</span>
+                    </summary>
+                    <div class="setup-guide-body">
+                      <div class="guide-step"><div class="guide-step-num">1</div><div class="guide-step-content"><h4>Create a free account</h4><p>Go to <strong>sendgrid.com</strong> and sign up. Free tier: 100 emails/day.</p></div></div>
+                      <div class="guide-step"><div class="guide-step-num">2</div><div class="guide-step-content"><h4>Verify a Sender Identity</h4><p>Go to <strong>Settings → Sender Authentication</strong>. Verify either a single sender email or a full domain. The From Email above must match a verified identity.</p></div></div>
+                      <div class="guide-step"><div class="guide-step-num">3</div><div class="guide-step-content"><h4>Create an API key</h4><p>Go to <strong>Settings → API Keys → Create API Key</strong>. Choose <em>Restricted Access</em> and enable <em>Mail Send</em>. Copy the key and paste it above.</p></div></div>
+                      <div class="guide-step"><div class="guide-step-num">4</div><div class="guide-step-content"><h4>Save and test</h4><p>Save the account and click <strong>Test Connection</strong> to verify the API key is valid.</p></div></div>
+                    </div>
+                  </details>
+                </div>
+
                 <div id="pf-section-azure_graph" class="provider-section">
                   <div class="provider-note">
                     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -840,8 +919,8 @@ function renderProfileList(profiles) {
     const initial = (p.name || p.account_name || '?')[0].toUpperCase();
     const name = esc(p.name || p.account_name || 'Unnamed');
     const provider = (p.provider || 'smtp').toLowerCase();
-    const provLabel = provider === 'azure_graph' ? 'Azure' : 'SMTP';
-    const provClass = provider === 'azure_graph' ? 'azure' : '';
+    const provLabel = provider === 'azure_graph' ? 'Azure' : provider === 'resend' ? 'Resend' : provider === 'sendgrid' ? 'SendGrid' : 'SMTP';
+    const provClass = provider === 'azure_graph' ? 'azure' : provider === 'resend' ? 'resend' : provider === 'sendgrid' ? 'sendgrid' : '';
     const fromEmail = esc(p.from_email || '');
     const isDefault = p.is_default;
     const isActive = p.is_active || p.active;
@@ -888,6 +967,14 @@ function selectProfile(id) {
     document.getElementById('pf-smtp-from-email').value = p.from_email || '';
     document.getElementById('pf-smtp-from-name').value = p.from_name || '';
     document.getElementById('pf-smtp-secure').checked = !!p.smtp_secure;
+  } else if (provider === 'resend') {
+    document.getElementById('pf-resend-api-key').value = '';
+    document.getElementById('pf-resend-from-email').value = p.from_email || '';
+    document.getElementById('pf-resend-from-name').value = p.from_name || '';
+  } else if (provider === 'sendgrid') {
+    document.getElementById('pf-sg-api-key').value = '';
+    document.getElementById('pf-sg-from-email').value = p.from_email || '';
+    document.getElementById('pf-sg-from-name').value = p.from_name || '';
   } else {
     document.getElementById('pf-az-tenant-id').value = p.tenant_id || '';
     document.getElementById('pf-az-client-id').value = p.client_id || '';
@@ -928,6 +1015,12 @@ function newProfile() {
   document.getElementById('pf-smtp-from-email').value = '';
   document.getElementById('pf-smtp-from-name').value = '';
   document.getElementById('pf-smtp-secure').checked = false;
+  document.getElementById('pf-resend-api-key').value = '';
+  document.getElementById('pf-resend-from-email').value = '';
+  document.getElementById('pf-resend-from-name').value = '';
+  document.getElementById('pf-sg-api-key').value = '';
+  document.getElementById('pf-sg-from-email').value = '';
+  document.getElementById('pf-sg-from-name').value = '';
   document.getElementById('pf-az-tenant-id').value = '';
   document.getElementById('pf-az-client-id').value = '';
   document.getElementById('pf-az-client-secret').value = '';
@@ -954,6 +1047,8 @@ function switchProfileProvider(provider) {
   const sec = document.getElementById('pf-section-' + provider);
   if (sec) sec.classList.add('active');
   document.getElementById('pf-btn-smtp').classList.toggle('active', provider === 'smtp');
+  document.getElementById('pf-btn-resend').classList.toggle('active', provider === 'resend');
+  document.getElementById('pf-btn-sendgrid').classList.toggle('active', provider === 'sendgrid');
   document.getElementById('pf-btn-azure').classList.toggle('active', provider === 'azure_graph');
 }
 
@@ -987,6 +1082,18 @@ async function saveProfile() {
     body.smtp_secure = document.getElementById('pf-smtp-secure').checked;
     body.from_email = document.getElementById('pf-smtp-from-email').value.trim();
     body.from_name = document.getElementById('pf-smtp-from-name').value.trim();
+  } else if (_currentProfileProvider === 'resend') {
+    const apiKey = document.getElementById('pf-resend-api-key').value;
+    if (apiKey) body.api_key = apiKey;
+    body.from_email = document.getElementById('pf-resend-from-email').value.trim();
+    body.from_name = document.getElementById('pf-resend-from-name').value.trim();
+    if (!body.from_email) { showProfileBanner('From Email is required.', 'error'); return; }
+  } else if (_currentProfileProvider === 'sendgrid') {
+    const apiKey = document.getElementById('pf-sg-api-key').value;
+    if (apiKey) body.api_key = apiKey;
+    body.from_email = document.getElementById('pf-sg-from-email').value.trim();
+    body.from_name = document.getElementById('pf-sg-from-name').value.trim();
+    if (!body.from_email) { showProfileBanner('From Email is required.', 'error'); return; }
   } else {
     const tenantId = document.getElementById('pf-az-tenant-id').value.trim();
     const clientId = document.getElementById('pf-az-client-id').value.trim();
