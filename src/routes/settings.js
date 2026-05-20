@@ -199,14 +199,23 @@ router.put('/email-templates/:code', auth, requireRole('super_admin', 'exam_mana
 // --- Email Log ---
 router.get('/email-log', auth, requireRole('super_admin'), (req, res) => {
   const db = getDb();
-  const { status, date, limit = 100 } = req.query;
-  let sql = 'SELECT * FROM email_log WHERE 1=1';
+  const { status, date, limit = 200 } = req.query;
+  // Exclude html_body from list (fetched individually on demand)
+  let sql = 'SELECT id, template_code, to_email, subject, from_email, status, error_message, sent_at, created_at FROM email_log WHERE 1=1';
   const params = [];
   if (status) { sql += ' AND status=?'; params.push(status); }
   if (date) { sql += ' AND DATE(created_at)=?'; params.push(date); }
   sql += ' ORDER BY created_at DESC LIMIT ?';
   params.push(parseInt(limit));
   res.json(db.prepare(sql).all(...params));
+});
+
+// GET /api/settings/email-log/:id — full entry including html_body
+router.get('/email-log/:id', auth, requireRole('super_admin'), (req, res) => {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM email_log WHERE id=?').get(parseInt(req.params.id));
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  res.json(row);
 });
 
 // --- Audit Log ---

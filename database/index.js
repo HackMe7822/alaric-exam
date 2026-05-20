@@ -25,7 +25,7 @@ function initDb() {
       d.prepare(stmt).run();
     } catch (e) {
       // ignore "already exists" errors
-      if (!e.message.includes('already exists') && !e.message.includes('UNIQUE')) {
+      if (!e.message.includes('already exists') && !e.message.includes('UNIQUE') && !e.message.includes('duplicate column name')) {
         console.error('Schema error:', e.message, '\nStatement:', stmt.substring(0, 80));
       }
     }

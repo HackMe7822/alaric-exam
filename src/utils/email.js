@@ -74,8 +74,8 @@ async function sendEmail({ to, subject, html, cc, bcc, templateCode }) {
     throw err;
   } finally {
     const toAddr = Array.isArray(to) ? to[0] : to;
-    db.prepare('INSERT INTO email_log(template_code, to_email, subject, status, error_message) VALUES(?,?,?,?,?)')
-      .run(templateCode || null, toAddr, subject, status, errorMsg);
+    db.prepare('INSERT INTO email_log(template_code, to_email, subject, html_body, from_email, status, error_message) VALUES(?,?,?,?,?,?,?)')
+      .run(templateCode || null, toAddr, subject, html || null, cfg.from_email || null, status, errorMsg);
   }
 }
 

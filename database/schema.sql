@@ -302,11 +302,15 @@ CREATE TABLE IF NOT EXISTS email_log (
   template_code TEXT,
   to_email TEXT NOT NULL,
   subject TEXT,
+  html_body TEXT,
+  from_email TEXT,
   status TEXT DEFAULT 'pending' CHECK(status IN ('pending','sent','failed')),
   error_message TEXT,
   sent_at TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
+ALTER TABLE email_log ADD COLUMN html_body TEXT;
+ALTER TABLE email_log ADD COLUMN from_email TEXT;
 
 -- 19. App Settings
 CREATE TABLE IF NOT EXISTS settings (

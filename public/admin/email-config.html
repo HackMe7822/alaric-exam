@@ -614,41 +614,94 @@ Test-ApplicationAccessPolicy <span class="cmd-flag">`</span>
             <option value="">All Statuses</option>
             <option value="sent">Sent</option>
             <option value="failed">Failed</option>
-            <option value="bounced">Bounced</option>
           </select>
           <input type="date" class="form-control" id="logDateFilter" style="max-width:160px" onchange="loadSendLog()">
+          <input type="text" class="form-control" id="logSearchFilter" placeholder="Search subject or recipient…" style="max-width:240px" oninput="renderSendLog()">
         </div>
         <div class="tbl-wrap">
           <table>
             <thead>
-              <tr><th>To</th><th>Subject</th><th>Template</th><th>Status</th><th>Sent At</th><th>Error</th></tr>
+              <tr>
+                <th>To</th>
+                <th>From</th>
+                <th>Subject</th>
+                <th>Template</th>
+                <th>Status</th>
+                <th>Sent At</th>
+              </tr>
             </thead>
             <tbody id="sendLogBody">
               <tr><td colspan="6" class="text-center text-muted" style="padding:20px">Loading…</td></tr>
             </tbody>
           </table>
         </div>
+        <div style="padding:8px 16px;font-size:12px;color:var(--gray);border-top:1px solid var(--border)">
+          <span id="logCountLabel"></span> — Click any row to view the full email
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Error detail popup -->
-<div id="errModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeErrModal()">
-  <div style="background:#fff;border-radius:10px;width:min(520px,94vw);box-shadow:0 8px 32px rgba(0,0,0,.22);overflow:hidden">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:#fff8f8">
-      <span style="font-weight:700;font-size:14px;color:var(--danger);display:flex;align-items:center;gap:7px">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Email Error Detail
-      </span>
-      <button onclick="closeErrModal()" style="background:none;border:none;cursor:pointer;font-size:20px;line-height:1;color:var(--gray);padding:0 4px">&times;</button>
+<!-- Email Viewer Modal (Outlook-style) -->
+<div id="emailViewerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;align-items:flex-start;justify-content:center;padding:30px 16px;overflow-y:auto;" onclick="if(event.target===this)closeEmailViewer()">
+  <div style="background:#fff;border-radius:10px;width:min(820px,98vw);box-shadow:0 12px 48px rgba(0,0,0,.28);overflow:hidden;display:flex;flex-direction:column;" id="emailViewerBox">
+
+    <!-- Header bar -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);background:#f8f9fa;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <span style="font-weight:700;font-size:14px;color:var(--dark)" id="ev-subject-header">Email</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="ev-status-badge"></span>
+        <button onclick="closeEmailViewer()" style="background:none;border:none;cursor:pointer;font-size:22px;line-height:1;color:var(--gray);padding:2px 6px">&times;</button>
+      </div>
     </div>
-    <div style="padding:18px 20px">
-      <div id="errModalMeta" style="font-size:12px;color:var(--gray);margin-bottom:12px;display:flex;flex-direction:column;gap:3px"></div>
-      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:12px 14px;font-family:monospace;font-size:12.5px;color:#b91c1c;white-space:pre-wrap;word-break:break-all;max-height:240px;overflow-y:auto" id="errModalBody"></div>
+
+    <!-- Email meta (From / To / Date / Template) -->
+    <div style="padding:14px 20px;border-bottom:1px solid var(--border);background:#fff;flex-shrink:0;">
+      <table style="border-collapse:collapse;font-size:13px;width:100%">
+        <tr>
+          <td style="color:var(--gray);font-weight:600;padding:3px 12px 3px 0;white-space:nowrap;width:70px;">From</td>
+          <td id="ev-from" style="color:var(--dark)"></td>
+          <td rowspan="4" style="text-align:right;vertical-align:top;padding-left:12px;">
+            <span id="ev-date" style="font-size:12px;color:var(--gray);white-space:nowrap;"></span>
+          </td>
+        </tr>
+        <tr>
+          <td style="color:var(--gray);font-weight:600;padding:3px 12px 3px 0;">To</td>
+          <td id="ev-to" style="color:var(--dark)"></td>
+        </tr>
+        <tr>
+          <td style="color:var(--gray);font-weight:600;padding:3px 12px 3px 0;">Subject</td>
+          <td id="ev-subject" style="color:var(--dark);font-weight:600;"></td>
+        </tr>
+        <tr>
+          <td style="color:var(--gray);font-weight:600;padding:3px 12px 3px 0;">Template</td>
+          <td id="ev-template" style="color:var(--gray);font-family:monospace;font-size:12px;"></td>
+        </tr>
+      </table>
     </div>
-    <div style="padding:10px 18px 14px;text-align:right">
-      <button class="btn btn-outline btn-sm" onclick="closeErrModal()">Close</button>
+
+    <!-- Error banner (only shown for failed emails) -->
+    <div id="ev-error-bar" style="display:none;padding:10px 20px;background:#fef2f2;border-bottom:1px solid #fecaca;">
+      <div style="display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#b91c1c;">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="ev-error-msg" style="white-space:pre-wrap;word-break:break-all;"></span>
+      </div>
+    </div>
+
+    <!-- Email body (rendered HTML) -->
+    <div style="flex:1;min-height:0;background:#f0f2f5;padding:16px 20px;">
+      <div id="ev-body-loading" style="text-align:center;padding:40px;color:var(--gray);"><span class="spinner"></span> Loading…</div>
+      <div id="ev-body-plain" style="display:none;padding:16px;background:#fff;border-radius:6px;font-size:14px;color:#333;line-height:1.6;white-space:pre-wrap;font-family:sans-serif;border:1px solid var(--border)"></div>
+      <iframe id="ev-body-iframe" style="display:none;width:100%;min-height:500px;border:1px solid var(--border);border-radius:6px;background:#fff;" sandbox="allow-same-origin"></iframe>
+    </div>
+
+    <!-- Footer -->
+    <div style="padding:10px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-shrink:0;background:#f8f9fa;">
+      <button class="btn btn-outline btn-sm" onclick="closeEmailViewer()">Close</button>
     </div>
   </div>
 </div>
@@ -984,60 +1037,123 @@ async function saveTemplate() {
   }
 }
 
-// ── Error detail modal ────────────────────────────────────────────────────
-function showErrModal(idx) {
-  const l = _logEntries[idx];
-  if (!l) return;
-  const meta = document.getElementById('errModalMeta');
-  meta.innerHTML = [
-    l.to_email   ? `<span><strong>To:</strong> ${esc(l.to_email)}</span>` : '',
-    l.subject    ? `<span><strong>Subject:</strong> ${esc(l.subject)}</span>` : '',
-    l.template_code ? `<span><strong>Template:</strong> ${esc(l.template_code)}</span>` : '',
-    (l.sent_at||l.created_at) ? `<span><strong>Time:</strong> ${formatDate(l.sent_at||l.created_at)}</span>` : '',
-  ].filter(Boolean).join('');
-  document.getElementById('errModalBody').textContent = l.error_message || l.error || 'No error details available.';
-  const modal = document.getElementById('errModal');
+// ── Email Viewer Modal ────────────────────────────────────────────────
+async function openEmailViewer(logId) {
+  const modal = document.getElementById('emailViewerModal');
   modal.style.display = 'flex';
-  document.addEventListener('keydown', _errModalEsc);
-}
-function closeErrModal() {
-  document.getElementById('errModal').style.display = 'none';
-  document.removeEventListener('keydown', _errModalEsc);
-}
-function _errModalEsc(e) { if (e.key === 'Escape') closeErrModal(); }
+  document.addEventListener('keydown', _evEsc);
 
-// ── Send Log ──────────────────────────────────────────────────────────────
+  document.getElementById('ev-subject-header').textContent = 'Loading…';
+  document.getElementById('ev-from').textContent = '';
+  document.getElementById('ev-to').textContent = '';
+  document.getElementById('ev-subject').textContent = '';
+  document.getElementById('ev-template').textContent = '';
+  document.getElementById('ev-date').textContent = '';
+  document.getElementById('ev-status-badge').innerHTML = '';
+  document.getElementById('ev-error-bar').style.display = 'none';
+  document.getElementById('ev-body-loading').style.display = 'block';
+  document.getElementById('ev-body-plain').style.display = 'none';
+  document.getElementById('ev-body-iframe').style.display = 'none';
+
+  const data = await api('GET', `/api/settings/email-log/${logId}`);
+  if (!data || data.error) {
+    document.getElementById('ev-subject-header').textContent = 'Failed to load';
+    document.getElementById('ev-body-loading').style.display = 'none';
+    return;
+  }
+
+  const statusClass = data.status === 'sent' ? 'badge-success' : data.status === 'failed' ? 'badge-danger' : 'badge-secondary';
+  document.getElementById('ev-subject-header').textContent = data.subject || '(no subject)';
+  document.getElementById('ev-status-badge').innerHTML = `<span class="badge ${statusClass}">${esc(data.status)}</span>`;
+  document.getElementById('ev-from').textContent    = data.from_email || '—';
+  document.getElementById('ev-to').textContent      = data.to_email   || '—';
+  document.getElementById('ev-subject').textContent = data.subject    || '—';
+  document.getElementById('ev-template').textContent = data.template_code || '—';
+  document.getElementById('ev-date').textContent    = formatDate(data.sent_at || data.created_at);
+
+  if (data.status === 'failed' && data.error_message) {
+    document.getElementById('ev-error-bar').style.display = 'block';
+    document.getElementById('ev-error-msg').textContent = data.error_message;
+  }
+
+  document.getElementById('ev-body-loading').style.display = 'none';
+
+  if (data.html_body) {
+    const iframe = document.getElementById('ev-body-iframe');
+    iframe.style.display = 'block';
+    try {
+      const doc = iframe.contentDocument || iframe.contentWindow.document;
+      doc.open(); doc.write(data.html_body); doc.close();
+    } catch(e) {}
+  } else {
+    document.getElementById('ev-body-plain').style.display = 'block';
+    document.getElementById('ev-body-plain').textContent = data.status === 'failed'
+      ? 'This email failed to send — no body was recorded.\n\nError: ' + (data.error_message || 'unknown')
+      : '(No HTML body was recorded for this email)';
+  }
+}
+
+function closeEmailViewer() {
+  document.getElementById('emailViewerModal').style.display = 'none';
+  document.removeEventListener('keydown', _evEsc);
+  try {
+    const doc = document.getElementById('ev-body-iframe').contentDocument;
+    doc.open(); doc.write(''); doc.close();
+  } catch(e) {}
+}
+function _evEsc(e) { if (e.key === 'Escape') closeEmailViewer(); }
+
+// ── Send Log ────────────────────────────────────────────────────────────────────────────────────────────────
 async function loadSendLog() {
   const tbody = document.getElementById('sendLogBody');
   tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding:20px"><span class="spinner"></span></td></tr>';
   const status = document.getElementById('logStatusFilter').value;
   const date = document.getElementById('logDateFilter').value;
-  let url = '/api/settings/email-log?limit=100';
+  let url = '/api/settings/email-log?limit=200';
   if (status) url += `&status=${status}`;
   if (date) url += `&date=${date}`;
   const data = await api('GET', url);
   if (!data) return;
-  const logs = data.logs || data.data || data || [];
-  _logEntries = logs;
-  if (!logs.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:20px">No emails in log</td></tr>';
+  _logEntries = Array.isArray(data) ? data : (data.logs || data.data || []);
+  renderSendLog();
+}
+
+function renderSendLog() {
+  const tbody = document.getElementById('sendLogBody');
+  const search = (document.getElementById('logSearchFilter')?.value || '').toLowerCase().trim();
+  const entries = search
+    ? _logEntries.filter(l =>
+        (l.subject || '').toLowerCase().includes(search) ||
+        (l.to_email || '').toLowerCase().includes(search) ||
+        (l.from_email || '').toLowerCase().includes(search) ||
+        (l.template_code || '').toLowerCase().includes(search))
+    : _logEntries;
+
+  document.getElementById('logCountLabel').textContent = `${entries.length} email${entries.length !== 1 ? 's' : ''}`;
+
+  if (!entries.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted" style="padding:24px">No emails found</td></tr>';
     return;
   }
-  tbody.innerHTML = logs.map((l, i) => {
-    const statusClass = l.status === 'sent' ? 'badge-success' : l.status === 'failed' ? 'badge-danger' : l.status === 'bounced' ? 'badge-warning' : 'badge-secondary';
-    const errMsg = l.error_message || l.error || '';
-    return `<tr class="send-log-row">
-      <td>${esc(l.to_email || l.to || l.recipient || '—')}</td>
-      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.subject || '—')}</td>
-      <td><span style="font-family:monospace;font-size:11px;background:#f8f9fa;padding:1px 6px;border-radius:3px">${esc(l.template_code || l.template || '—')}</span></td>
-      <td><span class="badge ${statusClass}">${esc(l.status || '—')}</span></td>
-      <td style="white-space:nowrap">${formatDate(l.sent_at || l.created_at)}</td>
-      <td style="max-width:220px;">
-        ${errMsg
-          ? `<span onclick="showErrModal(${i})" style="cursor:pointer;font-size:11px;color:var(--danger);text-decoration:underline dotted;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:220px;" title="Click to view full error">${esc(errMsg.substring(0,60))}${errMsg.length>60?'…':''}</span>`
-          : '<span style="color:var(--gray);font-size:11px">—</span>'
-        }
+
+  tbody.innerHTML = entries.map(l => {
+    const statusClass = l.status === 'sent' ? 'badge-success' : l.status === 'failed' ? 'badge-danger' : 'badge-secondary';
+    const failIcon = l.status === 'failed'
+      ? '<svg width="12" height="12" fill="none" stroke="var(--danger)" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+      : '';
+    return `<tr class="send-log-row" onclick="openEmailViewer(${l.id})" style="cursor:pointer;" title="Click to view email">
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(l.to_email || '—')}</td>
+      <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--gray)">${esc(l.from_email || '—')}</td>
+      <td style="max-width:240px;">
+        <div style="display:flex;align-items:center;gap:5px;">
+          ${failIcon}
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;" title="${esc(l.subject || '')}">${esc(l.subject || '—')}</span>
+        </div>
+        ${l.status === 'failed' && l.error_message ? `<div style="font-size:11px;color:var(--danger);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;">${esc(l.error_message.substring(0,80))}${l.error_message.length>80?'…':''}</div>` : ''}
       </td>
+      <td><span style="font-family:monospace;font-size:11px;background:#f0f4ff;padding:1px 7px;border-radius:3px;color:#334">${esc(l.template_code || '—')}</span></td>
+      <td><span class="badge ${statusClass}">${esc(l.status || '—')}</span></td>
+      <td style="white-space:nowrap;font-size:12px;color:var(--gray)">${formatDate(l.sent_at || l.created_at)}</td>
     </tr>`;
   }).join('');
 }
