@@ -18,8 +18,8 @@ function getDb() {
 function initDb() {
   const d = getDb();
   const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  // Execute each statement
-  const stmts = schema.split(';').map(s => s.trim()).filter(s => s.length > 0);
+  // Split on ; but not inside quoted strings
+  const stmts = splitSql(schema).map(s => s.trim()).filter(s => s.length > 0);
   for (const stmt of stmts) {
     try {
       d.prepare(stmt).run();
@@ -63,6 +63,24 @@ function migrateEmailProfiles(d) {
   } catch (e) {
     console.error('Database: email_profiles migration failed:', e.message);
   }
+}
+
+function splitSql(sql) {
+  const stmts = [];
+  let cur = '', inStr = false, strChar = '';
+  for (let i = 0; i < sql.length; i++) {
+    const c = sql[i];
+    if (!inStr && (c === "'" || c === '"')) { inStr = true; strChar = c; cur += c; }
+    else if (inStr && c === strChar) {
+      cur += c;
+      if (sql[i + 1] === strChar) { cur += sql[++i]; } // escaped quote
+      else inStr = false;
+    } else if (!inStr && c === ';') {
+      const t = cur.trim(); if (t) stmts.push(t); cur = '';
+    } else { cur += c; }
+  }
+  const t = cur.trim(); if (t) stmts.push(t);
+  return stmts;
 }
 
 module.exports = { getDb, initDb };

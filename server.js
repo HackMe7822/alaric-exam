@@ -52,6 +52,7 @@ app.get('/admin/*', (req, res) => {
 app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
 app.get('/portal/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
 app.get('/catalog', (req, res) => res.sendFile(path.join(__dirname, 'public', 'catalog', 'index.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register', 'index.html')));
 app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
 
 // Error handler

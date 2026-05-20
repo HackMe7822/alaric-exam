@@ -443,6 +443,11 @@ function buildExamCard(exam) {
 // ===== MODAL =====
 function openRequestModal(exam) {
   if (!exam) return;
+  // Redirect to full registration page
+  window.location.href = `/register?exam_id=${exam.id}`;
+}
+function openRequestModal_legacy(exam) {
+  if (!exam) return;
   currentExam = exam;
   const isOpen = !!exam.is_open_test;
 

@@ -486,3 +486,27 @@ INSERT OR IGNORE INTO email_templates(code, name, subject, body_html, variables)
   ('access_request_received', 'Access Request Received', 'We received your access request: {{exam_title}}',
    '<p>Dear <strong>{{candidate_name}}</strong>,</p><p>Thank you for requesting access to <strong>{{exam_title}}</strong>.</p><p>Your request has been received and is pending review by our admin team. Once approved you will receive a separate email with your unique exam link.</p><p>If you have any questions please contact your administrator.</p><p>Regards,<br><strong>{{platform_name}} Team</strong></p>',
    '["candidate_name","exam_title","platform_name"]');
+
+-- Registration / OTP columns on access_requests
+ALTER TABLE exam_access_requests ADD COLUMN phone TEXT;
+ALTER TABLE exam_access_requests ADD COLUMN email_verified INTEGER DEFAULT 0;
+ALTER TABLE exam_access_requests ADD COLUMN ip_address TEXT;
+
+-- Temporary OTP storage table
+CREATE TABLE IF NOT EXISTS email_otps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  otp_code TEXT NOT NULL,
+  expires_at TEXT NOT NULL,
+  attempts INTEGER DEFAULT 0,
+  purpose TEXT NOT NULL DEFAULT 'access_request',
+  payload TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_email_otps_email ON email_otps(email);
+
+-- Cleanup old OTPs periodically via trigger
+CREATE TRIGGER IF NOT EXISTS cleanup_expired_otps AFTER INSERT ON email_otps
+BEGIN
+  DELETE FROM email_otps WHERE datetime(expires_at) < datetime('now','-1 hour');
+END;

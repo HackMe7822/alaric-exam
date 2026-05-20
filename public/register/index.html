@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register — Alaric Exam</title>
+<meta name="description" content="Register to request access to an exam on the Alaric Exam platform.">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #002B5C;
+    --primary-light: #003f87;
+    --accent: #0066cc;
+    --mid: #4f46e5;
+    --bg: #f8f9fb;
+    --surface: #ffffff;
+    --surface2: #f8fafc;
+    --border: #e5e7eb;
+    --text: #111827;
+    --text-muted: #6b7280;
+    --danger: #dc2626;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --shadow: 0 4px 24px rgba(0, 43, 92, 0.08);
+    --shadow-lg: 0 8px 40px rgba(0, 43, 92, 0.14);
+  }
+
+  html, body {
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  /* ===== HEADER ===== */
+  .site-header {
+    background: var(--primary);
+    color: #fff;
+    padding: 0 24px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+  .header-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    text-decoration: none;
+    color: #fff;
+  }
+  .header-logo svg { width: 36px; height: 36px; flex-shrink: 0; }
+  .brand-name { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; }
+  .brand-sub { font-size: 0.73rem; color: rgba(255,255,255,0.5); display: block; margin-top: -2px; }
+  .header-nav { display: flex; align-items: center; gap: 10px; }
+  .nav-link {
+    color: rgba(255,255,255,0.8);
+    text-decoration: none;
+    font-size: 0.87rem;
+    font-weight: 500;
+    padding: 7px 14px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+  .nav-link:hover { color: #fff; background: rgba(255,255,255,0.1); }
+  .nav-link.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav-link.primary:hover { background: #0055b0; }
+
+  /* ===== PAGE LAYOUT ===== */
+  .page-wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    min-height: calc(100vh - 62px);
+  }
+
+  /* ===== STEP INDICATOR ===== */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    margin-bottom: 36px;
+  }
+  .step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    position: relative;
+  }
+  .step-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 17px;
+    left: calc(50% + 17px);
+    width: calc(100% - 10px);
+    height: 2px;
+    background: var(--border);
+    transition: background 0.3s;
+  }
+  .step-item.done:not(:last-child)::after { background: var(--accent); }
+  .step-dot {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    background: var(--bg);
+    border: 2px solid var(--border);
+    color: var(--text-muted);
+    transition: all 0.3s;
+    z-index: 1;
+  }
+  .step-item.active .step-dot {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 4px rgba(0,102,204,0.15);
+  }
+  .step-item.done .step-dot {
+    background: var(--green);
+    border-color: var(--green);
+    color: #fff;
+  }
+  .step-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .step-item.active .step-label { color: var(--accent); }
+  .step-item.done .step-label { color: var(--green); }
+  .step-connector {
+    flex: 1;
+    min-width: 48px;
+    max-width: 80px;
+    height: 2px;
+    background: var(--border);
+    margin-bottom: 22px;
+    transition: background 0.3s;
+  }
+  .step-connector.done { background: var(--accent); }
+
+  /* ===== TWO-PANEL ===== */
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+
+  /* ===== LEFT PANEL — EXAM INFO ===== */
+  .exam-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    position: sticky;
+    top: 86px;
+  }
+  .exam-panel-banner {
+    height: 120px;
+    background: linear-gradient(135deg, var(--primary) 0%, #0055a0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .exam-panel-initial {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: -0.04em;
+    user-select: none;
+  }
+  .exam-panel-body { padding: 24px; }
+  .exam-code-badge {
+    display: inline-block;
+    background: rgba(0,102,204,0.08);
+    color: var(--accent);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+  }
+  .exam-title-large {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 14px;
+  }
+  .exam-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .chip svg { width: 13px; height: 13px; opacity: 0.65; flex-shrink: 0; }
+  .exam-catalog-desc {
+    font-size: 0.87rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin-bottom: 18px;
+  }
+  .exam-access-notice {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    line-height: 1.5;
+    font-weight: 500;
+  }
+  .exam-access-notice.reviewed {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+  }
+  .exam-access-notice.open {
+    background: var(--green-bg);
+    color: #15803d;
+    border: 1px solid var(--green-border);
+  }
+  .exam-access-notice svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 2px; }
+  .exam-panel-loading {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+  }
+  .exam-panel-error {
+    padding: 24px;
+    text-align: center;
+    color: var(--danger);
+    font-size: 0.87rem;
+  }
+
+  /* Platform branding under exam card */
+  .platform-branding {
+    margin-top: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+  .platform-branding svg { width: 28px; height: 28px; flex-shrink: 0; }
+  .platform-branding-text { font-size: 0.8rem; }
+  .platform-branding-name { font-weight: 700; color: var(--text); font-size: 0.88rem; }
+  .platform-branding-tagline { color: var(--text-muted); font-size: 0.75rem; }
+
+  /* ===== RIGHT PANEL — FORM ===== */
+  .form-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 36px 40px;
+  }
+
+  /* Step views */
+  .step-view { display: none; }
+  .step-view.active { display: block; }
+
+  /* --- Step 1 --- */
+  .form-heading { font-size: 1.3rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+  .form-subheading { font-size: 0.88rem; color: var(--text-muted); margin-bottom: 28px; line-height: 1.55; }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .req-star { color: var(--danger); }
+  .form-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.92rem;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    font-family: inherit;
+  }
+  .form-input:focus {
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
+  }
+  .form-input.has-error { border-color: var(--danger); }
+  .form-input.has-error:focus { box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+  .form-input::placeholder { color: #adb5bd; }
+  textarea.form-input { resize: vertical; min-height: 80px; }
+
+  .field-error {
+    font-size: 0.78rem;
+    color: var(--danger);
+    margin-top: 5px;
+    display: none;
+    align-items: center;
+    gap: 4px;
+  }
+  .field-error.show { display: flex; }
+  .field-error svg { width: 12px; height: 12px; flex-shrink: 0; }
+
+  /* T&C checkbox */
+  .tc-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .tc-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin-top: 3px;
+    accent-color: var(--accent);
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .tc-label {
+    font-size: 0.84rem;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+  .tc-toggle {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    font-family: inherit;
+  }
+  .tc-toggle:hover { color: #0055b0; }
+  .tc-accordion {
+    display: none;
+    margin-top: 12px;
+    margin-left: 26px;
+    padding: 14px 16px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    line-height: 1.65;
+  }
+  .tc-accordion.open { display: block; }
+  .tc-accordion h4 { font-size: 0.85rem; color: var(--text); margin-bottom: 8px; font-weight: 700; }
+  .tc-accordion p { margin-bottom: 8px; }
+  .tc-accordion p:last-child { margin-bottom: 0; }
+  .tc-error { font-size: 0.78rem; color: var(--danger); margin-left: 26px; margin-top: -10px; margin-bottom: 14px; display: none; }
+  .tc-error.show { display: block; }
+
+  /* reCAPTCHA */
+  #recaptcha-container { margin-bottom: 20px; min-height: 0; }
+
+  /* Submit button */
+  .btn-submit-primary {
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-submit-primary:hover:not(:disabled) { background: #0055b0; }
+  .btn-submit-primary:active:not(:disabled) { transform: scale(0.99); }
+  .btn-submit-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+  .spinner-inline {
+    width: 16px;
+    height: 16px;
+    border: 2.5px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .inline-error-box {
+    display: none;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    font-size: 0.84rem;
+    color: var(--danger);
+    margin-bottom: 16px;
+    line-height: 1.5;
+  }
+  .inline-error-box.show { display: block; }
+
+  .back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 18px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .back-link:hover { color: var(--accent); }
+
+  /* --- Step 2 — OTP --- */
+  .otp-intro { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 28px; line-height: 1.6; }
+  .otp-intro strong { color: var(--text); }
+
+  .otp-input-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+  #otp-input {
+    width: 180px;
+    padding: 14px 20px;
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    letter-spacing: 0.25em;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    font-family: 'Courier New', monospace;
+  }
+  #otp-input:focus {
+    border-color: var(--accent);
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(0,102,204,0.1);
+  }
+  #otp-input.has-error { border-color: var(--danger); }
+
+  .otp-hint-text {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+  .otp-attempts {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-top: 6px;
+    margin-bottom: 8px;
+    min-height: 20px;
+  }
+  .otp-attempts.warn { color: var(--danger); }
+
+  .resend-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+  #resend-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.85rem;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+  #resend-btn:hover:not(:disabled) { color: #0055b0; }
+  #resend-btn:disabled { color: var(--text-muted); cursor: default; text-decoration: none; }
+
+  .otp-restart-link {
+    display: block;
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.83rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: inherit;
+    transition: color 0.15s;
+    text-decoration: underline;
+  }
+  .otp-restart-link:hover { color: var(--accent); }
+
+  /* --- Step 3 — Success --- */
+  .success-wrap {
+    text-align: center;
+    padding: 16px 0 8px;
+  }
+  .success-icon-circle {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+  }
+  .success-icon-circle.green { background: var(--green-bg); border: 2px solid var(--green-border); }
+  .success-icon-circle.green svg { color: var(--green); }
+  .success-icon-circle svg { width: 36px; height: 36px; }
+
+  .success-title { font-size: 1.5rem; font-weight: 800; color: var(--text); margin-bottom: 10px; }
+  .success-subtitle { font-size: 0.92rem; color: var(--text-muted); line-height: 1.65; max-width: 400px; margin: 0 auto 28px; }
+
+  .exam-url-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--green);
+    color: #fff;
+    text-decoration: none;
+    padding: 14px 28px;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    font-weight: 700;
+    transition: background 0.15s, transform 0.1s;
+    margin-bottom: 20px;
+    word-break: break-all;
+    max-width: 100%;
+  }
+  .exam-url-btn:hover { background: #15803d; }
+  .exam-url-btn:active { transform: scale(0.99); }
+  .exam-url-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+
+  /* ===== FOOTER ===== */
+  .site-footer {
+    background: var(--primary);
+    color: rgba(255,255,255,0.5);
+    text-align: center;
+    padding: 18px 24px;
+    font-size: 0.82rem;
+    margin-top: auto;
+  }
+  .site-footer a { color: rgba(255,255,255,0.7); text-decoration: none; }
+  .site-footer a:hover { color: #fff; }
+
+  /* ===== SCROLLBAR ===== */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ===== RESPONSIVE ===== */
+  @media (max-width: 820px) {
+    .panel-grid {
+      grid-template-columns: 1fr;
+    }
+    .exam-panel {
+      position: static;
+    }
+    .form-panel {
+      padding: 28px 24px;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .page-wrap { padding: 24px 16px 60px; }
+    .form-row { grid-template-columns: 1fr; }
+    .header-logo .brand-sub { display: none; }
+    .nav-link:not(.primary) { display: none; }
+    .step-indicator { gap: 0; }
+    .step-connector { min-width: 32px; }
+    #otp-input { width: 160px; font-size: 1.6rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="site-header">
+  <div class="header-inner">
+    <a href="/catalog" class="header-logo">
+      <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="38" height="38" rx="9" fill="#0066cc" opacity="0.3"/>
+        <path d="M19 5L8 12V26L19 33L30 26V12L19 5Z" fill="rgba(255,255,255,0.15)"/>
+        <path d="M19 9L12 14V23L19 28L26 23V14L19 9Z" fill="white"/>
+        <circle cx="19" cy="18" r="4" fill="#002B5C"/>
+      </svg>
+      <div>
+        <div class="brand-name">Alaric Exam</div>
+        <div class="brand-sub">Candidate Registration</div>
+      </div>
+    </a>
+    <nav class="header-nav">
+      <a href="/catalog" class="nav-link">Browse Exams</a>
+      <a href="/portal" class="nav-link primary">Candidate Portal →</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Page -->
+<div class="page-wrap">
+
+  <!-- Step Indicator -->
+  <div class="step-indicator" id="step-indicator">
+    <div class="step-item active" id="step-item-1">
+      <div class="step-dot">1</div>
+      <div class="step-label">Register</div>
+    </div>
+    <div class="step-connector" id="step-conn-1"></div>
+    <div class="step-item" id="step-item-2">
+      <div class="step-dot">2</div>
+      <div class="step-label">Verify Email</div>
+    </div>
+    <div class="step-connector" id="step-conn-2"></div>
+    <div class="step-item" id="step-item-3">
+      <div class="step-dot">3</div>
+      <div class="step-label">Done</div>
+    </div>
+  </div>
+
+  <!-- Two-panel grid -->
+  <div class="panel-grid">
+
+    <!-- LEFT — Exam Info Panel -->
+    <div>
+      <div class="exam-panel" id="exam-panel">
+        <div class="exam-panel-loading" id="exam-panel-loading">
+          <div style="width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 10px;"></div>
+          Loading exam details…
+        </div>
+        <div id="exam-panel-content" style="display:none">
+          <div class="exam-panel-banner" id="exam-panel-banner">
+            <span class="exam-panel-initial" id="exam-panel-initial">E</span>
+          </div>
+          <div class="exam-panel-body">
+            <div class="exam-code-badge" id="exam-code-badge" style="display:none"></div>
+            <div class="exam-title-large" id="exam-title-large">Loading…</div>
+            <div class="exam-chips" id="exam-chips"></div>
+            <div class="exam-catalog-desc" id="exam-catalog-desc" style="display:none"></div>
+            <div class="exam-access-notice" id="exam-access-notice"></div>
+          </div>
+        </div>
+        <div class="exam-panel-error" id="exam-panel-error" style="display:none">
+          Could not load exam details. The exam may not exist or the link may be incorrect.
+        </div>
+      </div>
+
+      <!-- Platform Branding -->
+      <div class="platform-branding">
+        <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="38" height="38" rx="9" fill="#0066cc" opacity="0.2"/>
+          <path d="M19 5L8 12V26L19 33L30 26V12L19 5Z" fill="rgba(0,43,92,0.12)"/>
+          <path d="M19 9L12 14V23L19 28L26 23V14L19 9Z" fill="#002B5C"/>
+          <circle cx="19" cy="18" r="4" fill="#0066cc"/>
+        </svg>
+        <div class="platform-branding-text">
+          <div class="platform-branding-name">Alaric Exam Platform</div>
+          <div class="platform-branding-tagline">Secure, reliable online exam delivery</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT — Form Panel -->
+    <div class="form-panel">
+
+      <!-- Step 1: Registration Form -->
+      <div class="step-view active" id="step-view-1">
+        <h1 class="form-heading">Create Your Account</h1>
+        <p class="form-subheading">Fill in your details below to request access to this exam. We'll send a verification code to your email address.</p>
+
+        <div id="step1-error" class="inline-error-box"></div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="field-name">Full Name <span class="req-star">*</span></label>
+            <input type="text" id="field-name" class="form-input" placeholder="Jane Smith" autocomplete="name" required>
+            <div class="field-error" id="err-name">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span id="err-name-text">Please enter your full name.</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="field-email">Email Address <span class="req-star">*</span></label>
+            <input type="email" id="field-email" class="form-input" placeholder="jane@example.com" autocomplete="email" required>
+            <div class="field-error" id="err-email">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span id="err-email-text">Please enter a valid email address.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="field-phone">Phone Number <span class="req-star">*</span></label>
+          <input type="tel" id="field-phone" class="form-input" placeholder="+1 234 567 8900" autocomplete="tel" required>
+          <div class="field-error" id="err-phone">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span id="err-phone-text">Please enter your phone number including country code.</span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="field-message">Your Message <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+          <textarea id="field-message" class="form-input" placeholder="Briefly tell us why you're interested in this exam, or any questions you have…"></textarea>
+        </div>
+
+        <!-- T&C -->
+        <div class="tc-row">
+          <input type="checkbox" id="field-tc">
+          <div>
+            <label for="field-tc" class="tc-label">
+              I agree to the
+              <button type="button" class="tc-toggle" id="tc-toggle-btn" aria-expanded="false">Terms &amp; Conditions</button>
+            </label>
+            <div class="tc-accordion" id="tc-accordion" role="region" aria-label="Terms and Conditions">
+              <h4>Terms &amp; Conditions</h4>
+              <p>By registering on this platform you agree to use this exam system solely for its intended purpose. You must not share, copy, or distribute exam content in any form.</p>
+              <p>Your personal information (name, email, phone number) will be used solely to manage your exam access and to contact you regarding your registration status.</p>
+              <p>Exam access is subject to administrator approval. The platform administrator reserves the right to approve or deny any access request. Approved access links are single-use and non-transferable.</p>
+              <p>By submitting this form you confirm that all information provided is accurate and that you are the individual named in the registration.</p>
+            </div>
+          </div>
+        </div>
+        <div class="tc-error" id="err-tc">You must agree to the Terms &amp; Conditions to proceed.</div>
+
+        <!-- reCAPTCHA -->
+        <div id="recaptcha-container"></div>
+
+        <!-- Submit -->
+        <button type="button" class="btn-submit-primary" id="btn-step1-submit">
+          Send Verification Code
+        </button>
+
+        <a href="/catalog" class="back-link">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to Catalog
+        </a>
+      </div>
+
+      <!-- Step 2: OTP Verification -->
+      <div class="step-view" id="step-view-2">
+        <h1 class="form-heading">Verify Your Email</h1>
+        <p class="otp-intro">We've sent a 6-digit verification code to <strong id="otp-email-display"></strong>. Enter it below to confirm your email address.</p>
+
+        <div id="step2-error" class="inline-error-box"></div>
+
+        <div class="otp-input-wrap">
+          <input
+            type="text"
+            id="otp-input"
+            class="form-input"
+            maxlength="6"
+            pattern="[0-9]{6}"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            placeholder="000000"
+            aria-label="6-digit verification code"
+          >
+        </div>
+        <div class="otp-hint-text">Enter the 6-digit code — it expires in 10 minutes.</div>
+        <div class="otp-attempts" id="otp-attempts"></div>
+
+        <button type="button" class="btn-submit-primary" id="btn-step2-submit">
+          Verify Code
+        </button>
+
+        <div class="resend-row">
+          <span id="resend-label">Didn't receive it?</span>
+          <button type="button" id="resend-btn" disabled>Resend in <span id="resend-countdown">60</span>s</button>
+        </div>
+
+        <button type="button" class="otp-restart-link" id="btn-restart">
+          ← Start over / use a different email
+        </button>
+      </div>
+
+      <!-- Step 3: Success -->
+      <div class="step-view" id="step-view-3">
+        <div class="success-wrap">
+          <!-- Icon -->
+          <div class="success-icon-circle green" id="success-icon-wrap">
+            <svg id="success-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </div>
+
+          <h2 class="success-title" id="success-title">Access Request Submitted!</h2>
+          <p class="success-subtitle" id="success-subtitle">We'll review your request and send you an email when access is approved. Keep an eye on your inbox.</p>
+
+          <!-- Open test exam link (hidden by default) -->
+          <div id="success-exam-link-wrap" style="display:none">
+            <a id="success-exam-link-btn" href="#" class="exam-url-btn" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              Start Exam Now
+            </a>
+          </div>
+
+          <a href="/catalog" class="back-link" style="justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to Catalog
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /.form-panel -->
+  </div><!-- /.panel-grid -->
+</div><!-- /.page-wrap -->
+
+<!-- Footer -->
+<footer class="site-footer">
+  <p>&copy; 2025 Alaric Exam Platform &nbsp;&middot;&nbsp; <a href="/catalog">Exam Catalog</a> &nbsp;&middot;&nbsp; <a href="/portal">Candidate Portal</a></p>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  // ===== STATE =====
+  var examId = null;
+  var examData = null;
+  var captchaSiteKey = null;
+  var captchaToken = null;
+  var captchaWidgetId = null;
+  var otpId = null;
+  var formData = {};
+  var resendTimer = null;
+  var resendSeconds = 60;
+  var currentStep = 1;
+
+  // ===== INIT =====
+  function init() {
+    var params = new URLSearchParams(window.location.search);
+    examId = params.get('exam_id');
+    if (!examId) {
+      showExamPanelError();
+    } else {
+      loadConfig();
+      loadExam();
+    }
+    bindEvents();
+  }
+
+  // ===== API CALLS =====
+  async function loadConfig() {
+    try {
+      var r = await fetch('/api/catalog/config');
+      if (!r.ok) return;
+      var data = await r.json();
+      captchaSiteKey = data.recaptcha_site_key || null;
+      if (captchaSiteKey) {
+        loadRecaptcha();
+      }
+    } catch (e) {
+      // reCAPTCHA not required; proceed without
+    }
+  }
+
+  async function loadExam() {
+    try {
+      var r = await fetch('/api/catalog/exam/' + encodeURIComponent(examId));
+      if (!r.ok) throw new Error('not found');
+      examData = await r.json();
+      renderExamPanel(examData);
+    } catch (e) {
+      showExamPanelError();
+    }
+  }
+
+  // ===== RECAPTCHA =====
+  function loadRecaptcha() {
+    window.onRecaptchaReady = function () {
+      var container = document.getElementById('recaptcha-container');
+      if (!container) return;
+      captchaWidgetId = window.grecaptcha.render(container, {
+        sitekey: captchaSiteKey,
+        callback: function (token) { captchaToken = token; },
+        'expired-callback': function () { captchaToken = null; }
+      });
+    };
+    var script = document.createElement('script');
+    script.src = 'https://www.google.com/recaptcha/api.js?onload=onRecaptchaReady&render=explicit';
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
+  // ===== EXAM PANEL =====
+  function renderExamPanel(exam) {
+    document.getElementById('exam-panel-loading').style.display = 'none';
+    document.getElementById('exam-panel-error').style.display = 'none';
+    document.getElementById('exam-panel-content').style.display = '';
+
+    var initial = (exam.title || 'E').charAt(0).toUpperCase();
+    document.getElementById('exam-panel-initial').textContent = initial;
+    document.getElementById('exam-title-large').textContent = exam.title || 'Exam';
+
+    var codeBadge = document.getElementById('exam-code-badge');
+    if (exam.code) {
+      codeBadge.textContent = exam.code;
+      codeBadge.style.display = 'inline-block';
+    }
+
+    // Chips
+    var chipsHtml = '';
+    if (exam.duration_minutes) {
+      chipsHtml += '<div class="chip">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>' +
+        esc(exam.duration_minutes) + ' min</div>';
+    }
+    if (exam.total_marks) {
+      chipsHtml += '<div class="chip">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>' +
+        esc(exam.total_marks) + ' marks</div>';
+    }
+    if (exam.pass_marks) {
+      chipsHtml += '<div class="chip">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>' +
+        'Pass: ' + esc(exam.pass_marks) + '</div>';
+    }
+    document.getElementById('exam-chips').innerHTML = chipsHtml;
+
+    var desc = exam.catalog_description || exam.description || '';
+    var descEl = document.getElementById('exam-catalog-desc');
+    if (desc) {
+      descEl.textContent = desc;
+      descEl.style.display = '';
+    }
+
+    var noticeEl = document.getElementById('exam-access-notice');
+    if (exam.is_open_test) {
+      noticeEl.className = 'exam-access-notice open';
+      noticeEl.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>' +
+        '<span><strong>Open Test</strong> — you\'ll get immediate access once your email is verified.</span>';
+    } else {
+      noticeEl.className = 'exam-access-notice reviewed';
+      noticeEl.innerHTML =
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
+        '<span><strong>Admin-reviewed exam</strong> — your request will be reviewed before access is granted.</span>';
+    }
+  }
+
+  function showExamPanelError() {
+    document.getElementById('exam-panel-loading').style.display = 'none';
+    document.getElementById('exam-panel-content').style.display = 'none';
+    document.getElementById('exam-panel-error').style.display = '';
+  }
+
+  // ===== BIND EVENTS =====
+  function bindEvents() {
+    document.getElementById('tc-toggle-btn').addEventListener('click', toggleTcAccordion);
+    document.getElementById('btn-step1-submit').addEventListener('click', handleStep1Submit);
+    document.getElementById('btn-step2-submit').addEventListener('click', handleStep2Submit);
+    document.getElementById('resend-btn').addEventListener('click', handleResend);
+    document.getElementById('btn-restart').addEventListener('click', restartFlow);
+
+    // OTP input: digits only
+    document.getElementById('otp-input').addEventListener('input', function (e) {
+      this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+      this.classList.remove('has-error');
+      clearError('step2-error');
+    });
+
+    // Clear errors on field input
+    ['field-name', 'field-email', 'field-phone'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', function () {
+        clearFieldError(id.replace('field-', 'err-'));
+        document.getElementById(id).classList.remove('has-error');
+      });
+    });
+
+    document.getElementById('field-tc').addEventListener('change', function () {
+      if (this.checked) hideTcError();
+    });
+  }
+
+  // ===== T&C ACCORDION =====
+  function toggleTcAccordion() {
+    var accordion = document.getElementById('tc-accordion');
+    var btn = document.getElementById('tc-toggle-btn');
+    var isOpen = accordion.classList.contains('open');
+    accordion.classList.toggle('open', !isOpen);
+    btn.setAttribute('aria-expanded', String(!isOpen));
+  }
+
+  // ===== STEP 1: SUBMIT =====
+  async function handleStep1Submit() {
+    clearError('step1-error');
+    var valid = validateStep1();
+    if (!valid) return;
+
+    if (captchaSiteKey && !captchaToken) {
+      showError('step1-error', 'Please complete the reCAPTCHA verification before submitting.');
+      return;
+    }
+
+    var name = document.getElementById('field-name').value.trim();
+    var email = document.getElementById('field-email').value.trim();
+    var phone = document.getElementById('field-phone').value.trim();
+    var message = document.getElementById('field-message').value.trim();
+
+    formData = { name: name, email: email, phone: phone, message: message };
+
+    var btn = document.getElementById('btn-step1-submit');
+    setButtonLoading(btn, 'Sending…');
+
+    try {
+      var payload = {
+        exam_id: examId,
+        name: name,
+        email: email,
+        phone: phone,
+        message: message
+      };
+      if (captchaToken) payload.captcha_token = captchaToken;
+
+      var r = await fetch('/api/catalog/begin-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      var data = await r.json();
+
+      if (!r.ok) {
+        showError('step1-error', data.error || 'Something went wrong. Please try again.');
+        setButtonReady(btn, 'Send Verification Code');
+        if (captchaSiteKey && window.grecaptcha) {
+          window.grecaptcha.reset(captchaWidgetId);
+          captchaToken = null;
+        }
+        return;
+      }
+
+      otpId = data.otp_id || null;
+      goToStep2(email);
+
+    } catch (e) {
+      showError('step1-error', 'Network error. Please check your connection and try again.');
+      setButtonReady(btn, 'Send Verification Code');
+    }
+  }
+
+  // ===== STEP 1: VALIDATE =====
+  function validateStep1() {
+    var ok = true;
+    var name = document.getElementById('field-name').value.trim();
+    var email = document.getElementById('field-email').value.trim();
+    var phone = document.getElementById('field-phone').value.trim();
+    var tc = document.getElementById('field-tc').checked;
+
+    if (!name) {
+      showFieldError('err-name', 'Please enter your full name.');
+      document.getElementById('field-name').classList.add('has-error');
+      ok = false;
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showFieldError('err-email', 'Please enter a valid email address.');
+      document.getElementById('field-email').classList.add('has-error');
+      ok = false;
+    }
+    if (!phone || phone.length < 7) {
+      showFieldError('err-phone', 'Please enter a valid phone number including country code.');
+      document.getElementById('field-phone').classList.add('has-error');
+      ok = false;
+    }
+    if (!tc) {
+      showTcError();
+      ok = false;
+    }
+    return ok;
+  }
+
+  // ===== STEP 2: SHOW =====
+  function goToStep2(email) {
+    document.getElementById('otp-email-display').textContent = email;
+    clearError('step2-error');
+    document.getElementById('otp-input').value = '';
+    document.getElementById('otp-input').classList.remove('has-error');
+    document.getElementById('otp-attempts').textContent = '';
+    showStep(2);
+    startResendCountdown();
+    setTimeout(function () { document.getElementById('otp-input').focus(); }, 80);
+  }
+
+  // ===== STEP 2: OTP SUBMIT =====
+  async function handleStep2Submit() {
+    clearError('step2-error');
+    var code = document.getElementById('otp-input').value.trim();
+    if (!code || code.length !== 6 || !/^[0-9]{6}$/.test(code)) {
+      showError('step2-error', 'Please enter the 6-digit code from your email.');
+      document.getElementById('otp-input').classList.add('has-error');
+      return;
+    }
+
+    var btn = document.getElementById('btn-step2-submit');
+    setButtonLoading(btn, 'Verifying…');
+
+    try {
+      var r = await fetch('/api/catalog/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp_id: otpId, otp_code: code })
+      });
+      var data = await r.json();
+
+      if (!r.ok) {
+        var attempts = data.attempts_remaining != null
+          ? data.attempts_remaining
+          : null;
+        var errMsg = data.error || 'Incorrect code. Please try again.';
+        showError('step2-error', errMsg);
+        document.getElementById('otp-input').classList.add('has-error');
+        document.getElementById('otp-input').value = '';
+
+        if (attempts !== null) {
+          var attEl = document.getElementById('otp-attempts');
+          attEl.textContent = attempts + ' attempt' + (attempts === 1 ? '' : 's') + ' remaining.';
+          attEl.className = 'otp-attempts' + (attempts <= 1 ? ' warn' : '');
+        }
+
+        setButtonReady(btn, 'Verify Code');
+        return;
+      }
+
+      clearResendTimer();
+      goToStep3(data);
+
+    } catch (e) {
+      showError('step2-error', 'Network error. Please check your connection and try again.');
+      setButtonReady(btn, 'Verify Code');
+    }
+  }
+
+  // ===== STEP 3: SHOW =====
+  function goToStep3(data) {
+    showStep(3);
+    if (data.open_test && data.url) {
+      document.getElementById('success-icon-svg').innerHTML = '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>';
+      document.getElementById('success-icon-wrap').style.background = 'var(--green-bg)';
+      document.getElementById('success-title').textContent = 'Your Exam is Ready!';
+      document.getElementById('success-subtitle').textContent = 'Your email has been verified. Click the button below to start your exam now.';
+      var linkBtn = document.getElementById('success-exam-link-btn');
+      linkBtn.href = data.url;
+      document.getElementById('success-exam-link-wrap').style.display = '';
+    } else {
+      document.getElementById('success-icon-svg').innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+      document.getElementById('success-title').textContent = 'Access Request Submitted!';
+      document.getElementById('success-subtitle').textContent = "We'll email you when your request is approved. Please keep an eye on your inbox.";
+      document.getElementById('success-exam-link-wrap').style.display = 'none';
+    }
+  }
+
+  // ===== RESEND OTP =====
+  function startResendCountdown() {
+    resendSeconds = 60;
+    var btn = document.getElementById('resend-btn');
+    var cd = document.getElementById('resend-countdown');
+    btn.disabled = true;
+    cd.textContent = resendSeconds;
+    clearResendTimer();
+    resendTimer = setInterval(function () {
+      resendSeconds--;
+      cd.textContent = resendSeconds;
+      if (resendSeconds <= 0) {
+        clearResendTimer();
+        btn.disabled = false;
+        btn.textContent = 'Resend Code';
+      } else {
+        btn.textContent = 'Resend in ' + resendSeconds + 's';
+      }
+    }, 1000);
+  }
+
+  function clearResendTimer() {
+    if (resendTimer) { clearInterval(resendTimer); resendTimer = null; }
+  }
+
+  async function handleResend() {
+    var btn = document.getElementById('resend-btn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    clearError('step2-error');
+
+    try {
+      var payload = {
+        exam_id: examId,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        message: formData.message
+      };
+      if (captchaToken) payload.captcha_token = captchaToken;
+
+      var r = await fetch('/api/catalog/begin-registration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      var data = await r.json();
+
+      if (!r.ok) {
+        showError('step2-error', data.error || 'Could not resend the code. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Resend Code';
+        return;
+      }
+
+      otpId = data.otp_id || otpId;
+      document.getElementById('otp-input').value = '';
+      document.getElementById('otp-input').classList.remove('has-error');
+      document.getElementById('otp-attempts').textContent = '';
+      startResendCountdown();
+
+    } catch (e) {
+      showError('step2-error', 'Network error. Please check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Resend Code';
+    }
+  }
+
+  // ===== RESTART =====
+  function restartFlow() {
+    clearResendTimer();
+    otpId = null;
+    captchaToken = null;
+    clearError('step1-error');
+    clearError('step2-error');
+    document.getElementById('otp-input').value = '';
+    if (captchaSiteKey && window.grecaptcha) {
+      window.grecaptcha.reset(captchaWidgetId);
+    }
+    showStep(1);
+    setTimeout(function () { document.getElementById('field-email').focus(); }, 80);
+  }
+
+  // ===== STEP NAVIGATION =====
+  function showStep(n) {
+    currentStep = n;
+    [1, 2, 3].forEach(function (i) {
+      var view = document.getElementById('step-view-' + i);
+      var item = document.getElementById('step-item-' + i);
+      if (view) view.classList.toggle('active', i === n);
+      if (item) {
+        item.classList.toggle('active', i === n);
+        item.classList.toggle('done', i < n);
+      }
+    });
+    var conn1 = document.getElementById('step-conn-1');
+    var conn2 = document.getElementById('step-conn-2');
+    if (conn1) conn1.classList.toggle('done', n >= 2);
+    if (conn2) conn2.classList.toggle('done', n >= 3);
+
+    // Update step dot icons for done steps
+    [1, 2].forEach(function (i) {
+      var dot = document.querySelector('#step-item-' + i + ' .step-dot');
+      if (!dot) return;
+      if (i < n) {
+        dot.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      } else {
+        dot.textContent = String(i);
+      }
+    });
+  }
+
+  // ===== ERROR HELPERS =====
+  function showError(boxId, msg) {
+    var el = document.getElementById(boxId);
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.add('show');
+  }
+  function clearError(boxId) {
+    var el = document.getElementById(boxId);
+    if (!el) return;
+    el.textContent = '';
+    el.classList.remove('show');
+  }
+  function showFieldError(errId, msg) {
+    var el = document.getElementById(errId);
+    if (!el) return;
+    var span = el.querySelector('span');
+    if (span) span.textContent = msg;
+    el.classList.add('show');
+  }
+  function clearFieldError(errId) {
+    var el = document.getElementById(errId);
+    if (el) el.classList.remove('show');
+  }
+  function showTcError() {
+    var el = document.getElementById('err-tc');
+    if (el) el.classList.add('show');
+  }
+  function hideTcError() {
+    var el = document.getElementById('err-tc');
+    if (el) el.classList.remove('show');
+  }
+
+  // ===== BUTTON STATE =====
+  function setButtonLoading(btn, label) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-inline"></span>' + esc(label);
+  }
+  function setButtonReady(btn, label) {
+    btn.disabled = false;
+    btn.textContent = label;
+  }
+
+  // ===== ESCAPE HTML =====
+  function esc(str) {
+    if (!str && str !== 0) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ===== START =====
+  init();
+
+})();
+</script>
+</body>
+</html>

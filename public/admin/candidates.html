@@ -1226,7 +1226,8 @@ function renderArList() {
         <div class="ar-avatar">${esc(initl)}</div>
         <div class="ar-card-info">
           <div class="ar-card-name">${esc(req.name)}</div>
-          <div class="ar-card-email">${esc(req.email)}</div>
+          <div class="ar-card-email">${esc(req.email)}${req.email_verified ? ' <span style="display:inline-block;background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;margin-left:4px">✓ Verified</span>' : ''}</div>
+          ${req.phone ? `<div class="ar-card-email" style="color:var(--text-muted)">${esc(req.phone)}</div>` : ''}
           <div class="ar-card-exam">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
             ${esc(req.exam_title||'—')} <span style="color:var(--gray);font-weight:400">[${esc(req.exam_code||'')}]</span>
