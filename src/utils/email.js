@@ -105,6 +105,7 @@ async function sendViaSmtp(cfg, { to, subject, html, cc, bcc }) {
     secure: cfg.smtp_secure === 1 || cfg.smtp_secure === true,
     auth: cfg.smtp_user ? { user: cfg.smtp_user, pass: cfg.smtp_pass } : undefined,
     tls: { rejectUnauthorized: false },
+    family: 4,
     connectionTimeout: 20000,
     socketTimeout: 30000,
     greetingTimeout: 15000,
@@ -208,6 +209,7 @@ async function testConnection(cfg) {
       secure: isSecure,
       auth: { user: cfg.smtp_user, pass: cfg.smtp_pass },
       tls: { rejectUnauthorized: false },
+      family: 4,
       connectionTimeout: 12000,
       socketTimeout: 12000,
     });
