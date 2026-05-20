@@ -55,6 +55,26 @@
 
   /* ── Expiry select custom ── */
   #gl-expiry-select { width:100%; }
+
+  /* ── Access Requests section ── */
+  .ar-header { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:14px 16px; user-select:none; }
+  .ar-badge { display:inline-flex; align-items:center; justify-content:center; background:#ef4444; color:#fff;
+    font-size:11px; font-weight:700; border-radius:20px; min-width:20px; height:20px; padding:0 6px; margin-left:8px; }
+  .ar-body { padding:0 16px 16px; }
+  .ar-empty { font-size:13px; color:var(--gray); padding:14px 0; text-align:center; }
+  .ar-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .ar-row:last-child { border-bottom:none; }
+  .ar-info { flex:1; min-width:200px; }
+  .ar-name { font-size:13px; font-weight:600; color:var(--dark); }
+  .ar-email { font-size:12px; color:var(--gray); }
+  .ar-exam { font-size:12px; color:var(--mid); font-weight:500; }
+  .ar-msg { font-size:12px; color:var(--gray); font-style:italic; margin-top:2px; }
+  .ar-date { font-size:11px; color:var(--gray); white-space:nowrap; }
+  .ar-actions { display:flex; gap:6px; }
+  .ar-filter-tabs { display:flex; gap:6px; margin-bottom:12px; }
+  .ar-tab { padding:5px 12px; border:1px solid var(--border); border-radius:5px; font-size:12px; font-weight:500;
+    cursor:pointer; background:#fff; color:var(--gray); transition:all .15s; }
+  .ar-tab.active { background:var(--mid); color:#fff; border-color:var(--mid); }
 </style>
 </head>
 <body>
@@ -102,6 +122,25 @@
   </div>
 
   <div id="page">
+
+    <!-- ── Access Requests ── -->
+    <div class="card" style="margin-bottom:12px;padding:0" id="access-requests-card">
+      <div class="ar-header" id="ar-header" onclick="toggleArPanel()">
+        <div style="display:flex;align-items:center;font-size:14px;font-weight:600">
+          📩 Access Requests
+          <span class="ar-badge" id="ar-pending-badge" style="display:none">0</span>
+        </div>
+        <span id="ar-chevron" style="font-size:12px;color:var(--gray)">▼</span>
+      </div>
+      <div class="ar-body" id="ar-panel" style="display:none">
+        <div class="ar-filter-tabs">
+          <button class="ar-tab active" onclick="setArFilter('pending')" id="ar-tab-pending">Pending</button>
+          <button class="ar-tab" onclick="setArFilter('approved')" id="ar-tab-approved">Approved</button>
+          <button class="ar-tab" onclick="setArFilter('rejected')" id="ar-tab-rejected">Rejected</button>
+        </div>
+        <div id="ar-list"><div class="ar-empty">Loading…</div></div>
+      </div>
+    </div>
 
     <!-- ── Filter bar ── -->
     <div class="card" style="padding:14px 16px;margin-bottom:12px">
@@ -1030,7 +1069,113 @@ document.getElementById('conf-ok').onclick=async ()=>{
   });
 });
 
+// ── Access Requests ───────────────────────────────────────────────────────────
+let _arFilter = 'pending';
+let _arOpen = false;
+let _arRequests = [];
+
+async function loadAccessRequests() {
+  try {
+    const r = await api('GET', `/api/exams/access-requests/all?status=${_arFilter}`);
+    _arRequests = await r.json();
+    renderArList();
+    // Update pending badge
+    const pb = document.getElementById('ar-pending-badge');
+    if (_arFilter === 'pending') {
+      pb.textContent = _arRequests.length;
+      pb.style.display = _arRequests.length ? '' : 'none';
+    } else {
+      // Fetch pending count separately for badge
+      const rb = await api('GET', '/api/exams/access-requests/all?status=pending');
+      const pb_data = await rb.json();
+      pb.textContent = pb_data.length;
+      pb.style.display = pb_data.length ? '' : 'none';
+    }
+  } catch(e) {
+    document.getElementById('ar-list').innerHTML = '<div class="ar-empty">Failed to load access requests.</div>';
+  }
+}
+
+function renderArList() {
+  const el = document.getElementById('ar-list');
+  if (!_arRequests.length) {
+    el.innerHTML = `<div class="ar-empty">No ${_arFilter} requests.</div>`;
+    return;
+  }
+  el.innerHTML = _arRequests.map(r => {
+    const d = new Date(r.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
+    const actionsHtml = r.status === 'pending'
+      ? `<button class="btn btn-outline btn-sm" style="color:#16a34a;border-color:#16a34a" onclick="approveRequest(${r.id},${r.exam_id})">Approve</button>
+         <button class="btn btn-danger btn-sm" onclick="rejectRequest(${r.id},${r.exam_id})">Reject</button>`
+      : `<span class="tag" style="background:${r.status==='approved'?'#dcfce7':'#fee2e2'};color:${r.status==='approved'?'#166534':'#991b1b'}">${r.status}</span>`;
+    return `<div class="ar-row">
+      <div class="ar-info">
+        <div class="ar-name">${esc(r.name)}</div>
+        <div class="ar-email">${esc(r.email)}</div>
+        <div class="ar-exam">📋 ${esc(r.exam_title||'')} <span style="color:var(--gray)">[${esc(r.exam_code||'')}]</span></div>
+        ${r.message ? `<div class="ar-msg">"${esc(r.message)}"</div>` : ''}
+      </div>
+      <div class="ar-date">${d}</div>
+      <div class="ar-actions">${actionsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+function setArFilter(f) {
+  _arFilter = f;
+  ['pending','approved','rejected'].forEach(t => {
+    document.getElementById('ar-tab-'+t).classList.toggle('active', t===f);
+  });
+  loadAccessRequests();
+}
+
+function toggleArPanel() {
+  _arOpen = !_arOpen;
+  document.getElementById('ar-panel').style.display = _arOpen ? '' : 'none';
+  document.getElementById('ar-chevron').textContent = _arOpen ? '▲' : '▼';
+  if (_arOpen) loadAccessRequests();
+}
+
+async function approveRequest(reqId, examId) {
+  if (!confirm('Approve this request and send exam link via email?')) return;
+  try {
+    const r = await api('POST', `/api/exams/${examId}/access-requests/${reqId}/approve`, { expires_hours: 72 });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Failed to approve', 'error'); return; }
+    toast('Approved — exam link sent to candidate');
+    loadAccessRequests();
+  } catch(e) { toast('Network error', 'error'); }
+}
+
+async function rejectRequest(reqId, examId) {
+  const reason = prompt('Reason for rejection (optional):');
+  if (reason === null) return; // cancelled
+  try {
+    const r = await api('POST', `/api/exams/${examId}/access-requests/${reqId}/reject`, { reason: reason || '' });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Failed to reject', 'error'); return; }
+    toast('Request rejected');
+    loadAccessRequests();
+  } catch(e) { toast('Network error', 'error'); }
+}
+
+// Load pending badge count on init
+async function loadArBadge() {
+  try {
+    const r = await api('GET', '/api/exams/access-requests/all?status=pending');
+    const data = await r.json();
+    const pb = document.getElementById('ar-pending-badge');
+    pb.textContent = data.length;
+    pb.style.display = data.length ? '' : 'none';
+    if (data.length > 0 && !_arOpen) {
+      // Auto-open panel if there are pending requests
+      toggleArPanel();
+    }
+  } catch(e) {}
+}
+
 init();
+loadArBadge();
 </script>
 </body>
 </html>

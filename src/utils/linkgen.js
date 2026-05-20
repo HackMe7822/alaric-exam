@@ -6,7 +6,7 @@ function generateToken() {
 
 function buildExamUrl(token) {
   const base = process.env.APP_URL || 'http://localhost:3000';
-  return `${base}/exam/${token}`;
+  return `${base}/e/${token}`;
 }
 
 module.exports = { generateToken, buildExamUrl };

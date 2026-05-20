@@ -4,6 +4,8 @@ const { getDb } = require('../../database/index');
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
 const { audit } = require('../utils/audit');
+const { generateToken, buildExamUrl } = require('../utils/linkgen');
+const { sendEmail } = require('../utils/email');
 
 // GET /api/exams
 router.get('/', auth, (req, res) => {
@@ -69,7 +71,7 @@ router.put('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, res) 
   const id = parseInt(req.params.id);
   const fields = ['title','description','instructions','duration_minutes','total_marks','pass_marks',
     'negative_marking','shuffle_questions','shuffle_options','show_result_immediately','allow_review',
-    'max_attempts','start_date','end_date','is_public','catalog_description','branding_color',
+    'max_attempts','start_date','end_date','is_public','is_open_test','catalog_description','branding_color',
     'branding_logo','certificate_template','status'];
   const updates = [];
   const vals = [];
@@ -273,6 +275,132 @@ router.post('/:id/duplicate', auth, requireRole('exam_manager', 'super_admin'), 
 
   audit(req.user.id, 'duplicate_exam', 'exam', newId, { from: orig.id }, req);
   res.json({ id: newId, code });
+});
+
+// --- Access Requests ---
+
+// GET /api/exams/access-requests — list all (optionally filtered by status)
+router.get('/access-requests/all', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const { status } = req.query;
+  let sql = `SELECT r.*, e.title as exam_title, e.code as exam_code
+    FROM exam_access_requests r JOIN exams e ON e.id=r.exam_id WHERE 1=1`;
+  const params = [];
+  if (status) { sql += ' AND r.status=?'; params.push(status); }
+  sql += ' ORDER BY r.created_at DESC LIMIT 200';
+  res.json(db.prepare(sql).all(...params));
+});
+
+// GET /api/exams/:id/access-requests
+router.get('/:id/access-requests', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const examId = parseInt(req.params.id);
+  const rows = db.prepare(`SELECT * FROM exam_access_requests WHERE exam_id=? ORDER BY created_at DESC`).all(examId);
+  res.json(rows);
+});
+
+// POST /api/exams/:id/access-requests/:reqId/approve
+router.post('/:id/access-requests/:reqId/approve', auth, requireRole('exam_manager', 'super_admin'), async (req, res) => {
+  const db = getDb();
+  const examId = parseInt(req.params.id);
+  const reqId = parseInt(req.params.reqId);
+  const { expires_hours } = req.body;
+
+  const request = db.prepare(`SELECT * FROM exam_access_requests WHERE id=? AND exam_id=?`).get(reqId, examId);
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+  if (request.status !== 'pending') return res.status(409).json({ error: 'Request already reviewed' });
+
+  const exam = db.prepare(`SELECT * FROM exams WHERE id=?`).get(examId);
+  if (!exam) return res.status(404).json({ error: 'Exam not found' });
+
+  const token = generateToken();
+  const hours = parseInt(expires_hours) || 72;
+  const expires_at = new Date(Date.now() + hours * 3600000).toISOString();
+
+  // Find or create candidate record
+  let candidate = db.prepare(`SELECT * FROM candidates WHERE email=?`).get(request.email);
+  if (!candidate) {
+    const cr = db.prepare(`INSERT INTO candidates(name, email) VALUES(?,?)`).run(request.name, request.email);
+    candidate = { id: cr.lastInsertRowid, name: request.name, email: request.email };
+  }
+
+  db.prepare(`INSERT INTO exam_links(token, exam_id, candidate_id, candidate_name, candidate_email, expires_at, created_by)
+    VALUES(?,?,?,?,?,?,?)`)
+    .run(token, examId, candidate.id, request.name, request.email, expires_at, req.user.id);
+
+  const examUrl = buildExamUrl(token);
+
+  db.prepare(`UPDATE exam_access_requests SET status='approved', reviewed_by=?, reviewed_at=datetime('now'), link_token=? WHERE id=?`)
+    .run(req.user.id, token, reqId);
+
+  audit(req.user.id, 'approve_access_request', 'exam_access_request', reqId, { exam_id: examId, email: request.email }, req);
+
+  // Send approval email
+  try {
+    const cfg = db.prepare(`SELECT * FROM email_config ORDER BY id DESC LIMIT 1`).get();
+    if (cfg?.is_active) {
+      const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_approved' AND is_active=1`).get();
+      if (tmpl) {
+        const html = tmpl.body_html
+          .replace(/\{\{candidate_name\}\}/g, request.name)
+          .replace(/\{\{exam_title\}\}/g, exam.title)
+          .replace(/\{\{exam_link\}\}/g, `<a href="${examUrl}">${examUrl}</a>`)
+          .replace(/\{\{expires_at\}\}/g, new Date(expires_at).toLocaleString())
+          .replace(/\{\{duration\}\}/g, exam.duration_minutes)
+          .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
+        const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam.title);
+        await sendEmail({ to: request.email, subject, html, templateCode: 'access_request_approved' });
+      }
+    }
+  } catch (emailErr) {
+    console.error('Failed to send approval email:', emailErr.message);
+  }
+
+  res.json({ ok: true, token, url: examUrl, expires_at });
+});
+
+// POST /api/exams/:id/access-requests/:reqId/reject
+router.post('/:id/access-requests/:reqId/reject', auth, requireRole('exam_manager', 'super_admin'), async (req, res) => {
+  const db = getDb();
+  const examId = parseInt(req.params.id);
+  const reqId = parseInt(req.params.reqId);
+  const { reason } = req.body;
+
+  const request = db.prepare(`SELECT * FROM exam_access_requests WHERE id=? AND exam_id=?`).get(reqId, examId);
+  if (!request) return res.status(404).json({ error: 'Request not found' });
+  if (request.status !== 'pending') return res.status(409).json({ error: 'Request already reviewed' });
+
+  const exam = db.prepare(`SELECT * FROM exams WHERE id=?`).get(examId);
+
+  db.prepare(`UPDATE exam_access_requests SET status='rejected', reviewed_by=?, reviewed_at=datetime('now') WHERE id=?`)
+    .run(req.user.id, reqId);
+
+  audit(req.user.id, 'reject_access_request', 'exam_access_request', reqId, { exam_id: examId, email: request.email }, req);
+
+  // Send rejection email
+  try {
+    const cfg = db.prepare(`SELECT * FROM email_config ORDER BY id DESC LIMIT 1`).get();
+    if (cfg?.is_active) {
+      const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_rejected' AND is_active=1`).get();
+      if (tmpl) {
+        let html = tmpl.body_html
+          .replace(/\{\{candidate_name\}\}/g, request.name)
+          .replace(/\{\{exam_title\}\}/g, exam?.title || '')
+          .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
+        if (reason) {
+          html = html.replace(/\{\{#reason\}\}([\s\S]*?)\{\{\/reason\}\}/g, '$1').replace(/\{\{reason\}\}/g, reason);
+        } else {
+          html = html.replace(/\{\{#reason\}\}[\s\S]*?\{\{\/reason\}\}/g, '');
+        }
+        const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam?.title || '');
+        await sendEmail({ to: request.email, subject, html, templateCode: 'access_request_rejected' });
+      }
+    }
+  } catch (emailErr) {
+    console.error('Failed to send rejection email:', emailErr.message);
+  }
+
+  res.json({ ok: true });
 });
 
 module.exports = router;

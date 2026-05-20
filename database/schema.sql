@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS exams (
   start_date TEXT,
   end_date TEXT,
   is_public INTEGER DEFAULT 0,
+  is_open_test INTEGER DEFAULT 0,
   catalog_description TEXT,
   catalog_image TEXT,
   branding_logo TEXT,
@@ -366,6 +367,23 @@ CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_log(action);
 CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_log(resource_type, resource_id);
 
+-- 23. Exam Access Requests (catalog → admin approval flow)
+CREATE TABLE IF NOT EXISTS exam_access_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  exam_id INTEGER NOT NULL REFERENCES exams(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  message TEXT,
+  status TEXT DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected')),
+  reviewed_by INTEGER REFERENCES users(id),
+  reviewed_at TEXT,
+  link_token TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_access_req_exam ON exam_access_requests(exam_id);
+CREATE INDEX IF NOT EXISTS idx_access_req_status ON exam_access_requests(status);
+ALTER TABLE exams ADD COLUMN is_open_test INTEGER DEFAULT 0;
+
 -- Gamification
 CREATE TABLE IF NOT EXISTS gamification (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -410,4 +428,10 @@ INSERT OR IGNORE INTO email_templates(code, name, subject, body_html, variables)
    '["candidate_name","exam_title","score","total_marks","pass_fail"]'),
   ('password_reset', 'Password Reset', 'Password Reset Request',
    '<p>Click the link below to reset your password:</p><p><a href="{{reset_link}}">{{reset_link}}</a></p><p>This link expires in 1 hour.</p>',
-   '["reset_link"]');
+   '["reset_link"]'),
+  ('access_request_approved', 'Exam Access Approved', 'Your exam access has been approved: {{exam_title}}',
+   '<p>Dear {{candidate_name}},</p><p>Great news! Your request to access <strong>{{exam_title}}</strong> has been approved.</p><p>Click the link below to start your exam:</p><p><a href="{{exam_link}}">{{exam_link}}</a></p><p>This link is unique to you and can only be used once. It expires on {{expires_at}}.</p><p>Duration: {{duration}} minutes</p><p>Good luck!<br>{{platform_name}} Team</p>',
+   '["candidate_name","exam_title","exam_link","expires_at","duration"]'),
+  ('access_request_rejected', 'Exam Access Request Update', 'Update on your access request: {{exam_title}}',
+   '<p>Dear {{candidate_name}},</p><p>Thank you for your interest in <strong>{{exam_title}}</strong>.</p><p>Unfortunately your access request could not be approved at this time.</p><p>If you believe this is an error please contact your administrator.</p><p>Regards,<br>{{platform_name}} Team</p>',
+   '["candidate_name","exam_title"]');

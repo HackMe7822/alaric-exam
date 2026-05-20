@@ -19,6 +19,9 @@
     --text: #1a2535;
     --text-muted: #6b7f96;
     --radius: 10px;
+    --green: #16a34a;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
   }
 
   html, body { min-height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 15px; line-height: 1.6; }
@@ -110,6 +113,13 @@
   .exam-card-img img { width: 100%; height: 100%; object-fit: cover; }
   .exam-card-img .exam-initial { font-size: 2.2rem; color: rgba(255,255,255,0.3); font-weight: 800; }
 
+  .open-badge {
+    position: absolute; top: 10px; right: 10px;
+    background: var(--green); color: #fff;
+    font-size: 0.68rem; font-weight: 700; padding: 3px 8px;
+    border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
   .exam-card-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 8px; }
   .exam-card-code { font-size: 0.72rem; font-weight: 600; color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; }
   .exam-card-title { font-size: 1rem; font-weight: 700; color: var(--text); line-height: 1.35; }
@@ -122,25 +132,57 @@
   .exam-card-footer { padding: 16px 20px; border-top: 1px solid var(--border); background: var(--surface2); }
   .btn-request { width: 100%; padding: 10px; border-radius: 6px; border: 1.5px solid var(--accent); background: transparent; color: var(--accent); font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .btn-request:hover { background: var(--accent); color: #fff; }
+  .btn-open-test { width: 100%; padding: 10px; border-radius: 6px; border: none; background: var(--green); color: #fff; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-open-test:hover { background: #15803d; }
 
-  /* Request modal */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
+  /* ===== MODAL ===== */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 500; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(2px); }
   .modal-overlay.active { display: flex; }
-  .modal-card { background: var(--surface); border-radius: 14px; padding: 36px 32px; max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); text-align: center; }
-  .modal-icon { font-size: 2.5rem; margin-bottom: 14px; display: block; }
-  .modal-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
-  .modal-card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.65; margin-bottom: 8px; }
-  .modal-card .exam-name { font-weight: 600; color: var(--text); }
-  .modal-info-box { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin: 16px 0; font-size: 0.88rem; color: var(--text-muted); text-align: left; }
-  .btn-modal-close { margin-top: 8px; padding: 10px 28px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
-  .btn-modal-close:hover { background: #0055b0; }
+  .modal-card { background: var(--surface); border-radius: 14px; padding: 32px 28px; max-width: 460px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  .modal-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; gap: 12px; }
+  .modal-header h3 { font-size: 1.15rem; font-weight: 700; }
+  .modal-close { background: none; border: none; font-size: 1.4rem; color: var(--text-muted); cursor: pointer; padding: 0; line-height: 1; margin-top: -2px; }
+  .modal-close:hover { color: var(--text); }
+  .modal-exam-subtitle { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px; margin-top: -14px; }
+  .modal-exam-subtitle strong { color: var(--text); }
+
+  /* Form */
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+  .form-group input, .form-group textarea {
+    width: 100%; padding: 9px 13px; border: 1.5px solid var(--border); border-radius: 6px;
+    font-size: 0.9rem; color: var(--text); outline: none; transition: border-color 0.15s;
+    font-family: inherit; background: var(--surface);
+  }
+  .form-group input:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 72px; }
+  .form-error { font-size: 0.8rem; color: #dc2626; margin-top: 4px; display: none; }
+  .form-error.show { display: block; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-submit { flex: 1; padding: 11px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-submit:hover { background: #0055b0; }
+  .btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-cancel { padding: 11px 18px; background: var(--surface2); color: var(--text); border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-cancel:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Success state */
+  .modal-success { text-align: center; padding: 8px 0; }
+  .modal-success .success-icon { font-size: 3rem; margin-bottom: 12px; display: block; }
+  .modal-success h4 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+  .modal-success p { font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; }
+  .modal-success .exam-link-box { background: var(--green-bg); border: 1px solid var(--green-border); border-radius: 8px; padding: 12px 16px; margin: 14px 0; word-break: break-all; }
+  .modal-success .exam-link-box a { color: var(--green); font-weight: 600; font-size: 0.88rem; }
+  .btn-go-exam { display: inline-block; margin-top: 4px; padding: 11px 24px; background: var(--green); color: #fff; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; text-decoration: none; transition: background 0.15s; }
+  .btn-go-exam:hover { background: #15803d; }
+  .btn-done { margin-top: 4px; padding: 11px 24px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+  .btn-done:hover { background: #0055b0; }
 
   /* ===== FOOTER ===== */
   .site-footer { background: var(--primary); color: rgba(255,255,255,0.5); text-align: center; padding: 20px 24px; font-size: 0.83rem; margin-top: auto; }
   .site-footer a { color: rgba(255,255,255,0.7); text-decoration: none; }
   .site-footer a:hover { color: #fff; }
 
-  /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -181,7 +223,7 @@
 <section class="hero">
   <div class="hero-inner">
     <h1>Browse Available Exams</h1>
-    <p>Explore the exams available on this platform. Contact your administrator for an invitation link to take an exam.</p>
+    <p>Explore the exams available on this platform. Open tests can be started instantly — others require access approval.</p>
     <div class="search-bar">
       <input type="text" id="search-input" class="search-input" placeholder="Search exams by title or description…" autocomplete="off">
       <button class="search-btn" id="search-btn">Search</button>
@@ -216,19 +258,50 @@
   <p>© 2025 Alaric Exam Platform &nbsp;·&nbsp; <a href="/portal">Candidate Portal</a></p>
 </footer>
 
-<!-- Request Access Modal -->
+<!-- Request Access / Open Test Modal -->
 <div class="modal-overlay" id="request-modal">
   <div class="modal-card">
-    <span class="modal-icon">📩</span>
-    <h3>How to Get Access</h3>
-    <p class="exam-name" id="modal-exam-name"></p>
-    <div class="modal-info-box">
-      <strong>Contact your administrator</strong> to request an exam invitation link.<br><br>
-      Exam links are unique and single-use — they will be sent to your registered email address.
-      Once you receive the link, it will take you directly to the exam.
+    <!-- Form view -->
+    <div id="modal-form-view">
+      <div class="modal-header">
+        <h3 id="modal-title">Request Access</h3>
+        <button class="modal-close" id="btn-modal-close" title="Close">×</button>
+      </div>
+      <p class="modal-exam-subtitle">Exam: <strong id="modal-exam-name"></strong></p>
+      <div class="form-group">
+        <label for="req-name">Full Name <span style="color:#dc2626">*</span></label>
+        <input type="text" id="req-name" placeholder="Enter your full name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label for="req-email">Email Address <span style="color:#dc2626">*</span></label>
+        <input type="email" id="req-email" placeholder="Enter your email address" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="req-message">Message (optional)</label>
+        <textarea id="req-message" placeholder="Briefly explain why you want to take this exam…"></textarea>
+      </div>
+      <div class="form-error" id="modal-error"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" id="btn-modal-cancel">Cancel</button>
+        <button class="btn-submit" id="btn-modal-submit">Send Request</button>
+      </div>
     </div>
-    <p>Already have a link? Open it from the email you received.</p>
-    <button class="btn-modal-close" id="btn-modal-close">Got it</button>
+    <!-- Success view -->
+    <div id="modal-success-view" style="display:none">
+      <div class="modal-success">
+        <span class="success-icon" id="success-icon">✅</span>
+        <h4 id="success-title">Request Sent!</h4>
+        <p id="success-msg">Your access request has been sent to the administrator. You will receive an email once your request is reviewed.</p>
+        <div id="open-test-link-box" class="exam-link-box" style="display:none">
+          <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:6px">Your unique exam link:</div>
+          <a id="open-test-link" href="#" target="_blank"></a>
+        </div>
+        <div>
+          <a id="btn-go-exam" class="btn-go-exam" href="#" style="display:none">Start Exam Now →</a>
+          <button class="btn-done" id="btn-success-done">Done</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -236,6 +309,7 @@
 // ===== STATE =====
 let allExams = [];
 let filtered = [];
+let currentExam = null;
 
 // ===== INIT =====
 async function init() {
@@ -243,14 +317,15 @@ async function init() {
   document.getElementById('search-input').addEventListener('input', debounce(filterExams, 250));
   document.getElementById('search-btn').addEventListener('click', filterExams);
   document.getElementById('search-input').addEventListener('keydown', e => { if (e.key === 'Enter') filterExams(); });
-  document.getElementById('btn-modal-close').addEventListener('click', () => {
-    document.getElementById('request-modal').classList.remove('active');
-  });
-  document.getElementById('request-modal').addEventListener('click', e => {
-    if (e.target === document.getElementById('request-modal')) document.getElementById('request-modal').classList.remove('active');
-  });
 
-  // Link bar
+  document.getElementById('btn-modal-close').addEventListener('click', closeModal);
+  document.getElementById('btn-modal-cancel').addEventListener('click', closeModal);
+  document.getElementById('btn-success-done').addEventListener('click', closeModal);
+  document.getElementById('request-modal').addEventListener('click', e => {
+    if (e.target === document.getElementById('request-modal')) closeModal();
+  });
+  document.getElementById('btn-modal-submit').addEventListener('click', submitRequest);
+
   document.getElementById('go-link-btn').addEventListener('click', goToExamLink);
   document.getElementById('exam-link-input').addEventListener('keydown', e => { if (e.key === 'Enter') goToExamLink(); });
 }
@@ -258,18 +333,12 @@ async function init() {
 function goToExamLink() {
   let val = document.getElementById('exam-link-input').value.trim();
   if (!val) return;
-  // If it's a full URL, extract the token from /e/TOKEN path
   try {
     const url = new URL(val);
     const match = url.pathname.match(/\/e\/([^\/\s]+)/);
     if (match) { window.location.href = `/e/${match[1]}`; return; }
   } catch {}
-  // If it looks like just a token (no spaces, reasonable length)
-  if (/^[a-zA-Z0-9_\-]{4,64}$/.test(val)) {
-    window.location.href = `/e/${val}`;
-    return;
-  }
-  // Try extracting token from pasted URL text
+  if (/^[a-zA-Z0-9_\-]{4,64}$/.test(val)) { window.location.href = `/e/${val}`; return; }
   const match = val.match(/\/e\/([a-zA-Z0-9_\-]+)/);
   if (match) { window.location.href = `/e/${match[1]}`; return; }
   alert('Please enter a valid exam token or exam link.');
@@ -288,23 +357,18 @@ async function loadCatalog() {
         <span class="empty-icon">⚠️</span>
         <h3>Could not load catalog</h3>
         <p>There was a problem loading the exam catalog. Please try refreshing the page.</p>
-      </div>
-    `;
+      </div>`;
     document.getElementById('catalog-count').textContent = '';
   }
 }
 
 function filterExams() {
   const q = document.getElementById('search-input').value.trim().toLowerCase();
-  if (!q) {
-    filtered = [...allExams];
-  } else {
-    filtered = allExams.filter(e =>
-      (e.title || '').toLowerCase().includes(q) ||
-      (e.catalog_description || e.description || '').toLowerCase().includes(q) ||
-      (e.code || '').toLowerCase().includes(q)
-    );
-  }
+  filtered = !q ? [...allExams] : allExams.filter(e =>
+    (e.title || '').toLowerCase().includes(q) ||
+    (e.catalog_description || e.description || '').toLowerCase().includes(q) ||
+    (e.code || '').toLowerCase().includes(q)
+  );
   renderCatalog(filtered);
 }
 
@@ -320,14 +384,19 @@ function renderCatalog(exams) {
         <span class="empty-icon">🔍</span>
         <h3>No exams found</h3>
         <p>No exams match your search. Try different keywords, or clear the search to browse all available exams.</p>
-      </div>
-    `;
+      </div>`;
     return;
   }
 
   container.innerHTML = `<div class="exam-grid">${exams.map(exam => buildExamCard(exam)).join('')}</div>`;
+
   container.querySelectorAll('.btn-request').forEach(btn => {
-    btn.addEventListener('click', () => showRequestModal(btn.dataset.title));
+    const examId = parseInt(btn.dataset.id);
+    btn.addEventListener('click', () => openRequestModal(allExams.find(e => e.id === examId)));
+  });
+  container.querySelectorAll('.btn-open-test').forEach(btn => {
+    const examId = parseInt(btn.dataset.id);
+    btn.addEventListener('click', () => openRequestModal(allExams.find(e => e.id === examId)));
   });
 }
 
@@ -335,10 +404,15 @@ function buildExamCard(exam) {
   const desc = exam.catalog_description || exam.description || '';
   const color = exam.branding_color || '#002B5C';
   const initial = (exam.title || 'E').charAt(0).toUpperCase();
+  const isOpen = !!exam.is_open_test;
 
   const imgSection = exam.branding_logo
-    ? `<div class="exam-card-img"><img src="${escapeAttr(exam.branding_logo)}" alt="${escapeAttr(exam.title)}" loading="lazy"></div>`
-    : `<div class="exam-card-img" style="background:linear-gradient(135deg,${escapeAttr(color)} 0%,${lightenHex(color, 40)} 100%)"><span class="exam-initial">${initial}</span></div>`;
+    ? `<div class="exam-card-img"><img src="${escapeAttr(exam.branding_logo)}" alt="${escapeAttr(exam.title)}" loading="lazy">${isOpen ? '<span class="open-badge">Open Test</span>' : ''}</div>`
+    : `<div class="exam-card-img" style="background:linear-gradient(135deg,${escapeAttr(color)} 0%,${lightenHex(color, 40)} 100%)"><span class="exam-initial">${initial}</span>${isOpen ? '<span class="open-badge">Open Test</span>' : ''}</div>`;
+
+  const footerBtn = isOpen
+    ? `<button class="btn-open-test" data-id="${exam.id}">▶ Start Practice Exam</button>`
+    : `<button class="btn-request" data-id="${exam.id}">Request Access</button>`;
 
   return `
     <div class="exam-card">
@@ -362,16 +436,106 @@ function buildExamCard(exam) {
           </div>` : ''}
         </div>
       </div>
-      <div class="exam-card-footer">
-        <button class="btn-request" data-title="${escapeAttr(exam.title)}">Request Access</button>
-      </div>
-    </div>
-  `;
+      <div class="exam-card-footer">${footerBtn}</div>
+    </div>`;
 }
 
-function showRequestModal(examTitle) {
-  document.getElementById('modal-exam-name').textContent = examTitle ? `"${examTitle}"` : '';
+// ===== MODAL =====
+function openRequestModal(exam) {
+  if (!exam) return;
+  currentExam = exam;
+  const isOpen = !!exam.is_open_test;
+
+  document.getElementById('modal-title').textContent = isOpen ? 'Start Practice Exam' : 'Request Access';
+  document.getElementById('modal-exam-name').textContent = exam.title;
+  document.getElementById('modal-form-view').style.display = '';
+  document.getElementById('modal-success-view').style.display = 'none';
+  document.getElementById('modal-error').textContent = '';
+  document.getElementById('modal-error').classList.remove('show');
+  document.getElementById('btn-modal-submit').textContent = isOpen ? 'Get My Exam Link' : 'Send Request';
+  document.getElementById('btn-modal-submit').disabled = false;
+
+  // Pre-fill if returning visitor
+  const savedName = sessionStorage.getItem('req_name') || '';
+  const savedEmail = sessionStorage.getItem('req_email') || '';
+  if (savedName) document.getElementById('req-name').value = savedName;
+  if (savedEmail) document.getElementById('req-email').value = savedEmail;
+
   document.getElementById('request-modal').classList.add('active');
+  setTimeout(() => document.getElementById('req-name').focus(), 80);
+}
+
+function closeModal() {
+  document.getElementById('request-modal').classList.remove('active');
+  currentExam = null;
+}
+
+async function submitRequest() {
+  const name = document.getElementById('req-name').value.trim();
+  const email = document.getElementById('req-email').value.trim();
+  const message = document.getElementById('req-message').value.trim();
+  const errEl = document.getElementById('modal-error');
+
+  errEl.classList.remove('show');
+  if (!name) { errEl.textContent = 'Please enter your full name.'; errEl.classList.add('show'); return; }
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errEl.textContent = 'Please enter a valid email address.'; errEl.classList.add('show'); return; }
+
+  const btn = document.getElementById('btn-modal-submit');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  try {
+    const r = await fetch('/api/catalog/request-access', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ exam_id: currentExam.id, name, email, message })
+    });
+    const data = await r.json();
+
+    if (!r.ok) {
+      if (r.status === 409) {
+        errEl.textContent = 'A request has already been submitted for this email. Please wait for administrator review.';
+      } else {
+        errEl.textContent = data.error || 'Failed to submit. Please try again.';
+      }
+      errEl.classList.add('show');
+      btn.disabled = false;
+      btn.textContent = currentExam.is_open_test ? 'Get My Exam Link' : 'Send Request';
+      return;
+    }
+
+    // Save for pre-fill
+    sessionStorage.setItem('req_name', name);
+    sessionStorage.setItem('req_email', email);
+
+    // Show success
+    document.getElementById('modal-form-view').style.display = 'none';
+    document.getElementById('modal-success-view').style.display = '';
+
+    if (data.open_test && data.url) {
+      document.getElementById('success-icon').textContent = '🎉';
+      document.getElementById('success-title').textContent = 'Your Link is Ready!';
+      document.getElementById('success-msg').textContent = 'Your unique exam link has been generated. Click the button below to start your practice exam.';
+      document.getElementById('open-test-link-box').style.display = '';
+      document.getElementById('open-test-link').href = data.url;
+      document.getElementById('open-test-link').textContent = data.url;
+      const goBtn = document.getElementById('btn-go-exam');
+      goBtn.href = data.url;
+      goBtn.style.display = 'inline-block';
+    } else {
+      document.getElementById('success-icon').textContent = '📬';
+      document.getElementById('success-title').textContent = 'Request Sent!';
+      document.getElementById('success-msg').textContent = 'Your access request has been submitted. The administrator will review it and you\'ll receive an email with your exam link once approved.';
+      document.getElementById('open-test-link-box').style.display = 'none';
+      document.getElementById('btn-go-exam').style.display = 'none';
+    }
+
+  } catch (err) {
+    errEl.textContent = 'Network error. Please check your connection and try again.';
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = currentExam.is_open_test ? 'Get My Exam Link' : 'Send Request';
+  }
 }
 
 // ===== HELPERS =====

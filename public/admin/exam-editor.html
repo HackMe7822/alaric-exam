@@ -347,6 +347,10 @@ textarea.form-control-sm { resize: vertical; min-height: 72px; }
         <label>Public Catalog</label>
         <label class="toggle-sw"><input type="checkbox" id="s-is-public"><span class="sw-track"></span></label>
       </div>
+      <div class="toggle-row">
+        <label title="Anyone can start this exam instantly without requesting access">Open Test (no approval needed)</label>
+        <label class="toggle-sw"><input type="checkbox" id="s-is-open-test"><span class="sw-track"></span></label>
+      </div>
 
       <div class="panel-section-title">Branding</div>
       <div class="form-group-sm">
@@ -817,6 +821,7 @@ function populateSettings() {
   chk('s-show-result',  e.show_result_immediately ?? e.show_result);
   chk('s-allow-review', e.allow_review);
   chk('s-is-public',    e.is_public);
+  chk('s-is-open-test', e.is_open_test);
 
   const color = e.branding_color || '#0078D4';
   set('s-color',     color);
@@ -859,6 +864,7 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
     show_result_immediately: document.getElementById('s-show-result').checked,
     allow_review:         document.getElementById('s-allow-review').checked,
     is_public:            document.getElementById('s-is-public').checked,
+    is_open_test:         document.getElementById('s-is-open-test').checked,
     branding_color:       document.getElementById('s-color-hex').value || document.getElementById('s-color').value,
   };
 
