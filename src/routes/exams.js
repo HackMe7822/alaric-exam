@@ -279,23 +279,48 @@ router.post('/:id/duplicate', auth, requireRole('exam_manager', 'super_admin'), 
 
 // --- Access Requests ---
 
-// GET /api/exams/access-requests — list all (optionally filtered by status)
+// GET /api/exams/access-requests/all — list all with full exam + reviewer info
 router.get('/access-requests/all', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
   const db = getDb();
-  const { status } = req.query;
-  let sql = `SELECT r.*, e.title as exam_title, e.code as exam_code
-    FROM exam_access_requests r JOIN exams e ON e.id=r.exam_id WHERE 1=1`;
+  const { status, search } = req.query;
+  let sql = `SELECT r.*,
+    e.title as exam_title, e.code as exam_code, e.duration_minutes, e.total_marks, e.pass_marks,
+    e.description as exam_description, e.status as exam_status,
+    (SELECT COUNT(*) FROM questions q WHERE q.exam_id=e.id) as question_count,
+    u.full_name as reviewer_name
+    FROM exam_access_requests r
+    JOIN exams e ON e.id=r.exam_id
+    LEFT JOIN users u ON u.id=r.reviewed_by
+    WHERE 1=1`;
   const params = [];
   if (status) { sql += ' AND r.status=?'; params.push(status); }
-  sql += ' ORDER BY r.created_at DESC LIMIT 200';
+  if (search) { sql += ' AND (r.name LIKE ? OR r.email LIKE ? OR e.title LIKE ?)'; params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
+  sql += ' ORDER BY r.created_at DESC LIMIT 300';
   res.json(db.prepare(sql).all(...params));
+});
+
+// GET /api/exams/access-requests/history?email=X — full history for one email
+router.get('/access-requests/history', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'email required' });
+  const rows = db.prepare(`SELECT r.*,
+    e.title as exam_title, e.code as exam_code, e.duration_minutes, e.total_marks,
+    u.full_name as reviewer_name
+    FROM exam_access_requests r
+    JOIN exams e ON e.id=r.exam_id
+    LEFT JOIN users u ON u.id=r.reviewed_by
+    WHERE r.email=?
+    ORDER BY r.created_at DESC`).all(email.toLowerCase());
+  res.json(rows);
 });
 
 // GET /api/exams/:id/access-requests
 router.get('/:id/access-requests', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
   const db = getDb();
   const examId = parseInt(req.params.id);
-  const rows = db.prepare(`SELECT * FROM exam_access_requests WHERE exam_id=? ORDER BY created_at DESC`).all(examId);
+  const rows = db.prepare(`SELECT r.*, u.full_name as reviewer_name FROM exam_access_requests r
+    LEFT JOIN users u ON u.id=r.reviewed_by WHERE r.exam_id=? ORDER BY r.created_at DESC`).all(examId);
   res.json(rows);
 });
 
@@ -308,7 +333,6 @@ router.post('/:id/access-requests/:reqId/approve', auth, requireRole('exam_manag
 
   const request = db.prepare(`SELECT * FROM exam_access_requests WHERE id=? AND exam_id=?`).get(reqId, examId);
   if (!request) return res.status(404).json({ error: 'Request not found' });
-  if (request.status !== 'pending') return res.status(409).json({ error: 'Request already reviewed' });
 
   const exam = db.prepare(`SELECT * FROM exams WHERE id=?`).get(examId);
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
@@ -368,7 +392,6 @@ router.post('/:id/access-requests/:reqId/reject', auth, requireRole('exam_manage
 
   const request = db.prepare(`SELECT * FROM exam_access_requests WHERE id=? AND exam_id=?`).get(reqId, examId);
   if (!request) return res.status(404).json({ error: 'Request not found' });
-  if (request.status !== 'pending') return res.status(409).json({ error: 'Request already reviewed' });
 
   const exam = db.prepare(`SELECT * FROM exams WHERE id=?`).get(examId);
 

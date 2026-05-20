@@ -57,24 +57,91 @@
   #gl-expiry-select { width:100%; }
 
   /* ── Access Requests section ── */
-  .ar-header { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:14px 16px; user-select:none; }
+  .ar-header { display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding:14px 16px; user-select:none; border-bottom:1px solid var(--border); }
   .ar-badge { display:inline-flex; align-items:center; justify-content:center; background:#ef4444; color:#fff;
     font-size:11px; font-weight:700; border-radius:20px; min-width:20px; height:20px; padding:0 6px; margin-left:8px; }
-  .ar-body { padding:0 16px 16px; }
-  .ar-empty { font-size:13px; color:var(--gray); padding:14px 0; text-align:center; }
-  .ar-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
-  .ar-row:last-child { border-bottom:none; }
-  .ar-info { flex:1; min-width:200px; }
-  .ar-name { font-size:13px; font-weight:600; color:var(--dark); }
-  .ar-email { font-size:12px; color:var(--gray); }
-  .ar-exam { font-size:12px; color:var(--mid); font-weight:500; }
-  .ar-msg { font-size:12px; color:var(--gray); font-style:italic; margin-top:2px; }
-  .ar-date { font-size:11px; color:var(--gray); white-space:nowrap; }
-  .ar-actions { display:flex; gap:6px; }
-  .ar-filter-tabs { display:flex; gap:6px; margin-bottom:12px; }
-  .ar-tab { padding:5px 12px; border:1px solid var(--border); border-radius:5px; font-size:12px; font-weight:500;
-    cursor:pointer; background:#fff; color:var(--gray); transition:all .15s; }
+  .ar-toolbar { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; gap:10px; flex-wrap:wrap; border-bottom:1px solid var(--border); background:#fafbfc; }
+  .ar-filter-tabs { display:flex; gap:4px; }
+  .ar-tab { padding:5px 14px; border:1px solid var(--border); border-radius:20px; font-size:12px; font-weight:500;
+    cursor:pointer; background:#fff; color:var(--gray); transition:all .15s; white-space:nowrap; }
   .ar-tab.active { background:var(--mid); color:#fff; border-color:var(--mid); }
+  .ar-search { padding:6px 12px; border:1px solid var(--border); border-radius:6px; font-size:12px; width:200px; outline:none; }
+  .ar-search:focus { border-color:var(--mid); }
+  .ar-body { padding:0; }
+  .ar-empty { font-size:13px; color:var(--gray); padding:36px; text-align:center; }
+  .ar-count { font-size:12px; color:var(--gray); }
+
+  /* ── Request card (in list) ── */
+  .ar-card { display:grid; grid-template-columns:1fr auto; gap:12px; padding:14px 16px; border-bottom:1px solid var(--border); transition:background .1s; align-items:start; }
+  .ar-card:last-child { border-bottom:none; }
+  .ar-card:hover { background:#f9fafb; }
+  .ar-card-left { display:flex; gap:12px; align-items:flex-start; min-width:0; }
+  .ar-avatar { width:38px; height:38px; border-radius:50%; background:var(--mid); color:#fff; font-size:13px; font-weight:700;
+    display:flex; align-items:center; justify-content:center; flex-shrink:0; text-transform:uppercase; }
+  .ar-card-info { min-width:0; flex:1; }
+  .ar-card-name { font-size:13px; font-weight:600; color:var(--dark); }
+  .ar-card-email { font-size:12px; color:var(--gray); margin-top:1px; }
+  .ar-card-exam { font-size:12px; color:var(--mid); font-weight:500; margin-top:4px; display:flex; align-items:center; gap:5px; }
+  .ar-card-exam-meta { font-size:11px; color:var(--gray); margin-top:2px; }
+  .ar-card-msg { font-size:12px; color:var(--gray); font-style:italic; margin-top:4px; padding:6px 8px; background:#f8f9fa; border-left:2px solid var(--border); border-radius:0 4px 4px 0; }
+  .ar-card-right { display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0; }
+  .ar-card-date { font-size:11px; color:var(--gray); white-space:nowrap; }
+  .ar-status { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
+  .ar-status.pending  { background:#fff3cd; color:#856404; }
+  .ar-status.approved { background:#d1fae5; color:#065f46; }
+  .ar-status.rejected { background:#fee2e2; color:#991b1b; }
+  .ar-card-actions { display:flex; gap:5px; }
+
+  /* ── Review modal ── */
+  #ar-review-modal { z-index:1050; }
+  .ar-modal-inner { background:#fff; border-radius:12px; width:100%; max-width:720px; max-height:90vh; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 24px 64px rgba(0,0,0,.2); }
+  .ar-modal-head { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+  .ar-modal-head h3 { font-size:15px; font-weight:700; margin:0; }
+  .ar-modal-body { overflow-y:auto; padding:20px 22px; flex:1; display:flex; flex-direction:column; gap:20px; }
+
+  /* Exam detail card inside modal */
+  .ar-exam-card { background:linear-gradient(135deg,#002B5C 0%,#004aad 100%); color:#fff; border-radius:10px; padding:16px 18px; }
+  .ar-exam-card-title { font-size:15px; font-weight:700; margin-bottom:4px; }
+  .ar-exam-card-code { font-size:11px; opacity:.7; text-transform:uppercase; letter-spacing:.06em; margin-bottom:10px; }
+  .ar-exam-card-meta { display:flex; gap:16px; flex-wrap:wrap; }
+  .ar-exam-chip { font-size:12px; opacity:.85; display:flex; align-items:center; gap:4px; }
+  .ar-exam-desc { font-size:12px; opacity:.75; margin-top:8px; line-height:1.5; }
+
+  /* Requester info */
+  .ar-req-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .ar-req-field .lbl { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--gray); margin-bottom:3px; }
+  .ar-req-field .val { font-size:13px; color:var(--dark); font-weight:500; }
+  .ar-req-msg-box { background:#f8f9fa; border:1px solid var(--border); border-radius:6px; padding:10px 12px; font-size:13px; color:var(--dark); font-style:italic; line-height:1.5; }
+
+  /* History timeline */
+  .ar-history-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--gray); margin-bottom:10px; }
+  .ar-timeline { display:flex; flex-direction:column; gap:0; }
+  .ar-tl-item { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #f1f3f5; }
+  .ar-tl-item:last-child { border-bottom:none; }
+  .ar-tl-dot { width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:13px; }
+  .ar-tl-dot.pending  { background:#fff3cd; }
+  .ar-tl-dot.approved { background:#d1fae5; }
+  .ar-tl-dot.rejected { background:#fee2e2; }
+  .ar-tl-dot.current  { outline:2px solid var(--mid); outline-offset:2px; }
+  .ar-tl-content { flex:1; min-width:0; }
+  .ar-tl-top { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .ar-tl-exam { font-size:13px; font-weight:600; color:var(--dark); }
+  .ar-tl-meta { font-size:11px; color:var(--gray); }
+  .ar-tl-reviewer { font-size:11px; color:var(--gray); margin-top:2px; }
+  .ar-tl-link { font-size:11px; color:var(--mid); word-break:break-all; margin-top:2px; }
+
+  /* Action footer */
+  .ar-modal-footer { padding:14px 22px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; flex-shrink:0; background:#fafbfc; flex-wrap:wrap; }
+  .ar-footer-left { flex:1; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .ar-expiry-label { font-size:12px; color:var(--gray); white-space:nowrap; }
+  .ar-expiry-select { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; }
+  .ar-reject-reason { flex:1; min-width:160px; padding:7px 10px; border:1px solid var(--border); border-radius:6px; font-size:12px; }
+  .ar-reject-reason:focus { outline:none; border-color:#ef4444; }
+  .btn-approve { padding:8px 18px; background:#16a34a; color:#fff; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; transition:background .15s; white-space:nowrap; }
+  .btn-approve:hover { background:#15803d; }
+  .btn-approve:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-reject-ar { padding:8px 18px; background:#fff; color:#dc2626; border:1.5px solid #dc2626; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; transition:all .15s; white-space:nowrap; }
+  .btn-reject-ar:hover { background:#dc2626; color:#fff; }
 </style>
 </head>
 <body>
@@ -125,20 +192,27 @@
 
     <!-- ── Access Requests ── -->
     <div class="card" style="margin-bottom:12px;padding:0" id="access-requests-card">
-      <div class="ar-header" id="ar-header" onclick="toggleArPanel()" style="cursor:pointer">
+      <div class="ar-header" id="ar-header" onclick="toggleArPanel()">
         <div style="display:flex;align-items:center;font-size:14px;font-weight:600">
-          📩 Access Requests
+          📩 Exam Access Requests
           <span class="ar-badge" id="ar-pending-badge" style="display:none">0</span>
         </div>
-        <span id="ar-chevron" style="font-size:12px;color:var(--gray)">▲</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="ar-count" id="ar-count"></span>
+          <span id="ar-chevron" style="font-size:12px;color:var(--gray)">▲</span>
+        </div>
       </div>
       <div class="ar-body" id="ar-panel">
-        <div class="ar-filter-tabs">
-          <button class="ar-tab active" onclick="setArFilter('pending')" id="ar-tab-pending">Pending</button>
-          <button class="ar-tab" onclick="setArFilter('approved')" id="ar-tab-approved">Approved</button>
-          <button class="ar-tab" onclick="setArFilter('rejected')" id="ar-tab-rejected">Rejected</button>
+        <div class="ar-toolbar">
+          <div class="ar-filter-tabs">
+            <button class="ar-tab active" onclick="setArFilter('pending')"  id="ar-tab-pending">⏳ Pending</button>
+            <button class="ar-tab"        onclick="setArFilter('approved')" id="ar-tab-approved">✅ Approved</button>
+            <button class="ar-tab"        onclick="setArFilter('rejected')" id="ar-tab-rejected">❌ Rejected</button>
+            <button class="ar-tab"        onclick="setArFilter('')"         id="ar-tab-all">All</button>
+          </div>
+          <input type="text" class="ar-search" id="ar-search" placeholder="Search name, email, exam…" oninput="debounceArSearch()">
         </div>
-        <div id="ar-list"><div class="ar-empty">Loading…</div></div>
+        <div id="ar-list"><div class="ar-empty"><span class="spinner" style="width:24px;height:24px;border-width:3px"></span></div></div>
       </div>
     </div>
 
@@ -430,6 +504,22 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('confirm-modal')">Cancel</button>
       <button class="btn btn-danger" id="conf-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Access Request Review Modal ── -->
+<div class="modal-overlay hidden" id="ar-review-modal">
+  <div class="ar-modal-inner">
+    <div class="ar-modal-head">
+      <h3>📩 Review Access Request</h3>
+      <button class="btn-close" onclick="closeArModal()">&times;</button>
+    </div>
+    <div class="ar-modal-body" id="ar-modal-body">
+      <!-- Filled by JS -->
+    </div>
+    <div class="ar-modal-footer" id="ar-modal-footer">
+      <!-- Filled by JS -->
     </div>
   </div>
 </div>
@@ -1068,63 +1158,98 @@ document.getElementById('conf-ok').onclick=async ()=>{
     if(e.target===document.getElementById(id)) closeModal(id);
   });
 });
+document.getElementById('ar-review-modal').addEventListener('click', e=>{
+  if(e.target===document.getElementById('ar-review-modal')) closeArModal();
+});
 
 // ── Access Requests ───────────────────────────────────────────────────────────
 let _arFilter = 'pending';
 let _arOpen = true;
 let _arRequests = [];
+let _arSearchTimer = null;
+let _arCurrentReq = null;
+
+function debounceArSearch() {
+  clearTimeout(_arSearchTimer);
+  _arSearchTimer = setTimeout(loadAccessRequests, 300);
+}
 
 async function loadAccessRequests() {
+  const list = document.getElementById('ar-list');
+  list.innerHTML = '<div class="ar-empty"><span class="spinner" style="width:20px;height:20px;border-width:3px"></span></div>';
   try {
-    const r = await api('GET', `/api/exams/access-requests/all?status=${_arFilter}`);
+    const search = document.getElementById('ar-search')?.value?.trim() || '';
+    let url = `/api/exams/access-requests/all?`;
+    if (_arFilter) url += `status=${_arFilter}&`;
+    if (search) url += `search=${encodeURIComponent(search)}&`;
+    const r = await api('GET', url);
     _arRequests = await r.json();
     renderArList();
-    // Update pending badge
-    const pb = document.getElementById('ar-pending-badge');
-    if (_arFilter === 'pending') {
-      pb.textContent = _arRequests.length;
-      pb.style.display = _arRequests.length ? '' : 'none';
-    } else {
-      // Fetch pending count separately for badge
+    // Always update pending badge from server
+    if (_arFilter !== 'pending') {
       const rb = await api('GET', '/api/exams/access-requests/all?status=pending');
       const pb_data = await rb.json();
-      pb.textContent = pb_data.length;
-      pb.style.display = pb_data.length ? '' : 'none';
+      document.getElementById('ar-pending-badge').textContent = pb_data.length;
+      document.getElementById('ar-pending-badge').style.display = pb_data.length ? '' : 'none';
+    } else {
+      document.getElementById('ar-pending-badge').textContent = _arRequests.length;
+      document.getElementById('ar-pending-badge').style.display = _arRequests.length ? '' : 'none';
     }
+    const label = _arFilter ? `${_arRequests.length} ${_arFilter}` : `${_arRequests.length} total`;
+    document.getElementById('ar-count').textContent = label;
   } catch(e) {
-    document.getElementById('ar-list').innerHTML = '<div class="ar-empty">Failed to load access requests.</div>';
+    document.getElementById('ar-list').innerHTML = '<div class="ar-empty">Failed to load. Please refresh.</div>';
   }
 }
 
 function renderArList() {
   const el = document.getElementById('ar-list');
   if (!_arRequests.length) {
-    el.innerHTML = `<div class="ar-empty">No ${_arFilter} requests.</div>`;
+    const label = _arFilter || 'matching';
+    el.innerHTML = `<div class="ar-empty">No ${label} requests found.</div>`;
     return;
   }
-  el.innerHTML = _arRequests.map(r => {
-    const d = new Date(r.created_at).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric'});
-    const actionsHtml = r.status === 'pending'
-      ? `<button class="btn btn-outline btn-sm" style="color:#16a34a;border-color:#16a34a" onclick="approveRequest(${r.id},${r.exam_id})">Approve</button>
-         <button class="btn btn-danger btn-sm" onclick="rejectRequest(${r.id},${r.exam_id})">Reject</button>`
-      : `<span class="tag" style="background:${r.status==='approved'?'#dcfce7':'#fee2e2'};color:${r.status==='approved'?'#166534':'#991b1b'}">${r.status}</span>`;
-    return `<div class="ar-row">
-      <div class="ar-info">
-        <div class="ar-name">${esc(r.name)}</div>
-        <div class="ar-email">${esc(r.email)}</div>
-        <div class="ar-exam">📋 ${esc(r.exam_title||'')} <span style="color:var(--gray)">[${esc(r.exam_code||'')}]</span></div>
-        ${r.message ? `<div class="ar-msg">"${esc(r.message)}"</div>` : ''}
+  el.innerHTML = _arRequests.map(req => {
+    const dateStr = fmtDt(req.created_at);
+    const initl = (req.name||'?')[0].toUpperCase();
+    const statusHtml = `<span class="ar-status ${req.status}">${
+      req.status==='pending'?'⏳ Pending':req.status==='approved'?'✅ Approved':'❌ Rejected'
+    }</span>`;
+    const examMeta = [
+      req.duration_minutes ? `⏱ ${req.duration_minutes} min` : '',
+      req.total_marks ? `📊 ${req.total_marks} marks` : '',
+      req.question_count ? `❓ ${req.question_count} Qs` : '',
+    ].filter(Boolean).join('  ·  ');
+    return `<div class="ar-card">
+      <div class="ar-card-left">
+        <div class="ar-avatar">${esc(initl)}</div>
+        <div class="ar-card-info">
+          <div class="ar-card-name">${esc(req.name)}</div>
+          <div class="ar-card-email">${esc(req.email)}</div>
+          <div class="ar-card-exam">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            ${esc(req.exam_title||'—')} <span style="color:var(--gray);font-weight:400">[${esc(req.exam_code||'')}]</span>
+          </div>
+          ${examMeta ? `<div class="ar-card-exam-meta">${examMeta}</div>` : ''}
+          ${req.message ? `<div class="ar-card-msg">${esc(req.message)}</div>` : ''}
+        </div>
       </div>
-      <div class="ar-date">${d}</div>
-      <div class="ar-actions">${actionsHtml}</div>
+      <div class="ar-card-right">
+        <div class="ar-card-date">${dateStr}</div>
+        ${statusHtml}
+        <div class="ar-card-actions">
+          <button class="btn btn-outline btn-sm" onclick="openArModal(${req.id})">Review</button>
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
 
 function setArFilter(f) {
   _arFilter = f;
-  ['pending','approved','rejected'].forEach(t => {
-    document.getElementById('ar-tab-'+t).classList.toggle('active', t===f);
+  ['pending','approved','rejected',''].forEach(t => {
+    const el = document.getElementById('ar-tab-' + (t||'all'));
+    if (el) el.classList.toggle('active', t === f);
   });
   loadAccessRequests();
 }
@@ -1136,34 +1261,154 @@ function toggleArPanel() {
   if (_arOpen && !_arRequests.length) loadAccessRequests();
 }
 
-async function approveRequest(reqId, examId) {
-  if (!confirm('Approve this request and send exam link via email?')) return;
+// ── Review Modal ──────────────────────────────────────────────────────────────
+async function openArModal(reqId) {
+  const req = _arRequests.find(r => r.id === reqId);
+  if (!req) return;
+  _arCurrentReq = req;
+
+  // Load history for this email
+  let history = [];
   try {
-    const r = await api('POST', `/api/exams/${examId}/access-requests/${reqId}/approve`, { expires_hours: 72 });
-    const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Failed to approve', 'error'); return; }
-    toast('Approved — exam link sent to candidate');
-    loadAccessRequests();
-  } catch(e) { toast('Network error', 'error'); }
+    const hr = await api('GET', `/api/exams/access-requests/history?email=${encodeURIComponent(req.email)}`);
+    history = await hr.json();
+  } catch(e) {}
+
+  const body = document.getElementById('ar-modal-body');
+  const footer = document.getElementById('ar-modal-footer');
+
+  // ── Exam card ──
+  const examDesc = req.exam_description ? `<div class="ar-exam-desc">${esc(req.exam_description)}</div>` : '';
+  const examMeta = [
+    req.duration_minutes ? `⏱ ${req.duration_minutes} min` : '',
+    req.total_marks      ? `📊 ${req.total_marks} marks`   : '',
+    req.pass_marks       ? `✅ Pass: ${req.pass_marks}`     : '',
+    req.question_count   ? `❓ ${req.question_count} questions` : '',
+    req.exam_status      ? `🔖 ${req.exam_status}`          : '',
+  ].filter(Boolean);
+
+  const examCard = `<div class="ar-exam-card">
+    <div class="ar-exam-card-code">${esc(req.exam_code||'')}</div>
+    <div class="ar-exam-card-title">${esc(req.exam_title||'—')}</div>
+    <div class="ar-exam-card-meta">${examMeta.map(m=>`<span class="ar-exam-chip">${m}</span>`).join('')}</div>
+    ${examDesc}
+  </div>`;
+
+  // ── Requester details ──
+  const reqDetail = `<div>
+    <div class="ar-history-title">Requester Details</div>
+    <div class="ar-req-grid">
+      <div class="ar-req-field"><div class="lbl">Full Name</div><div class="val">${esc(req.name)}</div></div>
+      <div class="ar-req-field"><div class="lbl">Email</div><div class="val">${esc(req.email)}</div></div>
+      <div class="ar-req-field"><div class="lbl">Request Date</div><div class="val">${fmtDt(req.created_at)}</div></div>
+      <div class="ar-req-field"><div class="lbl">Current Status</div><div class="val"><span class="ar-status ${req.status}">${req.status}</span></div></div>
+    </div>
+    ${req.message ? `<div style="margin-top:10px"><div class="ar-history-title">Message from Requester</div><div class="ar-req-msg-box">"${esc(req.message)}"</div></div>` : ''}
+  </div>`;
+
+  // ── History timeline ──
+  const timelineItems = history.map(h => {
+    const isCurrent = h.id === req.id;
+    const dotClass = `ar-tl-dot ${h.status}${isCurrent?' current':''}`;
+    const icon = h.status==='pending'?'⏳':h.status==='approved'?'✅':'❌';
+    const reviewedLine = h.reviewed_at
+      ? `<div class="ar-tl-reviewer">Reviewed by <strong>${esc(h.reviewer_name||'Admin')}</strong> · ${fmtDt(h.reviewed_at)}</div>`
+      : '';
+    const linkLine = h.link_token
+      ? `<div class="ar-tl-link">🔗 Exam link generated</div>`
+      : '';
+    return `<div class="ar-tl-item">
+      <div class="${dotClass}">${icon}</div>
+      <div class="ar-tl-content">
+        <div class="ar-tl-top">
+          <span class="ar-tl-exam">${esc(h.exam_title||'—')}</span>
+          <span class="ar-tl-meta">[${esc(h.exam_code||'')}]</span>
+          <span class="ar-status ${h.status}" style="font-size:10px">${h.status}</span>
+          ${isCurrent?'<span style="font-size:10px;background:#e0edff;color:var(--mid);padding:2px 6px;border-radius:10px;font-weight:600">Current</span>':''}
+        </div>
+        <div class="ar-tl-meta">${fmtDt(h.created_at)}</div>
+        ${reviewedLine}
+        ${linkLine}
+      </div>
+    </div>`;
+  }).join('');
+
+  const timeline = `<div>
+    <div class="ar-history-title">Request History for ${esc(req.email)} (${history.length} request${history.length!==1?'s':''})</div>
+    <div class="ar-timeline">${timelineItems||'<div class="ar-tl-meta" style="padding:8px 0">No history found.</div>'}</div>
+  </div>`;
+
+  body.innerHTML = examCard + reqDetail + timeline;
+
+  // ── Footer actions ──
+  footer.innerHTML = `
+    <div class="ar-footer-left">
+      <label class="ar-expiry-label">Link expires:</label>
+      <select class="ar-expiry-select" id="ar-expiry">
+        <option value="24">24 hours</option>
+        <option value="48">48 hours</option>
+        <option value="72" selected>72 hours (3 days)</option>
+        <option value="168">7 days</option>
+        <option value="336">14 days</option>
+        <option value="720">30 days</option>
+      </select>
+    </div>
+    <button class="btn btn-ghost" onclick="closeArModal()">Close</button>
+    <button class="btn-reject-ar" id="ar-btn-reject" onclick="arRejectFromModal()">❌ Reject</button>
+    <button class="btn-approve" id="ar-btn-approve" onclick="arApproveFromModal()">✅ Approve & Send Link</button>`;
+
+  document.getElementById('ar-review-modal').classList.remove('hidden');
+  document.getElementById('ar-review-modal').classList.add('active');
 }
 
-async function rejectRequest(reqId, examId) {
-  const reason = prompt('Reason for rejection (optional):');
-  if (reason === null) return; // cancelled
+function closeArModal() {
+  document.getElementById('ar-review-modal').classList.remove('active');
+  document.getElementById('ar-review-modal').classList.add('hidden');
+  _arCurrentReq = null;
+}
+
+async function arApproveFromModal() {
+  if (!_arCurrentReq) return;
+  const btn = document.getElementById('ar-btn-approve');
+  const hours = parseInt(document.getElementById('ar-expiry').value) || 72;
+  btn.disabled = true; btn.textContent = 'Approving…';
   try {
-    const r = await api('POST', `/api/exams/${examId}/access-requests/${reqId}/reject`, { reason: reason || '' });
+    const r = await api('POST', `/api/exams/${_arCurrentReq.exam_id}/access-requests/${_arCurrentReq.id}/approve`, { expires_hours: hours });
     const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Failed to reject', 'error'); return; }
-    toast('Request rejected');
+    if (!r.ok) { toast(d.error || 'Failed to approve', 'error'); btn.disabled=false; btn.textContent='✅ Approve & Send Link'; return; }
+    toast('✅ Approved — exam link sent to ' + _arCurrentReq.email);
+    closeArModal();
     loadAccessRequests();
-  } catch(e) { toast('Network error', 'error'); }
+  } catch(e) { toast('Network error', 'error'); btn.disabled=false; btn.textContent='✅ Approve & Send Link'; }
+}
+
+async function arRejectFromModal() {
+  if (!_arCurrentReq) return;
+  const reason = prompt('Reason for rejection (optional, shown to candidate):') ;
+  if (reason === null) return;
+  const btn = document.getElementById('ar-btn-reject');
+  btn.disabled = true; btn.textContent = 'Rejecting…';
+  try {
+    const r = await api('POST', `/api/exams/${_arCurrentReq.exam_id}/access-requests/${_arCurrentReq.id}/reject`, { reason });
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Failed to reject', 'error'); btn.disabled=false; btn.textContent='❌ Reject'; return; }
+    toast('Request rejected');
+    closeArModal();
+    loadAccessRequests();
+  } catch(e) { toast('Network error', 'error'); btn.disabled=false; btn.textContent='❌ Reject'; }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function fmtDt(str) {
+  if (!str) return '—';
+  const d = new Date(str);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) + ' ' +
+         d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 
 // Load access requests on init (panel is always open)
 async function loadArBadge() {
-  try {
-    await loadAccessRequests();
-  } catch(e) {}
+  try { await loadAccessRequests(); } catch(e) {}
 }
 
 init();
