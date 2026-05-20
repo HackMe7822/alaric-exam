@@ -729,6 +729,7 @@ let _questions = [];
 let _editingQId   = null;
 let _activeSec    = ''; // '' = all
 let _qmType       = 'MCQ';
+const _sectionsEmptyEl = document.getElementById('sections-empty-msg'); // cached — survives innerHTML clears
 
 // ════════════════════════════════════════════════════════
 //  Core helpers
@@ -919,15 +920,14 @@ async function loadSections() {
 
 function renderSections() {
   const list  = document.getElementById('sections-list');
-  const empty = document.getElementById('sections-empty-msg');
+  const empty = _sectionsEmptyEl;
 
   if (!_sections.length) {
     list.innerHTML = '';
-    list.appendChild(empty);
-    empty.style.display = '';
+    if (empty) { list.appendChild(empty); empty.style.display = ''; }
     return;
   }
-  empty.style.display = 'none';
+  if (empty && empty.parentNode) empty.parentNode.removeChild(empty);
 
   const sorted = [..._sections].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   const allChip = `<div class="section-item${!_activeSec ? ' active' : ''}" data-sec="" style="margin-bottom:8px;background:#f8f9fa;cursor:pointer;">
