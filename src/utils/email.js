@@ -99,6 +99,8 @@ async function sendViaAzure(cfg, { to, subject, html, cc, bcc }) {
 }
 
 async function sendViaResend(cfg, { to, subject, html, cc, bcc }) {
+  const apiKey = cfg.api_key || process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error('Resend API key not configured. Set it in Email Accounts or add RESEND_API_KEY env var.');
   const toList = Array.isArray(to) ? to : [to];
   const body = {
     from: cfg.from_name ? `${cfg.from_name} <${cfg.from_email}>` : cfg.from_email,
@@ -107,7 +109,7 @@ async function sendViaResend(cfg, { to, subject, html, cc, bcc }) {
   if (cc?.length) body.cc = Array.isArray(cc) ? cc : [cc];
   if (bcc?.length) body.bcc = Array.isArray(bcc) ? bcc : [bcc];
   const resp = await axios.post('https://api.resend.com/emails', body, {
-    headers: { Authorization: `Bearer ${cfg.api_key}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     validateStatus: () => true,
   });
   if (resp.status >= 400) {
@@ -117,6 +119,8 @@ async function sendViaResend(cfg, { to, subject, html, cc, bcc }) {
 }
 
 async function sendViaSendGrid(cfg, { to, subject, html, cc, bcc }) {
+  const apiKey = cfg.api_key || process.env.SENDGRID_API_KEY;
+  if (!apiKey) throw new Error('SendGrid API key not configured. Set it in Email Accounts or add SENDGRID_API_KEY env var.');
   const toList = Array.isArray(to) ? to : [to];
   const personalizations = [{ to: toList.map(a => ({ email: a })) }];
   if (cc?.length) personalizations[0].cc = (Array.isArray(cc) ? cc : [cc]).map(a => ({ email: a }));
@@ -128,7 +132,7 @@ async function sendViaSendGrid(cfg, { to, subject, html, cc, bcc }) {
     content: [{ type: 'text/html', value: html }],
   };
   const resp = await axios.post('https://api.sendgrid.com/v3/mail/send', msg, {
-    headers: { Authorization: `Bearer ${cfg.api_key}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     validateStatus: () => true,
   });
   if (resp.status >= 400) {
@@ -265,17 +269,19 @@ async function testConnection(cfg) {
     if (!cfg.tenant_id || !cfg.client_id || !cfg.client_secret) throw new Error('Tenant ID, Client ID and Client Secret are required');
     await getAzureToken(cfg);
   } else if (cfg.provider === 'resend') {
-    if (!cfg.api_key) throw new Error('API key is required');
+    const apiKey = cfg.api_key || process.env.RESEND_API_KEY;
+    if (!apiKey) throw new Error('API key is required');
     const resp = await axios.get('https://api.resend.com/domains', {
-      headers: { Authorization: `Bearer ${cfg.api_key}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
       validateStatus: () => true,
     });
     if (resp.status === 401 || resp.status === 403) throw new Error('Invalid API key — get yours at resend.com/api-keys');
     if (resp.status >= 500) throw new Error('Resend API error, please try again');
   } else if (cfg.provider === 'sendgrid') {
-    if (!cfg.api_key) throw new Error('API key is required');
+    const apiKey = cfg.api_key || process.env.SENDGRID_API_KEY;
+    if (!apiKey) throw new Error('API key is required');
     const resp = await axios.get('https://api.sendgrid.com/v3/user/profile', {
-      headers: { Authorization: `Bearer ${cfg.api_key}` },
+      headers: { Authorization: `Bearer ${apiKey}` },
       validateStatus: () => true,
     });
     if (resp.status === 401 || resp.status === 403) throw new Error('Invalid API key — get yours at app.sendgrid.com/settings/api_keys');
