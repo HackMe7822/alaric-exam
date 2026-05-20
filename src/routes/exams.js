@@ -76,7 +76,8 @@ router.put('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, res) 
   for (const f of fields) {
     if (req.body[f] !== undefined) {
       updates.push(`${f}=?`);
-      vals.push(req.body[f]);
+      const v = req.body[f];
+      vals.push(typeof v === 'boolean' ? (v ? 1 : 0) : v ?? null);
     }
   }
   if (!updates.length) return res.status(400).json({ error: 'Nothing to update' });
