@@ -202,16 +202,32 @@ router.put('/email-templates/:code', auth, requireRole('super_admin', 'exam_mana
 // --- Email Log ---
 router.get('/email-log', auth, requireRole('super_admin'), (req, res) => {
   const db = getDb();
-  const { status, date, limit = 200 } = req.query;
-  // Exclude html_body from list (fetched individually on demand)
-  let sql = `SELECT l.id, l.template_code, l.to_email, l.subject, l.from_email, l.status, l.error_message, l.sent_at, l.created_at, l.profile_id, p.name as profile_name
-     FROM email_log l LEFT JOIN email_profiles p ON p.id=l.profile_id WHERE 1=1`;
-  const params = [];
-  if (status) { sql += ' AND status=?'; params.push(status); }
-  if (date) { sql += ' AND DATE(created_at)=?'; params.push(date); }
-  sql += ' ORDER BY created_at DESC LIMIT ?';
-  params.push(parseInt(limit));
-  res.json(db.prepare(sql).all(...params));
+  const { status, date, limit = 500 } = req.query;
+  try {
+    // Use subquery for profile_name — more resilient than JOIN if schema varies
+    let sql = `SELECT id, template_code, to_email, subject, from_email, status, error_message, sent_at, created_at, profile_id,
+         (SELECT name FROM email_profiles WHERE id=email_log.profile_id) as profile_name
+       FROM email_log WHERE 1=1`;
+    const params = [];
+    if (status) { sql += ' AND status=?'; params.push(status); }
+    if (date)   { sql += ' AND DATE(created_at)=?'; params.push(date); }
+    sql += ' ORDER BY created_at DESC LIMIT ?';
+    params.push(parseInt(limit));
+    res.json(db.prepare(sql).all(...params));
+  } catch (e) {
+    // Fallback: simpler query without profile subquery
+    console.error('email-log query error:', e.message);
+    try {
+      let sql2 = `SELECT id, template_code, to_email, subject, from_email, status, error_message, sent_at, created_at FROM email_log WHERE 1=1`;
+      const p2 = [];
+      if (date) { sql2 += ' AND DATE(created_at)=?'; p2.push(date); }
+      sql2 += ' ORDER BY created_at DESC LIMIT ?';
+      p2.push(parseInt(limit));
+      res.json(db.prepare(sql2).all(...p2));
+    } catch (e2) {
+      res.status(500).json({ error: e2.message });
+    }
+  }
 });
 
 // GET /api/settings/email-log/:id — full entry including html_body

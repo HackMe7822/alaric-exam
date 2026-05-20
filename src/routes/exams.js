@@ -7,22 +7,24 @@ const { audit } = require('../utils/audit');
 const { generateToken, buildExamUrl } = require('../utils/linkgen');
 const { sendEmail, logEmailEvent } = require('../utils/email');
 
-// Fire-and-forget email helper — responds to browser BEFORE touching SMTP.
-// Always writes to email_log (sent, failed, or skipped-no-template).
+// Fire-and-forget email — browser gets its response immediately, SMTP runs after.
+// sendEmail() now writes a 'pending' log row before SMTP, so every attempt is logged.
 function bgEmail({ templateCode, to, purpose, buildVars }) {
   setImmediate(async () => {
+    console.log(`[bgEmail] start template=${templateCode} to=${to} purpose=${purpose}`);
     const db = getDb();
     try {
       const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code=? AND is_active=1`).get(templateCode);
       if (!tmpl) {
+        console.error(`[bgEmail] template '${templateCode}' not found`);
         logEmailEvent({ templateCode, to, status: 'failed', errorMsg: `Template '${templateCode}' not found or inactive`, purpose });
         return;
       }
       const vars = buildVars(tmpl);
       await sendEmail({ to, subject: vars.subject, html: vars.html, templateCode, purpose });
     } catch (e) {
-      console.error(`bgEmail(${templateCode}) →`, e.message);
-      // sendEmail already logged via its finally block if it got that far
+      // sendEmail logs via pre-log row; this catch is just a safety net
+      console.error(`[bgEmail] ${templateCode} error:`, e.message);
     }
   });
 }

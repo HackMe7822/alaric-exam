@@ -54,9 +54,11 @@ router.post('/request-access', (req, res) => {
   const cleanEmail = email.trim().toLowerCase();
 
   setImmediate(async () => {
+    console.log(`[catalog] sending confirmation to ${cleanEmail} for exam ${exam.title}`);
     try {
       const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_received' AND is_active=1`).get();
       if (!tmpl) {
+        console.error("[catalog] template 'access_request_received' not found");
         logEmailEvent({ templateCode: 'access_request_received', to: cleanEmail, status: 'failed',
           errorMsg: `Template 'access_request_received' not found or inactive`, purpose: 'access_request_received' });
         return;
@@ -68,7 +70,7 @@ router.post('/request-access', (req, res) => {
       const subject = tmpl.subject.replace(/\{\{exam_title\}\}/g, exam.title);
       await sendEmail({ to: cleanEmail, subject, html, templateCode: 'access_request_received', purpose: 'access_request_received' });
     } catch (e) {
-      console.error('Confirmation email error:', e.message);
+      console.error('[catalog] confirmation email error:', e.message);
     }
   });
 });
