@@ -238,10 +238,10 @@ router.get('/auth/google/callback', async (req, res) => {
     }
     const token = jwt.sign({ sub: candidate.id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
-    res.redirect('/portal?token=' + encodeURIComponent(token));
+    res.redirect('/portal/oauth-callback?token=' + encodeURIComponent(token));
   } catch (e) {
     console.error('[portal] Google OAuth error:', e.message);
-    res.redirect('/portal?oauth_error=' + encodeURIComponent('Google sign-in failed. Please try again.'));
+    res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Google sign-in failed. Please try again.'));
   }
 });
 
@@ -293,11 +293,28 @@ router.get('/auth/microsoft/callback', async (req, res) => {
     }
     const token = jwt.sign({ sub: candidate.id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
-    res.redirect('/portal?token=' + encodeURIComponent(token));
+    res.redirect('/portal/oauth-callback?token=' + encodeURIComponent(token));
   } catch (e) {
     console.error('[portal] Microsoft OAuth error:', e.message);
-    res.redirect('/portal?oauth_error=' + encodeURIComponent('Microsoft sign-in failed. Please try again.'));
+    res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Microsoft sign-in failed. Please try again.'));
   }
+});
+
+/* ─── DIRECT REGISTRATION (from portal login page, no exam) ─── */
+router.post('/register', (req, res) => {
+  const db = getDb();
+  const { name, email, phone, password } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required.' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Invalid email address.' });
+  if (password.trim().length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  const cleanEmail = email.toLowerCase().trim();
+  const existing = db.prepare('SELECT id FROM candidates WHERE email=?').get(cleanEmail);
+  if (existing) return res.status(409).json({ error: 'An account already exists with this email. Please sign in.' });
+  const hash = bcrypt.hashSync(password.trim(), 10);
+  const r = db.prepare(`INSERT INTO candidates(name, email, phone, password_hash, is_active, created_at, updated_at) VALUES(?,?,?,?,1,datetime('now'),datetime('now'))`).run(name.trim(), cleanEmail, phone?.trim() || null, hash);
+  const token = jwt.sign({ sub: r.lastInsertRowid, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
+  res.json({ ok: true, token, candidate: { id: r.lastInsertRowid, name: name.trim(), email: cleanEmail, phone: phone?.trim() || null } });
 });
 
 module.exports = router;

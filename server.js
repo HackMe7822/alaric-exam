@@ -50,6 +50,7 @@ app.get('/admin/*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin', 'dashboard.html'));
 });
 app.get('/portal', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
+app.get('/portal/oauth-callback', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'oauth-callback.html')));
 app.get('/portal/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
 app.get('/catalog', (req, res) => res.sendFile(path.join(__dirname, 'public', 'catalog', 'index.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register', 'index.html')));
