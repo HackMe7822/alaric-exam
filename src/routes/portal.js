@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const bcrypt = require('bcryptjs');
 const { getDb } = require('../../database/index');
 const { buildExamUrl } = require('../utils/linkgen');
 const { sendEmail } = require('../utils/email');
@@ -18,6 +19,31 @@ function candidateAuth(req, res, next) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 }
+
+// POST /api/portal/login — email + password
+router.post('/login', (req, res) => {
+  const db = getDb();
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+  const cleanEmail = email.toLowerCase().trim();
+  const candidate = db.prepare('SELECT * FROM candidates WHERE email=? AND is_active=1').get(cleanEmail);
+  if (!candidate) return res.status(401).json({ error: 'No account found with this email.' });
+  if (!candidate.password_hash) return res.status(401).json({ error: 'This account uses social login. Please use the Google or Microsoft button, or reset your password via email code.', no_password: true });
+  if (!bcrypt.compareSync(password, candidate.password_hash)) return res.status(401).json({ error: 'Incorrect password.' });
+  const token = jwt.sign({ sub: candidate.id, type: 'candidate' }, process.env.JWT_SECRET, { expiresIn: '7d' });
+  res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
+  res.json({ token, candidate: { id: candidate.id, name: candidate.name, email: candidate.email, phone: candidate.phone } });
+});
+
+// POST /api/portal/set-password — set/change password (authenticated)
+router.post('/set-password', candidateAuth, (req, res) => {
+  const db = getDb();
+  const { new_password } = req.body;
+  if (!new_password || new_password.trim().length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  const hash = bcrypt.hashSync(new_password.trim(), 10);
+  db.prepare(`UPDATE candidates SET password_hash=?, updated_at=datetime('now') WHERE id=?`).run(hash, req.candidateId);
+  res.json({ ok: true });
+});
 
 // POST /api/portal/request-otp
 router.post('/request-otp', (req, res) => {

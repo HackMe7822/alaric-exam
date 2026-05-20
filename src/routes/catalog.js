@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const { getDb } = require('../../database/index');
 const { generateToken, buildExamUrl } = require('../utils/linkgen');
 const { sendEmail, logEmailEvent } = require('../utils/email');
@@ -133,7 +134,7 @@ router.post('/begin-registration', async (req, res) => {
 // POST /api/catalog/verify-otp — verify code, create access request
 router.post('/verify-otp', async (req, res) => {
   const db = getDb();
-  const { otp_id, otp_code } = req.body;
+  const { otp_id, otp_code, password } = req.body;
   if (!otp_id || !otp_code) return res.status(400).json({ error: 'otp_id and otp_code are required' });
 
   const record = db.prepare(`SELECT * FROM email_otps WHERE id=?`).get(parseInt(otp_id));
@@ -163,17 +164,19 @@ router.post('/verify-otp', async (req, res) => {
   const exam = db.prepare(`SELECT id, title, is_open_test FROM exams WHERE id=?`).get(exam_id);
   if (!exam) return res.status(404).json({ error: 'Exam not found' });
 
+  // Hash password if provided
+  const password_hash = password ? bcrypt.hashSync(password.trim(), 10) : null;
+
   // Create or find candidate record
   let candidate = db.prepare('SELECT id FROM candidates WHERE email=?').get(record.email);
   if (!candidate) {
     const r = db.prepare(
-      `INSERT INTO candidates(name, email, phone, is_active, created_at, updated_at) VALUES(?,?,?,1,datetime('now'),datetime('now'))`
-    ).run(name, record.email, phone || null);
+      `INSERT INTO candidates(name, email, phone, password_hash, is_active, created_at, updated_at) VALUES(?,?,?,?,1,datetime('now'),datetime('now'))`
+    ).run(name, record.email, phone || null, password_hash);
     candidate = { id: r.lastInsertRowid };
   } else {
-    // Update name/phone if registering for first time
-    db.prepare(`UPDATE candidates SET name=?, phone=COALESCE(phone,?), updated_at=datetime('now') WHERE id=?`)
-      .run(name, phone || null, candidate.id);
+    db.prepare(`UPDATE candidates SET name=?, phone=COALESCE(phone,?), ${password_hash ? 'password_hash=?,' : ''} updated_at=datetime('now') WHERE id=?`)
+      .run(...(password_hash ? [name, phone || null, password_hash, candidate.id] : [name, phone || null, candidate.id]));
   }
 
   // Issue portal JWT and set cookie

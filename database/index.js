@@ -32,6 +32,8 @@ function initDb() {
   }
   // JS migration: expand email_profiles to support api_key + resend/sendgrid providers
   migrateEmailProfiles(d);
+  // JS migration: add password_hash column to candidates
+  try { d.exec(`ALTER TABLE candidates ADD COLUMN password_hash TEXT`); } catch(e) { /* already exists */ }
   console.log('Database initialized at', path.resolve(DB_PATH));
 }
 

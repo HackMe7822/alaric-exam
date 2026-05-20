@@ -761,6 +761,25 @@
           <textarea id="field-message" class="form-input" placeholder="Briefly tell us why you're interested in this exam, or any questions you have…"></textarea>
         </div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label for="field-password">Password <span class="req-star">*</span></label>
+            <input type="password" id="field-password" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password" required>
+            <div class="field-error" id="err-password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>Please enter a password (min. 6 characters).</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="field-password2">Confirm Password <span class="req-star">*</span></label>
+            <input type="password" id="field-password2" class="form-input" placeholder="Repeat password" autocomplete="new-password" required>
+            <div class="field-error" id="err-password2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>Passwords do not match.</span>
+            </div>
+          </div>
+        </div>
+
         <!-- T&C -->
         <div class="tc-row">
           <input type="checkbox" id="field-tc">
@@ -979,7 +998,7 @@
     });
 
     // Clear errors on field input
-    ['field-name', 'field-email', 'field-phone'].forEach(function (id) {
+    ['field-name', 'field-email', 'field-phone', 'field-password', 'field-password2'].forEach(function (id) {
       document.getElementById(id).addEventListener('input', function () {
         clearFieldError(id.replace('field-', 'err-'));
         document.getElementById(id).classList.remove('has-error');
@@ -1010,8 +1029,9 @@
     var email = document.getElementById('field-email').value.trim();
     var phone = document.getElementById('field-phone').value.trim();
     var message = document.getElementById('field-message').value.trim();
+    var password = document.getElementById('field-password').value;
 
-    formData = { name: name, email: email, phone: phone, message: message };
+    formData = { name: name, email: email, phone: phone, message: message, password: password };
 
     var btn = document.getElementById('btn-step1-submit');
     setButtonLoading(btn, 'Sending…');
@@ -1053,6 +1073,8 @@
     var name = document.getElementById('field-name').value.trim();
     var email = document.getElementById('field-email').value.trim();
     var phone = document.getElementById('field-phone').value.trim();
+    var password = document.getElementById('field-password').value;
+    var password2 = document.getElementById('field-password2').value;
     var tc = document.getElementById('field-tc').checked;
 
     if (!name) {
@@ -1068,6 +1090,15 @@
     if (!phone || phone.length < 7) {
       showFieldError('err-phone', 'Please enter a valid phone number including country code.');
       document.getElementById('field-phone').classList.add('has-error');
+      ok = false;
+    }
+    if (!password || password.length < 6) {
+      showFieldError('err-password', 'Please enter a password (min. 6 characters).');
+      document.getElementById('field-password').classList.add('has-error');
+      ok = false;
+    } else if (password !== password2) {
+      showFieldError('err-password2', 'Passwords do not match.');
+      document.getElementById('field-password2').classList.add('has-error');
       ok = false;
     }
     if (!tc) {
@@ -1106,7 +1137,7 @@
       var r = await fetch('/api/catalog/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ otp_id: otpId, otp_code: code })
+        body: JSON.stringify({ otp_id: otpId, otp_code: code, password: formData.password || null })
       });
       var data = await r.json();
 

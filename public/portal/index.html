@@ -62,15 +62,49 @@ html, body {
 .login-card {
   background: var(--surface);
   border-radius: 16px;
-  padding: 48px 44px;
-  max-width: 420px;
+  padding: 44px 48px;
+  max-width: 760px;
   width: 100%;
   box-shadow: 0 4px 32px rgba(79,70,229,0.10), 0 1px 4px rgba(0,0,0,0.06);
 }
-.login-logo-wrap { text-align: center; margin-bottom: 24px; }
+.login-logo-wrap { text-align: center; margin-bottom: 20px; }
 .login-logo-wrap svg { width: 52px; height: 52px; }
 .login-brand { font-size: 1.65rem; font-weight: 800; color: var(--text); text-align: center; margin-bottom: 4px; letter-spacing: -0.3px; }
-.login-subtitle { color: var(--text-muted); text-align: center; font-size: 0.875rem; margin-bottom: 36px; }
+.login-subtitle { color: var(--text-muted); text-align: center; font-size: 0.875rem; margin-bottom: 32px; }
+
+/* Two-column login layout */
+.login-cols {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  gap: 0 32px;
+  align-items: start;
+}
+.login-divider {
+  background: var(--border);
+  width: 1px;
+  align-self: stretch;
+  position: relative;
+}
+.login-divider-label {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--surface);
+  padding: 6px 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.login-col-title { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
+@media (max-width: 600px) {
+  .login-card { padding: 32px 24px; }
+  .login-cols { grid-template-columns: 1fr; gap: 0; }
+  .login-divider { width: 100%; height: 1px; margin: 24px 0; }
+  .login-divider-label { top: 0; left: 50%; transform: translate(-50%, -50%); }
+}
 
 .form-group { margin-bottom: 18px; }
 .form-label { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text); margin-bottom: 6px; letter-spacing: 0.02em; text-transform: uppercase; }
@@ -112,19 +146,18 @@ html, body {
 
 .btn-social {
   display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 11px 16px; border-radius: var(--radius);
-  font-size: 0.9375rem; font-weight: 500; cursor: pointer;
-  border: 1.5px solid var(--border); background: #fff; color: var(--text);
-  text-decoration: none; transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
-  margin-bottom: 10px;
+  width: 100%; padding: 12px 16px; border-radius: var(--radius);
+  font-size: 0.9375rem; font-weight: 600; cursor: pointer;
+  border: none; color: #fff;
+  text-decoration: none; transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+  margin-bottom: 12px;
 }
-.btn-social:hover { border-color: #aaa; box-shadow: 0 1px 4px rgba(0,0,0,0.10); background: #fafafa; }
+.btn-social:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
+.btn-social:active { transform: translateY(0); opacity: 1; }
 .btn-social svg { flex-shrink: 0; }
-.or-divider {
-  display: flex; align-items: center; gap: 12px;
-  margin: 16px 0; color: var(--text-muted); font-size: 0.8125rem;
-}
-.or-divider::before, .or-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+.btn-google { background: #dd4b39; }
+.btn-microsoft { background: #2f2f2f; }
+.btn-social-sub { font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-top: 10px; line-height: 1.5; }
 
 .inline-error { color: var(--danger); font-size: 0.8125rem; margin-top: 10px; display: none; }
 .inline-error.show { display: block; }
@@ -406,41 +439,77 @@ tbody tr:hover { background: var(--bg); }
     <div class="login-brand">Alaric Exam</div>
     <div class="login-subtitle">Candidate Portal</div>
 
-    <!-- Step 1: Email / Social -->
+    <!-- Step 1: Password login (main) -->
     <div id="login-step1" class="login-step active">
-      <a href="/api/portal/auth/google" class="btn-social">
-        <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/><path fill="none" d="M0 0h48v48H0z"/></svg>
-        Continue with Google
-      </a>
-      <a href="/api/portal/auth/microsoft" class="btn-social">
-        <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
-        Continue with Microsoft
-      </a>
-      <div class="or-divider"><span>or sign in with email</span></div>
-      <div class="form-group">
-        <label class="form-label" for="login-email">Email address</label>
-        <input id="login-email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+      <div class="login-cols">
+        <!-- Left: email + password -->
+        <div>
+          <div class="login-col-title">Sign In</div>
+          <div class="form-group">
+            <label class="form-label" for="login-email">Email address</label>
+            <input id="login-email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="login-password">Password</label>
+            <input id="login-password" type="password" class="form-input" placeholder="Your password" autocomplete="current-password" />
+          </div>
+          <div id="step1-error" class="inline-error"></div>
+          <button id="btn-signin" class="btn btn-primary" style="margin-top:8px;">Sign In</button>
+          <div style="margin-top:14px;font-size:0.8125rem;color:var(--text-muted);">
+            Forgot password or can't sign in?
+            <button onclick="showStep('otp')" style="background:none;border:none;padding:0;color:var(--primary);font-size:inherit;cursor:pointer;text-decoration:underline;">Sign in with email code</button>
+          </div>
+          <div style="margin-top:8px;font-size:0.8125rem;color:var(--text-muted);">
+            New here? <a href="/catalog" style="color:var(--primary);text-decoration:none;font-weight:500;">Browse exams &amp; register →</a>
+          </div>
+        </div>
+
+        <!-- Divider -->
+        <div class="login-divider">
+          <div class="login-divider-label">OR</div>
+        </div>
+
+        <!-- Right: social buttons -->
+        <div>
+          <div class="login-col-title">Social Login</div>
+          <a href="/api/portal/auth/google" class="btn-social btn-google">
+            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#fff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#fff" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#fff" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+            Log in with Google
+          </a>
+          <a href="/api/portal/auth/microsoft" class="btn-social btn-microsoft">
+            <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
+            Log in with Microsoft
+          </a>
+          <p class="btn-social-sub">Sign in instantly using your existing Google or Microsoft account. No separate password needed.</p>
+        </div>
       </div>
-      <div id="step1-error" class="inline-error"></div>
-      <button id="btn-send-otp" class="btn btn-primary" style="margin-top:6px;">Send Verification Code</button>
-      <p style="text-align:center;font-size:0.8125rem;margin-top:16px;color:var(--text-muted);">New here? <a href="/catalog" style="color:var(--primary);text-decoration:none;font-weight:500;">Browse exams &amp; register →</a></p>
     </div>
 
-    <!-- Step 2: OTP -->
-    <div id="login-step2" class="login-step">
+    <!-- Step OTP: forgot password / email code login -->
+    <div id="login-step-otp" class="login-step">
       <p style="font-size:0.875rem;color:var(--text-muted);margin-bottom:18px;text-align:center;" id="otp-sent-msg"></p>
-      <div class="form-group">
-        <label class="form-label" for="login-otp">One-Time Code</label>
-        <input id="login-otp" type="text" class="form-input otp-input" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" />
+      <div id="otp-email-row">
+        <div class="form-group">
+          <label class="form-label" for="login-email-otp">Email address</label>
+          <input id="login-email-otp" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+        </div>
+        <div id="step-otp-error1" class="inline-error"></div>
+        <button id="btn-send-otp" class="btn btn-primary" style="margin-top:8px;">Send Sign-In Code</button>
       </div>
-      <div id="step2-error" class="inline-error"></div>
-      <button id="btn-verify-otp" class="btn btn-primary" style="margin-top:6px;">Sign In</button>
-      <div class="resend-row">
-        <button id="btn-resend" class="resend-link" disabled>Resend code</button>
-        <span id="resend-timer"></span>
+      <div id="otp-verify-row" style="display:none;">
+        <div class="form-group">
+          <label class="form-label" for="login-otp">6-Digit Code</label>
+          <input id="login-otp" type="text" class="form-input otp-input" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" />
+        </div>
+        <div id="step2-error" class="inline-error"></div>
+        <button id="btn-verify-otp" class="btn btn-primary" style="margin-top:8px;">Sign In</button>
+        <div class="resend-row">
+          <button id="btn-resend" class="resend-link" disabled>Resend code</button>
+          <span id="resend-timer"></span>
+        </div>
       </div>
-      <div style="text-align:center;margin-top:12px;">
-        <button onclick="showStep(1)" style="background:none;border:none;color:var(--text-muted);font-size:0.8125rem;cursor:pointer;text-decoration:underline;">← Back</button>
+      <div style="text-align:center;margin-top:14px;">
+        <button onclick="showStep(1)" style="background:none;border:none;color:var(--text-muted);font-size:0.8125rem;cursor:pointer;text-decoration:underline;">← Back to sign in</button>
       </div>
     </div>
   </div>
@@ -721,7 +790,15 @@ async function apiCall(method, path, body) {
 ════════════════════════════════════════════ */
 function showStep(n) {
   document.querySelectorAll('.login-step').forEach(s => s.classList.remove('active'));
-  document.getElementById('login-step' + n).classList.add('active');
+  const el = (n === 1 || n === 'password')
+    ? document.getElementById('login-step1')
+    : document.getElementById('login-step-otp');
+  if (el) el.classList.add('active');
+  if (n === 'otp') {
+    document.getElementById('otp-email-row').style.display = '';
+    document.getElementById('otp-verify-row').style.display = 'none';
+    setTimeout(() => document.getElementById('login-email-otp').focus(), 100);
+  }
 }
 
 function startResendTimer(seconds) {
@@ -744,21 +821,46 @@ function startResendTimer(seconds) {
   resendInterval = setInterval(tick, 1000);
 }
 
-async function sendOtp(email) {
+async function signInWithPassword() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
   const err = document.getElementById('step1-error');
+  const btn = document.getElementById('btn-signin');
+  err.classList.remove('show');
+  if (!email || !password) { err.textContent = 'Please enter your email and password.'; err.classList.add('show'); return; }
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const data = await apiCall('POST', '/api/portal/login', { email, password });
+    saveToken(data.token);
+    appState.candidate = data.candidate;
+    await loadDashboard();
+    showScreen('screen-dashboard');
+  } catch(e) {
+    err.textContent = e.message; err.classList.add('show');
+    if (e.message && e.message.includes('social login')) {
+      err.innerHTML = e.message + ' &nbsp;<a href="/api/portal/auth/google" style="color:var(--primary);">Google</a> / <a href="/api/portal/auth/microsoft" style="color:var(--primary);">Microsoft</a>';
+    }
+  } finally {
+    btn.disabled = false; btn.textContent = 'Sign In';
+  }
+}
+
+async function sendOtp(email) {
+  const err = document.getElementById('step-otp-error1');
   const btn = document.getElementById('btn-send-otp');
   err.classList.remove('show');
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
     await apiCall('POST', '/api/portal/request-otp', { email });
     document.getElementById('otp-sent-msg').textContent = `A 6-digit code was sent to ${email}`;
-    showStep(2);
+    document.getElementById('otp-email-row').style.display = 'none';
+    document.getElementById('otp-verify-row').style.display = '';
     startResendTimer(60);
     setTimeout(() => document.getElementById('login-otp').focus(), 100);
   } catch(e) {
     err.textContent = e.message; err.classList.add('show');
   } finally {
-    btn.disabled = false; btn.textContent = 'Send Verification Code';
+    btn.disabled = false; btn.textContent = 'Send Sign-In Code';
   }
 }
 
@@ -781,18 +883,22 @@ async function verifyOtp(email, otp) {
   }
 }
 
+document.getElementById('btn-signin').addEventListener('click', signInWithPassword);
+document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
+document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') signInWithPassword(); });
+
 document.getElementById('btn-send-otp').addEventListener('click', () => {
-  const email = document.getElementById('login-email').value.trim();
+  const email = document.getElementById('login-email-otp').value.trim();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    const err = document.getElementById('step1-error');
+    const err = document.getElementById('step-otp-error1');
     err.textContent = 'Please enter a valid email address.'; err.classList.add('show'); return;
   }
   sendOtp(email);
 });
-document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-send-otp').click(); });
+document.getElementById('login-email-otp').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-send-otp').click(); });
 
 document.getElementById('btn-verify-otp').addEventListener('click', () => {
-  const email = document.getElementById('login-email').value.trim();
+  const email = document.getElementById('login-email-otp').value.trim();
   const otp = document.getElementById('login-otp').value.trim();
   if (!otp || otp.length < 4) {
     const err = document.getElementById('step2-error');
@@ -803,7 +909,7 @@ document.getElementById('btn-verify-otp').addEventListener('click', () => {
 document.getElementById('login-otp').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-verify-otp').click(); });
 
 document.getElementById('btn-resend').addEventListener('click', () => {
-  const email = document.getElementById('login-email').value.trim();
+  const email = document.getElementById('login-email-otp').value.trim();
   if (email) sendOtp(email);
 });
 
