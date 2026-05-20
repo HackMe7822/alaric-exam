@@ -276,7 +276,7 @@ async function loadPage() {
   document.getElementById('wb-date').textContent = now.toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   document.getElementById('topbar-date').textContent = now.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
 
-  await Promise.all([loadStats(), loadSubmissions(), loadTrends()]);
+  await Promise.all([loadStats(), loadSubmissions(), loadTrends(), loadAccessRequestCount()]);
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────
@@ -299,14 +299,29 @@ async function loadStats() {
     document.getElementById('s-total-sub').textContent    = `${totalSubs} total`;
     document.getElementById('s-pending').textContent      = pending;
 
-    renderAttention({totalExams, pubExams, pending});
+    renderAttention({totalExams, pubExams, pending, accessRequests: window._pendingAccessRequests || 0});
   } catch(e) {
     console.error('Stats error', e);
   }
 }
 
+// ── Access Request Count ──────────────────────────────────────────────────────
+async function loadAccessRequestCount() {
+  try {
+    const r = await api('GET', '/api/exams/access-requests/all?status=pending');
+    if (!r || !r.ok) return;
+    const data = await r.json();
+    window._pendingAccessRequests = data.length;
+    // Re-render attention with updated count if stats already loaded
+    if (window._lastAttentionArgs) {
+      renderAttention({ ...window._lastAttentionArgs, accessRequests: data.length });
+    }
+  } catch(e) {}
+}
+
 // ── Attention / getting-started ───────────────────────────────────────────────
-function renderAttention({totalExams, pubExams, pending}) {
+function renderAttention({totalExams, pubExams, pending, accessRequests = 0}) {
+  window._lastAttentionArgs = {totalExams, pubExams, pending, accessRequests};
   const body  = document.getElementById('attn-body');
   const title = document.getElementById('attn-title');
 
@@ -335,6 +350,8 @@ function renderAttention({totalExams, pubExams, pending}) {
   }
 
   const items = [];
+  if (accessRequests > 0)
+    items.push({bullet:'📩', text:`${accessRequests} exam access request${accessRequests>1?'s':''} pending approval`, href:'/admin/candidates'});
   if (pending > 0)
     items.push({bullet:'🔴', text:`${pending} submission${pending>1?'s':''} awaiting manual review`, href:'/admin/checker'});
   const drafts = totalExams - pubExams;

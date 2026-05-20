@@ -125,14 +125,14 @@
 
     <!-- ── Access Requests ── -->
     <div class="card" style="margin-bottom:12px;padding:0" id="access-requests-card">
-      <div class="ar-header" id="ar-header" onclick="toggleArPanel()">
+      <div class="ar-header" id="ar-header" onclick="toggleArPanel()" style="cursor:pointer">
         <div style="display:flex;align-items:center;font-size:14px;font-weight:600">
           📩 Access Requests
           <span class="ar-badge" id="ar-pending-badge" style="display:none">0</span>
         </div>
-        <span id="ar-chevron" style="font-size:12px;color:var(--gray)">▼</span>
+        <span id="ar-chevron" style="font-size:12px;color:var(--gray)">▲</span>
       </div>
-      <div class="ar-body" id="ar-panel" style="display:none">
+      <div class="ar-body" id="ar-panel">
         <div class="ar-filter-tabs">
           <button class="ar-tab active" onclick="setArFilter('pending')" id="ar-tab-pending">Pending</button>
           <button class="ar-tab" onclick="setArFilter('approved')" id="ar-tab-approved">Approved</button>
@@ -1071,7 +1071,7 @@ document.getElementById('conf-ok').onclick=async ()=>{
 
 // ── Access Requests ───────────────────────────────────────────────────────────
 let _arFilter = 'pending';
-let _arOpen = false;
+let _arOpen = true;
 let _arRequests = [];
 
 async function loadAccessRequests() {
@@ -1133,7 +1133,7 @@ function toggleArPanel() {
   _arOpen = !_arOpen;
   document.getElementById('ar-panel').style.display = _arOpen ? '' : 'none';
   document.getElementById('ar-chevron').textContent = _arOpen ? '▲' : '▼';
-  if (_arOpen) loadAccessRequests();
+  if (_arOpen && !_arRequests.length) loadAccessRequests();
 }
 
 async function approveRequest(reqId, examId) {
@@ -1159,18 +1159,10 @@ async function rejectRequest(reqId, examId) {
   } catch(e) { toast('Network error', 'error'); }
 }
 
-// Load pending badge count on init
+// Load access requests on init (panel is always open)
 async function loadArBadge() {
   try {
-    const r = await api('GET', '/api/exams/access-requests/all?status=pending');
-    const data = await r.json();
-    const pb = document.getElementById('ar-pending-badge');
-    pb.textContent = data.length;
-    pb.style.display = data.length ? '' : 'none';
-    if (data.length > 0 && !_arOpen) {
-      // Auto-open panel if there are pending requests
-      toggleArPanel();
-    }
+    await loadAccessRequests();
   } catch(e) {}
 }
 
