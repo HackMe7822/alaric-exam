@@ -36,6 +36,7 @@ router.get('/:id', auth, (req, res) => {
   });
 
   sub.snapshots = db.prepare('SELECT id, captured_at, event_type FROM snapshots WHERE submission_id=?').all(sub.id);
+  try { sub.events = db.prepare('SELECT id, event_type, created_at FROM exam_events WHERE submission_id=? ORDER BY created_at ASC').all(sub.id); } catch(e) { sub.events = []; }
   res.json(sub);
 });
 

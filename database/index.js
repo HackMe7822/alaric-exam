@@ -32,6 +32,11 @@ function initDb() {
   }
   // JS migration: expand email_profiles to support api_key + resend/sendgrid providers
   migrateEmailProfiles(d);
+  // JS migration: one_time_link flag on exam_links
+  try { d.exec(`ALTER TABLE exam_links ADD COLUMN one_time_link INTEGER DEFAULT 1`); } catch(e) { /* already exists */ }
+  // JS migration: exam events log table
+  try { d.exec(`CREATE TABLE IF NOT EXISTS exam_events (id INTEGER PRIMARY KEY AUTOINCREMENT, submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE, event_type TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now')))`); } catch(e) {}
+  try { d.exec(`CREATE INDEX IF NOT EXISTS idx_exam_events_sub ON exam_events(submission_id)`); } catch(e) {}
   // JS migration: add password_hash column to candidates
   try { d.exec(`ALTER TABLE candidates ADD COLUMN password_hash TEXT`); } catch(e) { /* already exists */ }
   // JS migration: extended candidate profile fields

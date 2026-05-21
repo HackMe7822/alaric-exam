@@ -157,6 +157,12 @@
           <div id="dm-snapshots" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px"></div>
         </div>
       </div>
+
+      <!-- Activity Log -->
+      <div class="detail-section" id="dm-activity-section">
+        <h4>Activity Log</h4>
+        <div id="dm-activity-log" style="font-size:12.5px;color:var(--gray)">No events recorded.</div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeDetailModal()">Close</button>
@@ -333,6 +339,27 @@ async function openDetail(id) {
     ).join('') + (snaps.length > 12 ? `<span class="text-muted" style="font-size:12px;align-self:center">+${snaps.length - 12} more</span>` : '');
   } else {
     snapWrap.innerHTML = '<span class="text-muted" style="font-size:12px">No snapshots</span>';
+  }
+  // Activity Log
+  const events = detail.events || [];
+  const evLogEl = document.getElementById('dm-activity-log');
+  if (events.length) {
+    const evLabels = { tab_switch:'Tab Switch', fullscreen_exit:'Fullscreen Exit', ai_paste:'Suspicious Paste', multi_monitor:'Multi-Monitor Detected', start:'Exam Started' };
+    const evColors = { tab_switch:'#856404', fullscreen_exit:'#721c24', ai_paste:'#5b21b6', multi_monitor:'#0c4a6e', start:'#065f46' };
+    evLogEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:0;border-left:2px solid var(--border);margin-left:6px;padding-left:12px;">${
+      events.map(ev => {
+        const lbl = evLabels[ev.event_type] || ev.event_type;
+        const col = evColors[ev.event_type] || '#666';
+        const dt = ev.created_at ? new Date(ev.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' ' + new Date(ev.created_at).toLocaleDateString() : '';
+        return `<div style="padding:5px 0;display:flex;gap:10px;align-items:center;border-bottom:1px solid #f0f0f0;">
+          <span style="min-width:6px;height:6px;width:6px;border-radius:50%;background:${col};flex-shrink:0;margin-left:-15px;margin-right:3px;border:2px solid #fff;box-shadow:0 0 0 1px ${col}"></span>
+          <span style="font-weight:600;color:${col};min-width:160px">${esc(lbl)}</span>
+          <span style="color:#aaa;font-size:11px">${dt}</span>
+        </div>`;
+      }).join('')
+    }</div>`;
+  } else {
+    evLogEl.textContent = 'No events recorded.';
   }
   // Button states
   document.getElementById('dm-release-btn').disabled = (s.status === 'published');

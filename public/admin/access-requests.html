@@ -172,7 +172,7 @@
       <div id="ar-action-footer" style="display:none">
         <div class="ar-footer-main">
           <div class="ar-expiry-row">
-            <span class="ar-expiry-label">Link expires:</span>
+            <span class="ar-expiry-label">Expires:</span>
             <select class="ar-expiry-sel" id="ar-expiry">
               <option value="24">24 hours</option>
               <option value="48">48 hours</option>
@@ -182,6 +182,9 @@
               <option value="720">30 days</option>
             </select>
           </div>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--gray)" title="If checked, the exam link can only be used once. Uncheck to allow the candidate to re-enter.">
+            <input type="checkbox" id="ar-one-time" checked style="cursor:pointer"> One-time link
+          </label>
           <button class="btn-reject-toggle" id="btn-reject-toggle" onclick="toggleRejectForm()">❌ Reject</button>
           <button class="btn-approve-ar" id="btn-approve" onclick="doApprove()">✅ Approve &amp; Send Link</button>
         </div>
@@ -384,9 +387,10 @@ async function doApprove() {
   if (!_selected) return;
   const btn = document.getElementById('btn-approve');
   const hours = parseInt(document.getElementById('ar-expiry').value) || 72;
+  const one_time_link = document.getElementById('ar-one-time').checked;
   btn.disabled = true; btn.textContent = 'Sending…';
   try {
-    const r = await api('POST', `/api/exams/${_selected.exam_id}/access-requests/${_selected.id}/approve`, { expires_hours: hours });
+    const r = await api('POST', `/api/exams/${_selected.exam_id}/access-requests/${_selected.id}/approve`, { expires_hours: hours, one_time_link });
     const d = await r.json();
     if (!r.ok) { toast(d.error || 'Failed to approve', 'error'); btn.disabled=false; btn.textContent='✅ Approve & Send Link'; return; }
     toast(`✅ Approved — exam link sent to ${_selected.email}`);

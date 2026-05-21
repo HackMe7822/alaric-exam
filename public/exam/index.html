@@ -457,9 +457,15 @@
   <div class="overlay-card">
     <span class="ov-icon">&#128421;&#65039;</span>
     <h3>Multiple Displays Detected</h3>
-    <p>This exam does not allow use of multiple monitors. Please disconnect additional displays before continuing. This incident has been logged.</p>
+    <p>This exam requires a single-monitor setup. Please enable <strong>Display Mirroring / Clone</strong> so all screens show the same content, then click "Check Again".</p>
+    <p style="margin-top:10px;font-size:0.83rem;opacity:.75;line-height:1.5">
+      <strong>macOS:</strong> System Settings → Displays → select second display → Use As → Mirror display<br>
+      <strong>Windows:</strong> Win+P → Duplicate
+    </p>
+    <p style="margin-top:8px;font-size:0.8rem;color:var(--warning)">This incident has been logged.</p>
     <div class="overlay-btns">
-      <button class="btn-ov-cancel" id="btn-dismiss-multimon">I Understand, Continue</button>
+      <button class="btn-ov-primary" id="btn-recheck-multimon">&#8635; Check Again</button>
+      <button class="btn-ov-cancel" id="btn-dismiss-multimon">Continue Anyway</button>
     </div>
   </div>
 </div>
@@ -761,6 +767,14 @@ function startMultiMonitorCheck() {
 document.getElementById('btn-dismiss-multimon').addEventListener('click', () => {
   document.getElementById('overlay-multimonitor').classList.remove('active');
 });
+document.getElementById('btn-recheck-multimon').addEventListener('click', () => {
+  if (window.screen && !window.screen.isExtended) {
+    document.getElementById('overlay-multimonitor').classList.remove('active');
+    showToast('Single display confirmed. You may continue.', 'success', 3000);
+  } else {
+    showToast('Multiple displays still detected. Please enable mirroring first.', 'danger', 4000);
+  }
+});
 
 // ============================================================
 // WEBCAM
@@ -857,6 +871,10 @@ function setupSecurity() {
   // Keyboard shortcuts
   document.addEventListener('keydown', e => {
     if (!state.examStarted) return;
+    // Warn on Escape — browser will exit fullscreen but we show warning immediately
+    if (e.key === 'Escape' && state.fullscreenEnforced && document.fullscreenElement) {
+      showToast('Warning: Exiting fullscreen is not allowed. Returning to fullscreen…', 'danger', 5000);
+    }
     // Block devtools
     if (e.key === 'F12') { e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && e.shiftKey && ['i', 'j', 'c'].includes(e.key.toLowerCase())) { e.preventDefault(); return; }

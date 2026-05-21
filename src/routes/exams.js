@@ -351,7 +351,7 @@ router.post('/:id/access-requests/:reqId/approve', auth, requireRole('exam_manag
   const db = getDb();
   const examId = parseInt(req.params.id);
   const reqId = parseInt(req.params.reqId);
-  const { expires_hours } = req.body;
+  const { expires_hours, one_time_link } = req.body;
 
   const request = db.prepare(`SELECT * FROM exam_access_requests WHERE id=? AND exam_id=?`).get(reqId, examId);
   if (!request) return res.status(404).json({ error: 'Request not found' });
@@ -362,6 +362,7 @@ router.post('/:id/access-requests/:reqId/approve', auth, requireRole('exam_manag
   const token = generateToken();
   const hours = parseInt(expires_hours) || 72;
   const expires_at = new Date(Date.now() + hours * 3600000).toISOString();
+  const oneTimeVal = (one_time_link === false || one_time_link === 0) ? 0 : 1;
 
   // Find or create candidate record
   let candidate = db.prepare(`SELECT * FROM candidates WHERE email=?`).get(request.email);
@@ -370,9 +371,9 @@ router.post('/:id/access-requests/:reqId/approve', auth, requireRole('exam_manag
     candidate = { id: cr.lastInsertRowid, name: request.name, email: request.email };
   }
 
-  db.prepare(`INSERT INTO exam_links(token, exam_id, candidate_id, candidate_name, candidate_email, expires_at, created_by)
-    VALUES(?,?,?,?,?,?,?)`)
-    .run(token, examId, candidate.id, request.name, request.email, expires_at, req.user.id);
+  db.prepare(`INSERT INTO exam_links(token, exam_id, candidate_id, candidate_name, candidate_email, expires_at, created_by, one_time_link)
+    VALUES(?,?,?,?,?,?,?,?)`)
+    .run(token, examId, candidate.id, request.name, request.email, expires_at, req.user.id, oneTimeVal);
 
   const examUrl = buildExamUrl(token);
 

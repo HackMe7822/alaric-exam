@@ -1019,7 +1019,7 @@ async function signInWithPassword(){
   try{
     const data=await apiCall('POST','/api/portal/login',{email,password});
     saveToken(data.token);appState.candidate=data.candidate;
-    await loadDashboard();showScreen('screen-dashboard');
+    await loadDashboard();showScreen('screen-dashboard');startPortalPolling();
   }catch(e){err.textContent=e.message;err.classList.add('show');}
   finally{btn.disabled=false;btn.textContent='Sign in';}
 }
@@ -1043,7 +1043,7 @@ async function verifyOtp(email,otp){
   try{
     const data=await apiCall('POST','/api/portal/verify-otp',{email,otp});
     saveToken(data.token);appState.candidate=data.candidate;
-    clearInterval(resendInterval);await loadDashboard();showScreen('screen-dashboard');
+    clearInterval(resendInterval);await loadDashboard();showScreen('screen-dashboard');startPortalPolling();
   }catch(e){err.textContent=e.message;err.classList.add('show');}
   finally{btn.disabled=false;btn.textContent='Sign in';}
 }
@@ -1127,7 +1127,7 @@ function showMicrosoftInfo(){
 }
 async function handleOAuthToken(token){
   saveToken(token);appState.token=token;
-  try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');}
+  try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');startPortalPolling();}
   catch(e){clearAuth();const err=document.getElementById('step1-error');err.textContent='Sign-in failed. Please try again.';err.classList.add('show');showScreen('screen-login');}
 }
 
@@ -1146,14 +1146,14 @@ document.getElementById('btn-register').addEventListener('click',async()=>{
   btn.disabled=true;btn.textContent='Creating account…';
   try{
     const data=await apiCall('POST','/api/portal/register',{name,email,phone:phone||null,organization:org||null,password:pw});
-    saveToken(data.token);appState.candidate=data.candidate;closeRegisterModal();await loadDashboard();showScreen('screen-dashboard');
+    saveToken(data.token);appState.candidate=data.candidate;closeRegisterModal();await loadDashboard();showScreen('screen-dashboard');startPortalPolling();
   }catch(e){err.textContent=e.message;err.classList.add('show');}
   finally{btn.disabled=false;btn.textContent='Create Account';}
 });
 
 /* ── SIGN OUT ── */
 document.getElementById('btn-signout').addEventListener('click',()=>{
-  clearAuth();
+  stopPortalPolling();clearAuth();
   ['login-email','login-password','login-otp','login-email-otp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   showStep(1);showScreen('screen-login');
   try{fetch('/api/portal/logout',{method:'POST'});}catch(e){}
@@ -1161,7 +1161,7 @@ document.getElementById('btn-signout').addEventListener('click',()=>{
 
 async function doSignoutAll(){
   if(!confirm('Sign out from all devices?'))return;
-  clearAuth();showScreen('screen-login');
+  stopPortalPolling();clearAuth();showScreen('screen-login');
   try{fetch('/api/portal/logout',{method:'POST'});}catch(e){}
 }
 
@@ -1485,18 +1485,62 @@ async function portalOpenTest(examId, examTitle){
 }
 document.getElementById('open-test-modal').addEventListener('click',e=>{if(e.target===document.getElementById('open-test-modal'))document.getElementById('open-test-modal').classList.remove('open');});
 
+/* ── PORTAL NOTIFICATIONS ── */
+let _portalPollInterval = null;
+let _portalReqStatuses = null;
+
+function startPortalPolling(){
+  if(_portalPollInterval)return;
+  pollPortalChanges(true);
+  _portalPollInterval = setInterval(()=>pollPortalChanges(false), 10000);
+}
+function stopPortalPolling(){
+  clearInterval(_portalPollInterval);_portalPollInterval=null;_portalReqStatuses=null;
+}
+async function pollPortalChanges(seed){
+  try{
+    const requests=await apiCall('GET','/api/portal/requests');
+    if(seed||_portalReqStatuses===null){
+      const m={};requests.forEach(r=>{m[r.id]=r.status;});_portalReqStatuses=m;return;
+    }
+    let needRefresh=false;
+    requests.forEach(r=>{
+      const prev=_portalReqStatuses[r.id];
+      if(prev&&prev==='pending'&&r.status!=='pending'){
+        if(r.status==='approved'){
+          showToast('"'+r.exam_title+'" approved! You can now start the exam.','success');
+          needRefresh=true;
+        }else if(r.status==='rejected'){
+          showToast('Access request for "'+r.exam_title+'" was not approved.','error');
+        }
+      }
+      _portalReqStatuses[r.id]=r.status;
+    });
+    // seed newly seen IDs
+    requests.forEach(r=>{if(!_portalReqStatuses[r.id])_portalReqStatuses[r.id]=r.status;});
+    if(needRefresh){
+      await loadDashboard();
+      const activeTab=document.querySelector('.nav-item.active[data-tab]');
+      if(activeTab&&activeTab.dataset.tab==='my-exams')loadExamsTab();
+    }
+    // keep pending stat current
+    const el=document.getElementById('stat-pending');
+    if(el)el.textContent=requests.filter(r=>r.status==='pending').length;
+  }catch(e){}
+}
+
 /* ── INIT ── */
 async function init(){
   await loadBranding();
   const params=new URLSearchParams(window.location.search);
   const oauthToken=params.get('token'),oauthError=params.get('oauth_error');
-  if(oauthToken){history.replaceState({},'','/portal');saveToken(oauthToken);appState.token=oauthToken;try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');}catch(e){clearAuth();showScreen('screen-login');}return;}
+  if(oauthToken){history.replaceState({},'','/portal');saveToken(oauthToken);appState.token=oauthToken;try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');startPortalPolling();}catch(e){clearAuth();showScreen('screen-login');}return;}
   if(oauthError){history.replaceState({},'','/portal');showScreen('screen-login');const err=document.getElementById('step1-error');err.textContent=decodeURIComponent(oauthError);err.classList.add('show');return;}
   showScreen('screen-loading');
   const token=getToken();
   if(!token){showScreen('screen-login');return;}
   appState.token=token;
-  try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');}
+  try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');startPortalPolling();}
   catch(e){clearAuth();showScreen('screen-login');}
 }
 init();

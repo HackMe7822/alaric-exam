@@ -23,7 +23,8 @@ router.get('/:token', (req, res) => {
   const db = getDb();
   const link = db.prepare('SELECT * FROM exam_links WHERE token=? AND is_revoked=0').get(req.params.token);
   if (!link) return res.status(404).json({ error: 'Invalid or expired exam link' });
-  if (link.is_used) return res.status(410).json({ error: 'This link has already been used' });
+  const oneTime = link.one_time_link !== undefined ? link.one_time_link : 1;
+  if (link.is_used && oneTime) return res.status(410).json({ error: 'This link has already been used' });
   if (link.expires_at && new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'This link has expired' });
 
   const exam = db.prepare(`SELECT * FROM exams WHERE id=? AND status='published'`).get(link.exam_id);
@@ -57,9 +58,11 @@ router.get('/:token', (req, res) => {
 // POST /exam/:token/start
 router.post('/:token/start', (req, res) => {
   const db = getDb();
-  const link = db.prepare('SELECT * FROM exam_links WHERE token=? AND is_revoked=0 AND is_used=0').get(req.params.token);
-  if (!link) return res.status(410).json({ error: 'Link is invalid, used, or revoked' });
+  const link = db.prepare('SELECT * FROM exam_links WHERE token=? AND is_revoked=0').get(req.params.token);
+  if (!link) return res.status(410).json({ error: 'Link is invalid or revoked' });
   if (link.expires_at && new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'Link has expired' });
+  const oneTime = link.one_time_link !== undefined ? link.one_time_link : 1;
+  if (link.is_used && oneTime) return res.status(410).json({ error: 'Link is invalid, used, or revoked' });
 
   db.prepare(`UPDATE exam_links SET is_used=1, used_at=datetime('now'), ip_used=? WHERE id=?`).run(req.ip, link.id);
 
@@ -129,6 +132,9 @@ router.post('/:token/event', (req, res) => {
   if (event_type === 'tab_switch') { updates.push('tab_switches=tab_switches+1'); }
   if (event_type === 'fullscreen_exit') { updates.push('fullscreen_exits=fullscreen_exits+1'); }
   if (event_type === 'ai_paste') { updates.push('ai_paste_count=ai_paste_count+1'); }
+
+  // Log individual event with timestamp
+  try { db.prepare("INSERT INTO exam_events(submission_id, event_type) VALUES(?,?)").run(sub.id, event_type); } catch(e) {}
 
   const newTabSw = sub.tab_switches + (event_type === 'tab_switch' ? 1 : 0);
   const newFse = sub.fullscreen_exits + (event_type === 'fullscreen_exit' ? 1 : 0);
