@@ -1017,15 +1017,70 @@ document.getElementById('btn-resend').addEventListener('click',()=>{const e=docu
 
 /* ── OAUTH ── */
 function oauthPopup(provider){
+  // Microsoft: show setup instructions if not configured
+  if(provider==='microsoft'&&!_msConfigured){showMicrosoftInfo();return;}
+
   const w=520,h=620,left=Math.round(window.screenX+(window.outerWidth-w)/2),top=Math.round(window.screenY+(window.outerHeight-h)/2);
+  // Clear any stale localStorage result before opening
+  localStorage.removeItem('_oauth_result');
   const popup=window.open('/api/portal/auth/'+provider,'oauth_'+provider,`width=${w},height=${h},left=${left},top=${top},toolbar=0,menubar=0,location=0,scrollbars=1`);
   if(!popup){const err=document.getElementById('step1-error');err.textContent='Popup was blocked. Please allow popups for this site.';err.classList.add('show');return;}
+
+  const startTs=Date.now();
+
+  // Primary: listen for postMessage from oauth-callback.html
   const handler=(e)=>{
     if(e.origin!==window.location.origin)return;
-    if(e.data&&e.data.type==='oauth_success'){window.removeEventListener('message',handler);handleOAuthToken(e.data.token);}
-    if(e.data&&e.data.type==='oauth_error'){window.removeEventListener('message',handler);const err=document.getElementById('step1-error');err.textContent=e.data.error;err.classList.add('show');}
+    if(e.data&&e.data.type==='oauth_success'){cleanup();handleOAuthToken(e.data.token);}
+    if(e.data&&e.data.type==='oauth_error'){cleanup();showOAuthError(e.data.error);}
   };
   window.addEventListener('message',handler);
+
+  // Fallback: poll localStorage (for when COOP severs window.opener)
+  const poll=setInterval(()=>{
+    try{
+      const raw=localStorage.getItem('_oauth_result');
+      if(!raw)return;
+      const res=JSON.parse(raw);
+      if(res.ts&&res.ts>startTs){
+        cleanup();
+        localStorage.removeItem('_oauth_result');
+        if(res.token)handleOAuthToken(res.token);
+        else if(res.error)showOAuthError(res.error);
+      }
+    }catch(e){}
+    // Also stop if popup closed without result
+    if(popup.closed&&Date.now()-startTs>2000){cleanup();}
+  },500);
+
+  function cleanup(){window.removeEventListener('message',handler);clearInterval(poll);}
+}
+
+function showOAuthError(msg){
+  const err=document.getElementById('step1-error');
+  err.textContent=msg;err.classList.add('show');
+}
+
+let _msConfigured=false; // will be set true if MICROSOFT_CLIENT_ID is detected
+
+function showMicrosoftInfo(){
+  // Show an inline info card beneath the Microsoft button
+  let el=document.getElementById('ms-info-card');
+  if(el){el.remove();return;}
+  el=document.createElement('div');
+  el.id='ms-info-card';
+  el.style.cssText='background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:14px 16px;margin-top:8px;font-size:.8125rem;color:#5d4037;line-height:1.5;';
+  el.innerHTML=`<strong>Microsoft SSO not configured yet.</strong><br>To enable it, add these environment variables in your Render dashboard:<br>
+  <code style="background:#fff3e0;padding:2px 5px;border-radius:3px;font-size:.78rem;">MICROSOFT_CLIENT_ID</code> and
+  <code style="background:#fff3e0;padding:2px 5px;border-radius:3px;font-size:.78rem;">MICROSOFT_CLIENT_SECRET</code><br><br>
+  Get them from <strong>portal.azure.com</strong> → App registrations → New registration → add redirect URI:<br>
+  <code style="background:#fff3e0;padding:2px 5px;border-radius:3px;font-size:.78rem;word-break:break-all;">${location.origin}/api/portal/auth/microsoft/callback</code>
+  <br><button onclick="document.getElementById('ms-info-card').remove()" style="margin-top:10px;background:none;border:1px solid #bc6c25;color:#bc6c25;border-radius:4px;padding:4px 10px;font-size:.78rem;cursor:pointer;">Dismiss</button>`;
+  // Insert after the Microsoft button
+  const btns=document.querySelectorAll('.btn-social');
+  const msBtn=Array.from(btns).find(b=>b.textContent.includes('Microsoft'));
+  if(msBtn)msBtn.insertAdjacentElement('afterend',el);
+  else document.getElementById('login-tab-password').appendChild(el);
 }
 async function handleOAuthToken(token){
   saveToken(token);appState.token=token;

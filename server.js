@@ -14,7 +14,8 @@ initDb();
 // Security headers (relaxed for local dev)
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false
+  crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }, // required for OAuth popups
 }));
 
 app.use(express.json({ limit: '10mb' }));
