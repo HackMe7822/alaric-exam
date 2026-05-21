@@ -344,16 +344,29 @@ async function openDetail(id) {
   const events = detail.events || [];
   const evLogEl = document.getElementById('dm-activity-log');
   if (events.length) {
-    const evLabels = { tab_switch:'Tab Switch', fullscreen_exit:'Fullscreen Exit', ai_paste:'Suspicious Paste', multi_monitor:'Multi-Monitor Detected', start:'Exam Started' };
-    const evColors = { tab_switch:'#856404', fullscreen_exit:'#721c24', ai_paste:'#5b21b6', multi_monitor:'#0c4a6e', start:'#065f46' };
+    const evLabels = {
+      tab_switch:'Tab Switch', fullscreen_exit:'Fullscreen Exit', ai_paste:'Suspicious Paste',
+      multi_monitor:'Multi-Monitor Detected', start:'Exam Started',
+      cancelled_tab_close:'Cancelled — Tab Closed', cancelled_abandoned:'Cancelled — Abandoned',
+      cancelled_manual:'Cancelled — Manual', cancelled_timeout:'Cancelled — Timeout',
+      auto_submitted:'Auto-Submitted (Tab Limit)'
+    };
+    const evColors = {
+      tab_switch:'#856404', fullscreen_exit:'#721c24', ai_paste:'#5b21b6',
+      multi_monitor:'#0c4a6e', start:'#065f46',
+      cancelled_tab_close:'#d13438', cancelled_abandoned:'#d13438',
+      cancelled_manual:'#d13438', cancelled_timeout:'#ca5010',
+      auto_submitted:'#7a3e0a'
+    };
     evLogEl.innerHTML = `<div style="display:flex;flex-direction:column;gap:0;border-left:2px solid var(--border);margin-left:6px;padding-left:12px;">${
       events.map(ev => {
-        const lbl = evLabels[ev.event_type] || ev.event_type;
-        const col = evColors[ev.event_type] || '#666';
-        const dt = ev.created_at ? new Date(ev.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + ' ' + new Date(ev.created_at).toLocaleDateString() : '';
+        const rawType = ev.event_type || '';
+        const lbl = evLabels[rawType] || (rawType.startsWith('cancelled_') ? 'Cancelled — ' + rawType.replace('cancelled_','').replace(/_/g,' ') : rawType.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()));
+        const col = evColors[rawType] || (rawType.startsWith('cancelled_') ? '#d13438' : '#666');
+        const dt = ev.created_at ? new Date(ev.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) + '  ' + new Date(ev.created_at).toLocaleDateString() : '';
         return `<div style="padding:5px 0;display:flex;gap:10px;align-items:center;border-bottom:1px solid #f0f0f0;">
           <span style="min-width:6px;height:6px;width:6px;border-radius:50%;background:${col};flex-shrink:0;margin-left:-15px;margin-right:3px;border:2px solid #fff;box-shadow:0 0 0 1px ${col}"></span>
-          <span style="font-weight:600;color:${col};min-width:160px">${esc(lbl)}</span>
+          <span style="font-weight:600;color:${col};min-width:180px">${esc(lbl)}</span>
           <span style="color:#aaa;font-size:11px">${dt}</span>
         </div>`;
       }).join('')

@@ -184,9 +184,27 @@
     } catch (e) {}
   }
 
+  /* ── BRANDING ── */
+  async function applyBranding() {
+    try {
+      const r = await fetch('/api/settings/branding', { credentials: 'include' });
+      if (!r.ok) return;
+      const b = await r.json();
+      const appName = b.app_name || 'Alaric Exam';
+      const brandEl = document.querySelector('#sidebar .brand');
+      if (brandEl) {
+        const svg = brandEl.querySelector('svg');
+        brandEl.innerHTML = (svg ? svg.outerHTML : '') + escHtml(appName);
+      }
+      const titlePart = document.title.includes('—') ? document.title.split('—')[0].trim() : document.title;
+      document.title = titlePart + ' — ' + appName;
+    } catch(e) {}
+  }
+
   /* ── INIT ── */
   function init() {
     injectBell();
+    applyBranding();
     pollNotifications();
     setInterval(pollNotifications, 12000);
   }

@@ -445,22 +445,24 @@ async function loadPage() {
 async function loadSettings() {
   const data = await api('GET', '/api/settings');
   if (!data) return;
-  document.getElementById('appName').value = data.app_name || data.appName || 'Alaric Exam';
-  document.getElementById('appTagline').value = data.app_tagline || '';
-  // Load logo
+  // API returns {key: {value, description}} objects — extract .value
+  const val = (k, fb) => { const v = data[k]; return (v && typeof v === 'object') ? (v.value ?? fb) : (v ?? fb); };
   const branding = await api('GET', '/api/settings/branding');
+  // Use branding endpoint for display name (returns plain strings)
+  document.getElementById('appName').value = branding?.app_name || val('app_name','') || 'Alaric Exam';
+  document.getElementById('appTagline').value = branding?.app_tagline || val('app_tagline','');
   if (branding?.app_logo) {
     const img = document.getElementById('logoPreview');
     img.src = branding.app_logo; img.style.display = 'block';
     document.getElementById('btnRemoveLogo').style.display = '';
   }
   window._savedLogo = branding?.app_logo || null;
-  document.getElementById('allowPublicCatalog').checked = !!(data.allow_public_catalog ?? data.allowPublicCatalog);
-  document.getElementById('webcamEnabled').checked = !!(data.webcam_enabled ?? data.webcamEnabled);
-  document.getElementById('webcamInterval').value = data.webcam_interval ?? data.webcamInterval ?? 30;
-  document.getElementById('fullscreenEnforce').checked = !!(data.fullscreen_enforce ?? data.fullscreenEnforce);
-  document.getElementById('aiPasteDetect').checked = !!(data.ai_paste_detect ?? data.aiPasteDetect);
-  document.getElementById('maxTabSwitches').value = data.max_tab_switches ?? data.maxTabSwitches ?? 3;
+  document.getElementById('allowPublicCatalog').checked = val('allow_public_catalog','0') === '1';
+  document.getElementById('webcamEnabled').checked = val('webcam_enabled','1') === '1';
+  document.getElementById('webcamInterval').value = val('webcam_interval', 30);
+  document.getElementById('fullscreenEnforce').checked = val('fullscreen_enforce','1') === '1';
+  document.getElementById('aiPasteDetect').checked = val('ai_paste_detect','1') === '1';
+  document.getElementById('maxTabSwitches').value = val('max_tab_switches', 3);
 }
 
 function previewLogo(input) {

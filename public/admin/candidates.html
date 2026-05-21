@@ -422,11 +422,6 @@
         <div id="det-links"><span class="spinner"></span></div>
       </div>
 
-      <!-- Submission history -->
-      <div class="det-section">
-        <h4>Submission History</h4>
-        <div id="det-subs"><span class="spinner"></span></div>
-      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('detail-modal')">Close</button>
@@ -943,14 +938,9 @@ async function openDetail(id) {
 
 async function loadDetailHistory(candId) {
   try {
-    const [lr, sr] = await Promise.all([
-      api('GET', `/api/candidates/${candId}/links`),
-      api('GET', `/api/candidates/${candId}/submissions`),
-    ]);
+    const lr = await api('GET', `/api/candidates/${candId}/links`);
     const linksRaw = await lr.json();
-    const subsRaw  = await sr.json();
     const links = Array.isArray(linksRaw)?linksRaw:(linksRaw.links??[]);
-    const subs  = Array.isArray(subsRaw) ?subsRaw :(subsRaw.submissions??[]);
 
     // Links
     const lDiv = document.getElementById('det-links');
@@ -974,34 +964,8 @@ async function loadDetailHistory(candId) {
       }).join('');
     }
 
-    // Submissions
-    const sDiv = document.getElementById('det-subs');
-    if (!subs.length) {
-      sDiv.innerHTML='<p class="text-muted" style="font-size:13px">No submissions yet.</p>';
-    } else {
-      sDiv.innerHTML = subs.map(s=>{
-        const exam  = _exams.find(e=>e.id==s.exam_id);
-        const total = s.total_marks||100;
-        const score = s.final_score??s.auto_score;
-        const pct   = score!=null&&total>0 ? Math.round((score/total)*100) : null;
-        const pass  = s.pass_fail==='pass' || s.passed===1;
-        return `<div class="sub-row">
-          ${score!=null?`<span class="badge ${pass?'badge-success':'badge-danger'}">${pass?'Pass':'Fail'}</span>`:'<span class="badge badge-warning">Pending</span>'}
-          <div style="flex:1">
-            <div style="font-weight:500;font-size:13px">${exam?esc(exam.title):`Exam #${s.exam_id}`}</div>
-            <div class="text-muted" style="font-size:11px">${s.submitted_at?new Date(s.submitted_at).toLocaleString():'—'}</div>
-          </div>
-          <div style="text-align:right">
-            <div style="font-weight:700;font-size:15px">${pct!=null?pct+'%':'—'}</div>
-            <div class="text-muted" style="font-size:11px">${score!=null?Math.round(score)+'/'+Math.round(total)+' marks':'Pending grading'}</div>
-          </div>
-          <a href="/admin/results?submission=${s.id}" class="btn btn-ghost btn-sm">View</a>
-        </div>`;
-      }).join('');
-    }
   } catch(e) {
     document.getElementById('det-links').innerHTML = '<p class="text-muted" style="font-size:13px">Failed to load.</p>';
-    document.getElementById('det-subs').innerHTML  = '<p class="text-muted" style="font-size:13px">Failed to load.</p>';
   }
 }
 

@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcryptjs');
 
 const DB_PATH = process.env.DB_PATH || './database/alaric.db';
 
@@ -44,6 +45,15 @@ function initDb() {
   for (const col of candidateExtras) {
     try { d.exec(`ALTER TABLE candidates ADD COLUMN ${col} TEXT`); } catch(e) { /* already exists */ }
   }
+  // JS migration: test candidate for portal demos
+  try {
+    const existing = d.prepare("SELECT id FROM candidates WHERE email='test@test.com'").get();
+    if (!existing) {
+      const hash = bcrypt.hashSync('Test@1234', 10);
+      d.prepare("INSERT INTO candidates(name, email, password_hash, is_active, created_at, updated_at) VALUES('Test Candidate','test@test.com',?,1,datetime('now'),datetime('now'))").run(hash);
+      console.log('Database: test candidate created (test@test.com / Test@1234)');
+    }
+  } catch(e) { console.error('Database: test candidate seed failed:', e.message); }
   console.log('Database initialized at', path.resolve(DB_PATH));
 }
 

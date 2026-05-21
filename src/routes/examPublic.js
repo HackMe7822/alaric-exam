@@ -184,6 +184,35 @@ router.post('/:token/upload-file', fileUpload.single('file'), (req, res) => {
   res.json({ ok: true, file_path: req.file.path });
 });
 
+// POST /exam/:token/heartbeat — keeps in_progress submission alive
+router.post('/:token/heartbeat', (req, res) => {
+  const db = getDb();
+  const { submission_id } = req.body || {};
+  if (submission_id) {
+    try { db.prepare(`UPDATE submissions SET updated_at=datetime('now') WHERE id=? AND status='in_progress'`).run(parseInt(submission_id)); } catch(e) {}
+  }
+  res.json({ ok: true });
+});
+
+// POST /exam/:token/abandon — candidate closed tab / manually cancelled
+router.post('/:token/abandon', (req, res) => {
+  const db = getDb();
+  let body = req.body || {};
+  if (typeof body === 'string') { try { body = JSON.parse(body); } catch(e) { body = {}; } }
+  const { submission_id, reason } = body;
+  if (!submission_id) return res.json({ ok: true });
+  try {
+    const sub = db.prepare('SELECT s.* FROM submissions s JOIN exam_links el ON el.id=s.link_id WHERE s.id=? AND el.token=?')
+      .get(parseInt(submission_id), req.params.token);
+    if (sub && sub.status === 'in_progress') {
+      const cancelReason = (reason || 'abandoned').replace(/[^a-z_]/gi, '_').slice(0, 30);
+      db.prepare(`UPDATE submissions SET status='cancelled', submitted_at=datetime('now'), updated_at=datetime('now') WHERE id=?`).run(sub.id);
+      db.prepare("INSERT INTO exam_events(submission_id, event_type) VALUES(?,?)").run(sub.id, `cancelled_${cancelReason}`);
+    }
+  } catch(e) {}
+  res.json({ ok: true });
+});
+
 function shuffleArray(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {

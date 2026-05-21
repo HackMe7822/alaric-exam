@@ -443,11 +443,12 @@
 <!-- Fullscreen overlay -->
 <div id="overlay-fullscreen" class="overlay">
   <div class="overlay-card">
-    <span class="ov-icon">&#128421;&#65039;</span>
-    <h3>Fullscreen Required</h3>
-    <p>This exam must be taken in fullscreen mode. Exiting fullscreen has been logged. Please return to fullscreen to continue.</p>
+    <span class="ov-icon">&#9888;&#65039;</span>
+    <h3 style="color:#e67e22">Fullscreen Violation</h3>
+    <p>You exited fullscreen. <strong>This incident has been logged and may result in your exam being suspended.</strong></p>
+    <p style="margin-top:8px;font-size:0.85rem;opacity:.75">You cannot continue until you return to fullscreen mode.</p>
     <div class="overlay-btns">
-      <button class="btn-ov-primary" id="btn-go-fullscreen">Go Fullscreen</button>
+      <button class="btn-ov-primary" id="btn-go-fullscreen">Return to Fullscreen</button>
     </div>
   </div>
 </div>
@@ -462,10 +463,9 @@
       <strong>macOS:</strong> System Settings → Displays → select second display → Use As → Mirror display<br>
       <strong>Windows:</strong> Win+P → Duplicate
     </p>
-    <p style="margin-top:8px;font-size:0.8rem;color:var(--warning)">This incident has been logged.</p>
+    <p style="margin-top:8px;font-size:0.8rem;color:var(--warning)">This incident has been logged. You cannot continue until mirroring is enabled.</p>
     <div class="overlay-btns">
       <button class="btn-ov-primary" id="btn-recheck-multimon">&#8635; Check Again</button>
-      <button class="btn-ov-cancel" id="btn-dismiss-multimon">Continue Anyway</button>
     </div>
   </div>
 </div>
@@ -718,7 +718,36 @@ async function startExam() {
 
   // Auto-save every 15 seconds
   state.autoSaveInterval = setInterval(autoSaveAll, 15000);
+
+  // Heartbeat — keeps submission alive; also used to detect tab-close abandonment
+  startHeartbeat();
 }
+
+// ── HEARTBEAT ──────────────────────────────────────────────────
+let _heartbeatInterval = null;
+function startHeartbeat() {
+  if (_heartbeatInterval) return;
+  _heartbeatInterval = setInterval(() => {
+    if (state.submissionId && state.examStarted && !state.submitted) {
+      fetch(`/exam/${state.token}/heartbeat`, {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submission_id: state.submissionId })
+      }).catch(() => {});
+    }
+  }, 30000);
+}
+function stopHeartbeat() { clearInterval(_heartbeatInterval); _heartbeatInterval = null; }
+
+// Tab close — beacon marks exam as cancelled
+window.addEventListener('beforeunload', () => {
+  if (state.examStarted && !state.submitted && state.submissionId) {
+    navigator.sendBeacon(
+      `/exam/${state.token}/abandon`,
+      new Blob([JSON.stringify({ submission_id: state.submissionId, reason: 'tab_close' })], { type: 'application/json' })
+    );
+  }
+});
 
 // ============================================================
 // FULLSCREEN
@@ -728,22 +757,19 @@ document.addEventListener('fullscreenchange', () => {
   if (!document.fullscreenElement) {
     state.fullscreenExits++;
     postEvent('fullscreen_exit');
+    // Block the exam — overlay stays until fullscreen is re-entered
     document.getElementById('overlay-fullscreen').classList.add('active');
-    // Re-request after 3 seconds if user hasn't acted
-    setTimeout(() => {
-      if (!document.fullscreenElement && state.examStarted && !state.submitted) {
-        document.documentElement.requestFullscreen().catch(() => {});
-        document.getElementById('overlay-fullscreen').classList.remove('active');
-      }
-    }, 3000);
   } else {
+    // Fullscreen re-entered — unblock
     document.getElementById('overlay-fullscreen').classList.remove('active');
   }
 });
 
 document.getElementById('btn-go-fullscreen').addEventListener('click', () => {
-  document.documentElement.requestFullscreen().catch(() => {});
-  document.getElementById('overlay-fullscreen').classList.remove('active');
+  // Only request fullscreen — overlay closes via fullscreenchange event
+  document.documentElement.requestFullscreen().catch(() => {
+    showToast('Fullscreen request was blocked by the browser. Please click "Return to Fullscreen".', 'danger', 6000);
+  });
 });
 
 // ============================================================
@@ -764,9 +790,6 @@ function startMultiMonitorCheck() {
   });
 }
 
-document.getElementById('btn-dismiss-multimon').addEventListener('click', () => {
-  document.getElementById('overlay-multimonitor').classList.remove('active');
-});
 document.getElementById('btn-recheck-multimon').addEventListener('click', () => {
   if (window.screen && !window.screen.isExtended) {
     document.getElementById('overlay-multimonitor').classList.remove('active');
@@ -1697,6 +1720,7 @@ async function autoSubmit(reason) {
 async function submitExam(isAuto, reason) {
   if (state.submitted) return;
   state.submitted = true;
+  stopHeartbeat();
   clearInterval(state.timerInterval);
   clearInterval(state.autoSaveInterval);
 

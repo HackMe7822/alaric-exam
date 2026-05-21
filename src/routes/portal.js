@@ -171,29 +171,36 @@ router.get('/requests', candidateAuth, (req, res) => {
   })));
 });
 
-// GET /api/portal/my-exams — active (non-expired, non-revoked) exam links by email
+// GET /api/portal/my-exams — exam links for this candidate (active + in-progress)
 router.get('/my-exams', candidateAuth, (req, res) => {
   const db = getDb();
   const c = db.prepare('SELECT email FROM candidates WHERE id=?').get(req.candidateId);
   if (!c) return res.json([]);
   const links = db.prepare(`
-    SELECT el.token, el.expires_at, el.used_at, el.is_revoked,
+    SELECT el.token, el.expires_at, el.used_at, el.is_revoked, el.is_used,
+      COALESCE(el.one_time_link, 1) as one_time_link,
       e.id as exam_id, e.title, e.code, e.duration_minutes, e.total_marks, e.pass_marks,
-      e.catalog_image as thumbnail
+      e.catalog_image as thumbnail,
+      (SELECT status FROM submissions WHERE link_id=el.id ORDER BY started_at DESC LIMIT 1) as sub_status,
+      (SELECT id FROM submissions WHERE link_id=el.id ORDER BY started_at DESC LIMIT 1) as sub_id
     FROM exam_links el
     JOIN exams e ON e.id=el.exam_id
     WHERE el.candidate_email=? AND el.is_revoked=0
-      AND datetime(el.expires_at) > datetime('now')
+      AND (el.expires_at IS NULL OR datetime(el.expires_at) > datetime('now'))
     ORDER BY el.created_at DESC
   `).all(c.email);
-  res.json(links.map(l => ({ ...l, exam_url: buildExamUrl(l.token) })));
+  // Filter out links where the exam is fully done (submitted/graded — they live in history)
+  const completedStatuses = new Set(['submitted', 'grading', 'graded', 'auto_submitted']);
+  const active = links.filter(l => !completedStatuses.has(l.sub_status));
+  res.json(active.map(l => ({ ...l, exam_url: buildExamUrl(l.token) })));
 });
 
-// GET /api/portal/history
+// GET /api/portal/history — all submissions for this candidate
 router.get('/history', candidateAuth, (req, res) => {
   const db = getDb();
   const rows = db.prepare(`
-    SELECT s.id, s.started_at, s.completed_at, s.score, s.passed, s.result_released,
+    SELECT s.id, s.started_at, s.submitted_at, s.completed_at, s.score, s.passed,
+      s.result_released, s.status,
       e.title as exam_title, e.code, e.total_marks, e.pass_marks, e.show_result_immediately
     FROM submissions s JOIN exams e ON e.id=s.exam_id
     WHERE s.candidate_id=? ORDER BY s.started_at DESC
