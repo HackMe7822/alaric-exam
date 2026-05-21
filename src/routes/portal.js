@@ -350,4 +350,61 @@ router.post('/register', (req, res) => {
   res.json({ ok: true, token, candidate: { id: r.lastInsertRowid, name: name.trim(), email: cleanEmail, phone: phone?.trim() || null } });
 });
 
+// GET /api/portal/catalog — catalog for logged-in candidates (same data as public catalog)
+router.get('/catalog', candidateAuth, (req, res) => {
+  const db = getDb();
+  const exams = db.prepare(`SELECT id, code, title, catalog_description, catalog_image, branding_color,
+    duration_minutes, total_marks, pass_marks, is_open_test
+    FROM exams WHERE is_public=1 AND status='published' ORDER BY title`).all();
+  res.json(exams);
+});
+
+// POST /api/portal/request-access — logged-in candidate requests exam access (no name/email needed)
+router.post('/request-access', candidateAuth, (req, res) => {
+  const db = getDb();
+  const { exam_id, message } = req.body;
+  if (!exam_id) return res.status(400).json({ error: 'exam_id is required' });
+
+  const candidate = db.prepare('SELECT id, name, email FROM candidates WHERE id=?').get(req.candidateId);
+  if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+
+  const exam = db.prepare(`SELECT id, title, is_open_test, status, is_public FROM exams WHERE id=?`).get(parseInt(exam_id));
+  if (!exam || exam.status !== 'published' || !exam.is_public)
+    return res.status(404).json({ error: 'Exam not found or not available' });
+
+  if (exam.is_open_test) {
+    const { generateToken } = require('../utils/linkgen');
+    const token = generateToken();
+    const expires_at = new Date(Date.now() + 72 * 3600000).toISOString();
+    db.prepare(`INSERT INTO exam_links(token, exam_id, candidate_name, candidate_email, expires_at) VALUES(?,?,?,?,?)`)
+      .run(token, exam.id, candidate.name, candidate.email, expires_at);
+    return res.json({ open_test: true, url: buildExamUrl(token) });
+  }
+
+  const existing = db.prepare(`SELECT id FROM exam_access_requests WHERE exam_id=? AND email=? AND status='pending'`)
+    .get(exam.id, candidate.email);
+  if (existing) return res.status(409).json({ error: 'You already have a pending request for this exam.' });
+
+  const alreadyApproved = db.prepare(`SELECT id FROM exam_links WHERE exam_id=? AND candidate_email=?`)
+    .get(exam.id, candidate.email);
+  if (alreadyApproved) return res.status(409).json({ error: 'You already have an active link for this exam. Check your My Exams tab.' });
+
+  db.prepare(`INSERT INTO exam_access_requests(exam_id, name, email, message) VALUES(?,?,?,?)`)
+    .run(exam.id, candidate.name, candidate.email, message?.trim() || null);
+
+  res.json({ ok: true });
+
+  setImmediate(async () => {
+    try {
+      const tmpl = db.prepare(`SELECT * FROM email_templates WHERE code='access_request_received' AND is_active=1`).get();
+      if (!tmpl) return;
+      const html = tmpl.body_html
+        .replace(/\{\{candidate_name\}\}/g, candidate.name)
+        .replace(/\{\{exam_title\}\}/g, exam.title)
+        .replace(/\{\{platform_name\}\}/g, 'Alaric Exam');
+      await sendEmail({ to: candidate.email, subject: tmpl.subject.replace(/\{\{exam_title\}\}/g, exam.title), html, templateCode: 'access_request_received', purpose: 'access_request_received' });
+    } catch (e) { console.error('[portal] request-access email error:', e.message); }
+  });
+});
+
 module.exports = router;

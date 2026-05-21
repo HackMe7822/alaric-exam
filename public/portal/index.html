@@ -516,18 +516,17 @@ html,body { height:100%; background:var(--bg); color:var(--text); font-family:'S
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
         Results &amp; History
       </button>
+      <button class="nav-item" data-tab="browse">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Browse Exams
+      </button>
       <div class="sidebar-divider"></div>
       <button class="nav-item" data-tab="profile">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         My Profile
       </button>
       <div class="sidebar-spacer"></div>
-      <div class="sidebar-catalog-box">
-        <h4>Exam Catalog</h4>
-        <p>Browse and request access to available exams</p>
-        <a href="/catalog">Browse Exams →</a>
-      </div>
-      <div style="height:16px"></div>
+      <div style="height:12px"></div>
     </aside>
 
     <main class="main-content" id="main-content">
@@ -566,7 +565,7 @@ html,body { height:100%; background:var(--bg); color:var(--text); font-family:'S
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
               <h3>No exams yet</h3>
               <p>You don't have any active exam links or pending requests.</p>
-              <a href="/catalog">Browse the exam catalog to get started →</a>
+              <a href="#" onclick="switchTab('browse');return false;">Browse the exam catalog to get started →</a>
             </div>
           </div>
         </div>
@@ -595,6 +594,50 @@ html,body { height:100%; background:var(--bg); color:var(--text); font-family:'S
         </div>
         <div class="content-area">
           <div id="results-content"><div style="text-align:center;padding:48px"><div class="spinner" style="margin:0 auto"></div></div></div>
+        </div>
+      </div>
+
+      <!-- ──── BROWSE EXAMS ──── -->
+      <div id="tab-browse" class="tab-pane">
+        <div class="page-banner" style="padding:28px 40px;">
+          <div class="banner-inner">
+            <div class="banner-welcome" style="font-size:1.3rem;font-weight:600;">Browse Exams</div>
+            <div class="banner-sub">Explore available exams and request access instantly</div>
+          </div>
+        </div>
+        <div class="content-area">
+          <!-- Search bar -->
+          <div style="display:flex;gap:10px;margin-bottom:24px;">
+            <input id="browse-search" type="text" class="form-input" placeholder="Search exams…" style="max-width:360px;" oninput="filterBrowse()">
+          </div>
+          <div id="browse-content"><div style="text-align:center;padding:48px"><div class="spinner" style="margin:0 auto"></div></div></div>
+        </div>
+      </div>
+
+      <!-- Request Access Modal (portal, logged-in) -->
+      <div id="portal-request-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width:420px;">
+          <button class="modal-close" onclick="closePortalRequestModal()">&times;</button>
+          <div class="modal-title" id="prm-title">Request Access</div>
+          <div class="modal-sub" id="prm-sub">Requesting as <strong id="prm-name"></strong> &lt;<span id="prm-email"></span>&gt;</div>
+          <div class="form-group">
+            <label class="form-label" for="prm-message">Remarks (optional)</label>
+            <textarea id="prm-message" class="form-input" rows="3" placeholder="Why do you want to take this exam? Any remarks for the admin…" style="resize:vertical;font-size:.875rem;"></textarea>
+          </div>
+          <div id="prm-error" class="inline-error"></div>
+          <button id="prm-submit" class="btn btn-primary" style="margin-top:8px;">Send Request</button>
+        </div>
+      </div>
+
+      <!-- Open Test Link Modal -->
+      <div id="open-test-modal" class="modal-overlay">
+        <div class="modal-card" style="max-width:400px;text-align:center;">
+          <div style="font-size:2rem;margin-bottom:8px;">🎉</div>
+          <div class="modal-title" style="margin-bottom:6px;">Exam Link Ready!</div>
+          <div class="modal-sub" id="otm-sub" style="margin-bottom:20px;"></div>
+          <a id="otm-link" href="#" target="_blank" class="btn btn-primary" style="margin-bottom:12px;">Start Exam Now →</a>
+          <br>
+          <button onclick="document.getElementById('open-test-modal').classList.remove('open')" style="background:none;border:none;color:var(--text-muted);font-size:.8125rem;cursor:pointer;margin-top:4px;">Close</button>
         </div>
       </div>
 
@@ -1132,6 +1175,7 @@ function switchTab(name){
   if(name==='my-exams')loadExamsTab();
   if(name==='results')loadResultsTab();
   if(name==='profile')loadProfileTab();
+  if(name==='browse')loadBrowseTab();
 }
 document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
 const sidebarEl=document.getElementById('sidebar'),overlayEl=document.getElementById('sidebar-overlay');
@@ -1216,7 +1260,7 @@ async function loadExamsTab(){
     const rejected=requests.filter(r=>r.status==='rejected');
     if(pending.length>0){html+=`<div class="section-row" style="margin-top:28px"><div class="section-title">Pending Approval</div></div><div class="pending-list">${pending.map(r=>`<div class="pending-item"><div><div class="pending-item-title">${esc(r.exam_title)}</div><div class="pending-item-sub">Submitted ${fmtDate(r.created_at)}</div></div><span class="chip chip-warning">Under Review</span></div>`).join('')}</div>`;}
     if(rejected.length>0){html+=`<div class="section-row" style="margin-top:28px"><div class="section-title">Not Approved</div></div><div class="pending-list">${rejected.map(r=>`<div class="pending-item"><div><div class="pending-item-title">${esc(r.exam_title)}</div><div class="pending-item-sub">Submitted ${fmtDate(r.created_at)}</div></div><span class="chip chip-danger">Not Approved</span></div>`).join('')}</div>`;}
-    if(!html){html=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><h3>No exams yet</h3><p>You haven't requested access to any exams.</p><a href="/catalog">Browse Exam Catalog →</a></div>`;}
+    if(!html){html=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><h3>No exams yet</h3><p>You haven't requested access to any exams.</p><a href="#" onclick="switchTab('browse');return false;">Browse Exam Catalog →</a></div>`;}
     el.innerHTML=html;
   }catch(e){el.innerHTML=`<div class="empty-state"><p style="color:var(--danger)">${esc(e.message)}</p></div>`;}
 }
@@ -1348,6 +1392,98 @@ async function uploadPhoto(input){
   };
   reader.readAsDataURL(file);
 }
+
+/* ── BROWSE EXAMS TAB ── */
+let _browseExams=[];
+let _browseLoaded=false;
+let _browseRequestExamId=null;
+
+async function loadBrowseTab(){
+  if(_browseLoaded)return;
+  const el=document.getElementById('browse-content');
+  try{
+    const exams=await apiCall('GET','/api/portal/catalog');
+    _browseExams=exams;
+    _browseLoaded=true;
+    renderBrowse(exams);
+  }catch(e){
+    el.innerHTML=`<div class="empty-state"><p style="color:var(--danger)">${esc(e.message)}</p></div>`;
+  }
+}
+
+function filterBrowse(){
+  const q=document.getElementById('browse-search').value.trim().toLowerCase();
+  const filtered=!q?_browseExams:_browseExams.filter(e=>(e.title||'').toLowerCase().includes(q)||(e.catalog_description||'').toLowerCase().includes(q)||(e.code||'').toLowerCase().includes(q));
+  renderBrowse(filtered);
+}
+
+function renderBrowse(exams){
+  const el=document.getElementById('browse-content');
+  if(!exams.length){
+    el.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><h3>No exams found</h3><p>No published exams are available right now.</p></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="exam-cards-grid">${exams.map((e,i)=>browseCatalogCardHtml(e,i)).join('')}</div>`;
+}
+
+function browseCatalogCardHtml(e,idx){
+  const thumb=e.catalog_image?`<img src="${esc(e.catalog_image)}" alt="">`:`<div class="exam-card-thumb-placeholder">${esc((e.code||e.title||'EX').slice(0,3).toUpperCase())}</div>`;
+  const actionBtn=e.is_open_test
+    ?`<button class="btn-start-exam" onclick="portalOpenTest(${e.id},'${esc(e.title)}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Start Now</button>`
+    :`<button class="btn-start-exam" style="background:var(--primary-light);color:var(--primary);" onclick="openPortalRequestModal(${e.id},'${esc(e.title).replace(/'/g,'&#39;')}')">Request Access</button>`;
+  return `<div class="exam-card">
+    <div class="exam-card-thumb c${idx%6}">${thumb}${e.is_open_test?'<div class="exam-card-status-ribbon"><span class="chip chip-success">Open</span></div>':''}</div>
+    <div class="exam-card-body">
+      <div class="exam-card-title">${esc(e.title)}</div>
+      ${e.catalog_description?`<div class="exam-card-desc">${esc(e.catalog_description)}</div>`:''}
+      <div class="exam-card-meta">
+        ${e.code?`<span class="meta-tag">${esc(e.code)}</span>`:''}
+        ${e.duration_minutes?`<span class="meta-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${e.duration_minutes} min</span>`:''}
+        ${e.total_marks?`<span class="meta-tag">${e.total_marks} marks</span>`:''}
+      </div>
+      <div class="exam-card-footer"><span></span>${actionBtn}</div>
+    </div>
+  </div>`;
+}
+
+function openPortalRequestModal(examId, examTitle){
+  _browseRequestExamId=examId;
+  document.getElementById('prm-title').textContent='Request Access — '+examTitle;
+  const c=appState.candidate||{};
+  document.getElementById('prm-name').textContent=c.name||'';
+  document.getElementById('prm-email').textContent=c.email||'';
+  document.getElementById('prm-message').value='';
+  document.getElementById('prm-error').classList.remove('show');
+  document.getElementById('portal-request-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('prm-message').focus(),100);
+}
+function closePortalRequestModal(){document.getElementById('portal-request-modal').classList.remove('open');}
+document.getElementById('portal-request-modal').addEventListener('click',e=>{if(e.target===document.getElementById('portal-request-modal'))closePortalRequestModal();});
+
+document.getElementById('prm-submit').addEventListener('click',async()=>{
+  const btn=document.getElementById('prm-submit'),err=document.getElementById('prm-error');
+  err.classList.remove('show');btn.disabled=true;btn.textContent='Sending…';
+  try{
+    await apiCall('POST','/api/portal/request-access',{exam_id:_browseRequestExamId,message:document.getElementById('prm-message').value.trim()||null});
+    closePortalRequestModal();
+    showToast('Access request sent! You\'ll be notified once approved.','success');
+    // Reload my-exams data so pending shows up
+    _browseLoaded=false;
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Send Request';}
+});
+
+async function portalOpenTest(examId, examTitle){
+  try{
+    const r=await apiCall('POST','/api/portal/request-access',{exam_id:examId});
+    if(r.open_test&&r.url){
+      document.getElementById('otm-sub').textContent='Your unique link for: '+examTitle;
+      document.getElementById('otm-link').href=r.url;
+      document.getElementById('open-test-modal').classList.add('open');
+    }
+  }catch(e){showToast(e.message,'error');}
+}
+document.getElementById('open-test-modal').addEventListener('click',e=>{if(e.target===document.getElementById('open-test-modal'))document.getElementById('open-test-modal').classList.remove('open');});
 
 /* ── INIT ── */
 async function init(){
