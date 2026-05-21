@@ -207,11 +207,20 @@ router.post('/logout', (req, res) => {
   res.json({ ok: true });
 });
 
+/* ─── OAUTH base URL helper ─── */
+function getBaseUrl(req) {
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, '');
+  // Auto-detect from request (works behind Render / any HTTPS proxy)
+  const proto = req.headers['x-forwarded-proto'] || req.protocol || 'https';
+  const host  = req.headers['x-forwarded-host']  || req.headers.host;
+  return `${proto}://${host}`;
+}
+
 /* ─── GOOGLE OAUTH ─── */
 router.get('/auth/google', (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) return res.redirect('/portal?oauth_error=' + encodeURIComponent('Google login is not configured yet.'));
-  const base = process.env.APP_URL || 'http://localhost:3000';
+  if (!clientId) return res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Google login is not configured. Add GOOGLE_CLIENT_ID to environment variables.'));
+  const base = getBaseUrl(req);
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: `${base}/api/portal/auth/google/callback`,
@@ -224,15 +233,20 @@ router.get('/auth/google', (req, res) => {
 });
 
 router.get('/auth/google/callback', async (req, res) => {
-  const { code, error } = req.query;
-  if (error || !code) return res.redirect('/portal?oauth_error=' + encodeURIComponent(error || 'Authentication cancelled.'));
+  const { code, error, error_description } = req.query;
+  if (error || !code) {
+    const msg = error_description || error || 'Authentication cancelled.';
+    return res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent(msg));
+  }
   try {
-    const base = process.env.APP_URL || 'http://localhost:3000';
+    const base = getBaseUrl(req);
+    const redirectUri = `${base}/api/portal/auth/google/callback`;
+    console.log('[portal] Google callback — base:', base, 'redirect_uri:', redirectUri);
     const tokenResp = await axios.post('https://oauth2.googleapis.com/token', {
       code,
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: `${base}/api/portal/auth/google/callback`,
+      redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     });
     const userResp = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -252,16 +266,17 @@ router.get('/auth/google/callback', async (req, res) => {
     res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
     res.redirect('/portal/oauth-callback?token=' + encodeURIComponent(token));
   } catch (e) {
-    console.error('[portal] Google OAuth error:', e.message);
-    res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Google sign-in failed. Please try again.'));
+    const detail = e.response?.data?.error_description || e.response?.data?.error || e.message;
+    console.error('[portal] Google OAuth error:', detail);
+    res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Google sign-in failed: ' + detail));
   }
 });
 
 /* ─── MICROSOFT OAUTH ─── */
 router.get('/auth/microsoft', (req, res) => {
   const clientId = process.env.MICROSOFT_CLIENT_ID;
-  if (!clientId) return res.redirect('/portal?oauth_error=' + encodeURIComponent('Microsoft login is not configured yet.'));
-  const base = process.env.APP_URL || 'http://localhost:3000';
+  if (!clientId) return res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Microsoft login is not configured. Add MICROSOFT_CLIENT_ID to environment variables.'));
+  const base = getBaseUrl(req);
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: `${base}/api/portal/auth/microsoft/callback`,
@@ -274,17 +289,22 @@ router.get('/auth/microsoft', (req, res) => {
 });
 
 router.get('/auth/microsoft/callback', async (req, res) => {
-  const { code, error } = req.query;
-  if (error || !code) return res.redirect('/portal?oauth_error=' + encodeURIComponent(error || 'Authentication cancelled.'));
+  const { code, error, error_description } = req.query;
+  if (error || !code) {
+    const msg = error_description || error || 'Authentication cancelled.';
+    return res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent(msg));
+  }
   try {
-    const base = process.env.APP_URL || 'http://localhost:3000';
+    const base = getBaseUrl(req);
+    const redirectUri = `${base}/api/portal/auth/microsoft/callback`;
+    console.log('[portal] Microsoft callback — base:', base, 'redirect_uri:', redirectUri);
     const tokenResp = await axios.post(
       'https://login.microsoftonline.com/common/oauth2/v2.0/token',
       new URLSearchParams({
         code,
         client_id: process.env.MICROSOFT_CLIENT_ID,
         client_secret: process.env.MICROSOFT_CLIENT_SECRET,
-        redirect_uri: `${base}/api/portal/auth/microsoft/callback`,
+        redirect_uri: redirectUri,
         grant_type: 'authorization_code',
         scope: 'openid email profile User.Read',
       }),
@@ -307,8 +327,9 @@ router.get('/auth/microsoft/callback', async (req, res) => {
     res.cookie('portal_token', token, { httpOnly: true, maxAge: 7 * 24 * 3600000, sameSite: 'lax' });
     res.redirect('/portal/oauth-callback?token=' + encodeURIComponent(token));
   } catch (e) {
-    console.error('[portal] Microsoft OAuth error:', e.message);
-    res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Microsoft sign-in failed. Please try again.'));
+    const detail = e.response?.data?.error_description || e.response?.data?.error || e.message;
+    console.error('[portal] Microsoft OAuth error:', detail);
+    res.redirect('/portal/oauth-callback?oauth_error=' + encodeURIComponent('Microsoft sign-in failed: ' + detail));
   }
 });
 
