@@ -311,8 +311,32 @@ let allExams = [];
 let filtered = [];
 let currentExam = null;
 
+// ===== BRANDING =====
+async function loadBranding() {
+  try {
+    const b = await fetch('/api/settings/branding').then(r => r.json());
+    const name = b.app_name || 'Alaric Exam';
+    document.title = name + ' — Exam Catalog';
+    document.querySelectorAll('.brand-name').forEach(el => el.textContent = name);
+    document.querySelector('footer p').innerHTML = `© 2025 ${name} &nbsp;·&nbsp; <a href="/portal">Candidate Portal</a>`;
+    if (b.app_logo) {
+      const logoWrap = document.querySelector('.header-logo');
+      if (logoWrap) {
+        const existingSvg = logoWrap.querySelector('svg');
+        if (existingSvg) {
+          const img = document.createElement('img');
+          img.src = b.app_logo;
+          img.style.cssText = 'height:36px;max-width:120px;object-fit:contain;';
+          existingSvg.replaceWith(img);
+        }
+      }
+    }
+  } catch(e) {}
+}
+
 // ===== INIT =====
 async function init() {
+  loadBranding();
   await loadCatalog();
   document.getElementById('search-input').addEventListener('input', debounce(filterExams, 250));
   document.getElementById('search-btn').addEventListener('click', filterExams);

@@ -362,6 +362,23 @@ textarea.form-control-sm { resize: vertical; min-height: 72px; }
         </div>
       </div>
 
+      <div class="panel-section-title">Catalog</div>
+      <div class="form-group-sm">
+        <label>Catalog Description <span style="font-size:10px;color:var(--gray)">(shown in exam catalog)</span></label>
+        <textarea class="form-control-sm" id="s-catalog-desc" rows="3" placeholder="Brief description for the public catalog…"></textarea>
+      </div>
+      <div class="form-group-sm">
+        <label>Exam Thumbnail</label>
+        <div id="s-catalog-img-preview-wrap" style="display:none;margin-bottom:6px;">
+          <img id="s-catalog-img-preview" src="" alt="Thumbnail" style="width:100%;height:80px;object-fit:cover;border-radius:6px;border:1px solid #e5e7eb;">
+        </div>
+        <label class="btn btn-outline-primary" style="cursor:pointer;font-size:12px;padding:5px 10px;display:inline-block;margin-bottom:4px;">
+          Choose Image
+          <input type="file" id="s-catalog-img-input" accept="image/png,image/jpeg,image/gif,image/webp" style="display:none" onchange="previewCatalogImage(this)">
+        </label>
+        <button type="button" id="s-catalog-img-remove" style="display:none;font-size:12px;padding:5px 8px;background:none;border:1px solid #dc2626;color:#dc2626;border-radius:4px;cursor:pointer;margin-left:4px;" onclick="removeCatalogImage()">Remove</button>
+      </div>
+
       <button class="btn btn-primary save-settings-btn" id="saveSettingsBtn">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Save Settings
@@ -828,6 +845,17 @@ function populateSettings() {
   set('s-color',     color);
   set('s-color-hex', color);
 
+  set('s-catalog-desc', e.catalog_description);
+  window._pendingCatalogImg = undefined;
+  if (e.catalog_image) {
+    document.getElementById('s-catalog-img-preview').src = e.catalog_image;
+    document.getElementById('s-catalog-img-preview-wrap').style.display = '';
+    document.getElementById('s-catalog-img-remove').style.display = '';
+  } else {
+    document.getElementById('s-catalog-img-preview-wrap').style.display = 'none';
+    document.getElementById('s-catalog-img-remove').style.display = 'none';
+  }
+
   // Total marks display
   updateTotalMarksDisplay();
 }
@@ -844,6 +872,27 @@ document.getElementById('s-color').addEventListener('input', function () {
 document.getElementById('s-color-hex').addEventListener('input', function () {
   if (/^#[0-9A-Fa-f]{6}$/.test(this.value)) document.getElementById('s-color').value = this.value;
 });
+
+// Catalog image preview / remove
+function previewCatalogImage(input) {
+  if (!input.files?.[0]) return;
+  const file = input.files[0];
+  if (file.size > 600000) { toast('Image too large (max 600KB)', 'error'); input.value = ''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._pendingCatalogImg = e.target.result;
+    document.getElementById('s-catalog-img-preview').src = e.target.result;
+    document.getElementById('s-catalog-img-preview-wrap').style.display = '';
+    document.getElementById('s-catalog-img-remove').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+function removeCatalogImage() {
+  window._pendingCatalogImg = null;
+  document.getElementById('s-catalog-img-preview-wrap').style.display = 'none';
+  document.getElementById('s-catalog-img-remove').style.display = 'none';
+  document.getElementById('s-catalog-img-input').value = '';
+}
 
 // Save settings
 document.getElementById('saveSettingsBtn').onclick = async () => {
@@ -867,6 +916,8 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
     is_public:            document.getElementById('s-is-public').checked,
     is_open_test:         document.getElementById('s-is-open-test').checked,
     branding_color:       document.getElementById('s-color-hex').value || document.getElementById('s-color').value,
+    catalog_description:  document.getElementById('s-catalog-desc').value || null,
+    catalog_image:        window._pendingCatalogImg !== undefined ? window._pendingCatalogImg : (_exam.catalog_image || null),
   };
 
   const btn = document.getElementById('saveSettingsBtn');

@@ -8,6 +8,28 @@ const { testConnection, getConfig, sendEmail, sendEmailWithProfile } = require('
 const nodemailer = require('nodemailer');
 const axios = require('axios');
 
+// GET /api/settings/branding — public, no auth (used by portal, catalog, register pages)
+router.get('/branding', (req, res) => {
+  const db = getDb();
+  const get = (key) => db.prepare(`SELECT value FROM settings WHERE key=?`).get(key)?.value || null;
+  res.json({
+    app_name: get('app_name') || 'Alaric Exam',
+    app_logo: get('app_logo') || null,
+    app_tagline: get('app_tagline') || 'Candidate Portal',
+  });
+});
+
+// PUT /api/settings/branding — admin only
+router.put('/branding', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const { app_name, app_logo, app_tagline } = req.body;
+  const upsert = db.prepare(`INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`);
+  if (app_name !== undefined) upsert.run('app_name', app_name?.trim() || 'Alaric Exam');
+  if (app_logo !== undefined) upsert.run('app_logo', app_logo || null);
+  if (app_tagline !== undefined) upsert.run('app_tagline', app_tagline?.trim() || '');
+  res.json({ ok: true });
+});
+
 // GET /api/settings
 router.get('/', auth, (req, res) => {
   const db = getDb();

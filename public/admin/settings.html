@@ -88,6 +88,31 @@
         </div>
         <div class="setting-row">
           <div class="setting-info">
+            <label for="appTagline">Portal Tagline</label>
+            <p>Short subtitle shown on the candidate portal login page</p>
+          </div>
+          <div class="setting-ctrl" style="min-width:200px">
+            <input type="text" class="form-control" id="appTagline" placeholder="Candidate Portal">
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label>Platform Logo</label>
+            <p>Shown in the candidate portal header (PNG/JPG, max 500KB). Stored in database.</p>
+          </div>
+          <div class="setting-ctrl" style="min-width:220px">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+              <img id="logoPreview" src="" style="display:none;height:40px;border-radius:6px;border:1px solid #e5e7eb;" alt="Logo">
+              <label class="btn btn-outline-primary" style="cursor:pointer;margin:0;padding:7px 14px;font-size:13px;">
+                Choose Image
+                <input type="file" id="logoFile" accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml" style="display:none" onchange="previewLogo(this)">
+              </label>
+              <button class="btn btn-sm" onclick="removeLogo()" id="btnRemoveLogo" style="display:none;color:#dc2626;background:none;border:1px solid #dc2626;">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
             <label>Public Exam Catalog</label>
             <p>Allow candidates to browse available exams without signing in</p>
           </div>
@@ -421,12 +446,41 @@ async function loadSettings() {
   const data = await api('GET', '/api/settings');
   if (!data) return;
   document.getElementById('appName').value = data.app_name || data.appName || 'Alaric Exam';
+  document.getElementById('appTagline').value = data.app_tagline || '';
+  // Load logo
+  const branding = await api('GET', '/api/settings/branding');
+  if (branding?.app_logo) {
+    const img = document.getElementById('logoPreview');
+    img.src = branding.app_logo; img.style.display = 'block';
+    document.getElementById('btnRemoveLogo').style.display = '';
+  }
+  window._savedLogo = branding?.app_logo || null;
   document.getElementById('allowPublicCatalog').checked = !!(data.allow_public_catalog ?? data.allowPublicCatalog);
   document.getElementById('webcamEnabled').checked = !!(data.webcam_enabled ?? data.webcamEnabled);
   document.getElementById('webcamInterval').value = data.webcam_interval ?? data.webcamInterval ?? 30;
   document.getElementById('fullscreenEnforce').checked = !!(data.fullscreen_enforce ?? data.fullscreenEnforce);
   document.getElementById('aiPasteDetect').checked = !!(data.ai_paste_detect ?? data.aiPasteDetect);
   document.getElementById('maxTabSwitches').value = data.max_tab_switches ?? data.maxTabSwitches ?? 3;
+}
+
+function previewLogo(input) {
+  if (!input.files?.[0]) return;
+  const file = input.files[0];
+  if (file.size > 600000) { alert('Image too large. Please choose an image under 500KB.'); input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    window._pendingLogo = e.target.result;
+    const img = document.getElementById('logoPreview');
+    img.src = e.target.result; img.style.display = 'block';
+    document.getElementById('btnRemoveLogo').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+function removeLogo() {
+  window._pendingLogo = ''; // empty string = remove
+  document.getElementById('logoPreview').style.display = 'none';
+  document.getElementById('logoFile').value = '';
+  document.getElementById('btnRemoveLogo').style.display = 'none';
 }
 
 async function saveGeneralSettings() {
@@ -437,6 +491,14 @@ async function saveGeneralSettings() {
   const result = await api('PUT', '/api/settings', body);
   if (!result) return;
   if (result.error) { toast(result.error,'error'); return; }
+  // Save branding (name + tagline + logo)
+  const brandBody = {
+    app_name: document.getElementById('appName').value.trim(),
+    app_tagline: document.getElementById('appTagline').value.trim()
+  };
+  if (window._pendingLogo !== undefined) brandBody.app_logo = window._pendingLogo || null;
+  await api('PUT', '/api/settings/branding', brandBody);
+  window._pendingLogo = undefined;
   toast('General settings saved');
 }
 

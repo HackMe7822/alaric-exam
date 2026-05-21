@@ -93,7 +93,7 @@ router.put('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, res) 
   const id = parseInt(req.params.id);
   const fields = ['title','description','instructions','duration_minutes','total_marks','pass_marks',
     'negative_marking','shuffle_questions','shuffle_options','show_result_immediately','allow_review',
-    'max_attempts','start_date','end_date','is_public','is_open_test','catalog_description','branding_color',
+    'max_attempts','start_date','end_date','is_public','is_open_test','catalog_description','catalog_image','branding_color',
     'branding_logo','certificate_template','status'];
   const updates = [];
   const vals = [];

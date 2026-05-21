@@ -127,7 +127,7 @@ router.post('/verify-otp', (req, res) => {
 // GET /api/portal/profile
 router.get('/profile', candidateAuth, (req, res) => {
   const db = getDb();
-  const c = db.prepare('SELECT id, name, email, phone, employee_id, created_at FROM candidates WHERE id=?').get(req.candidateId);
+  const c = db.prepare('SELECT id, name, email, phone, employee_id, organization, address, city, state, country, postal_code, photo, created_at FROM candidates WHERE id=?').get(req.candidateId);
   if (!c) return res.status(404).json({ error: 'Not found' });
   res.json(c);
 });
@@ -135,9 +135,20 @@ router.get('/profile', candidateAuth, (req, res) => {
 // PUT /api/portal/profile
 router.put('/profile', candidateAuth, (req, res) => {
   const db = getDb();
-  const { name, phone } = req.body;
+  const { name, phone, organization, address, city, state, country, postal_code } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
-  db.prepare(`UPDATE candidates SET name=?, phone=?, updated_at=datetime('now') WHERE id=?`).run(name.trim(), phone?.trim() || null, req.candidateId);
+  db.prepare(`UPDATE candidates SET name=?, phone=?, organization=?, address=?, city=?, state=?, country=?, postal_code=?, updated_at=datetime('now') WHERE id=?`)
+    .run(name.trim(), phone?.trim()||null, organization?.trim()||null, address?.trim()||null, city?.trim()||null, state?.trim()||null, country?.trim()||null, postal_code?.trim()||null, req.candidateId);
+  res.json({ ok: true });
+});
+
+// POST /api/portal/profile/photo — upload profile photo (base64, max ~1MB)
+router.post('/profile/photo', candidateAuth, (req, res) => {
+  const db = getDb();
+  const { photo } = req.body;
+  if (!photo) return res.status(400).json({ error: 'No photo provided.' });
+  if (photo.length > 1400000) return res.status(400).json({ error: 'Image too large. Please use an image under 1MB.' });
+  db.prepare(`UPDATE candidates SET photo=?, updated_at=datetime('now') WHERE id=?`).run(photo, req.candidateId);
   res.json({ ok: true });
 });
 
@@ -167,7 +178,8 @@ router.get('/my-exams', candidateAuth, (req, res) => {
   if (!c) return res.json([]);
   const links = db.prepare(`
     SELECT el.token, el.expires_at, el.used_at, el.is_revoked,
-      e.id as exam_id, e.title, e.code, e.duration_minutes, e.total_marks, e.pass_marks
+      e.id as exam_id, e.title, e.code, e.duration_minutes, e.total_marks, e.pass_marks,
+      e.catalog_image as thumbnail
     FROM exam_links el
     JOIN exams e ON e.id=el.exam_id
     WHERE el.candidate_email=? AND el.is_revoked=0

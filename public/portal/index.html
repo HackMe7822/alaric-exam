@@ -3,587 +3,507 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Candidate Portal — Alaric Exam</title>
+<title>Candidate Portal</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
-  --primary: #4f46e5;
-  --primary-dark: #4338ca;
-  --primary-light: #eef2ff;
-  --bg: #f8f9fb;
+  --primary: #0078d4;
+  --primary-dark: #106ebe;
+  --primary-light: #eff6fc;
+  --primary-mid: #2b88d8;
+  --bg: #f3f2f1;
   --surface: #ffffff;
-  --border: #e5e7eb;
-  --text: #111827;
-  --text-muted: #6b7280;
-  --success: #16a34a;
-  --success-bg: #f0fdf4;
-  --danger: #dc2626;
-  --danger-bg: #fef2f2;
-  --warning: #d97706;
-  --warning-bg: #fffbeb;
-  --radius: 10px;
-  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.06);
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --surface2: #faf9f8;
+  --border: #edebe9;
+  --text: #1b1a19;
+  --text-muted: #605e5c;
+  --text-light: #a19f9d;
+  --success: #107c10;
+  --success-bg: #dff6dd;
+  --danger: #d13438;
+  --danger-bg: #fde7e9;
+  --warning: #ca5010;
+  --warning-bg: #fff4ce;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --shadow-sm: 0 1.6px 3.6px rgba(0,0,0,.08),0 .3px .9px rgba(0,0,0,.05);
+  --shadow: 0 3.2px 7.2px rgba(0,0,0,.1),0 .6px 1.8px rgba(0,0,0,.07);
+  --shadow-lg: 0 6.4px 14.4px rgba(0,0,0,.12),0 1.2px 3.6px rgba(0,0,0,.08);
+  --topnav-h: 48px;
+  --sidebar-w: 260px;
+}
+html,body { height:100%; background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,-apple-system,sans-serif; font-size:14px; line-height:1.5; }
+
+/* ═══ SCREENS ══════════════════════════════════════════════ */
+.screen { display:none; }
+.screen.active { display:block; }
+#screen-loading.active { display:flex; align-items:center; justify-content:center; min-height:100vh; flex-direction:column; gap:12px; background:var(--bg); }
+#screen-login.active { display:flex; min-height:100vh; }
+#screen-dashboard.active { display:flex; flex-direction:column; min-height:100vh; }
+
+/* ═══ SPINNER ═══════════════════════════════════════════════ */
+.spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--primary); border-radius:50%; animation:spin .7s linear infinite; }
+.spinner-sm { width:16px; height:16px; border-width:2px; display:inline-block; vertical-align:middle; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ═══ LOGIN ═════════════════════════════════════════════════ */
+.login-left {
+  width:420px; flex-shrink:0;
+  background:var(--surface);
+  display:flex; flex-direction:column; justify-content:center;
+  padding:60px 48px;
+  box-shadow:2px 0 8px rgba(0,0,0,.06);
+  position:relative; z-index:2;
+}
+.login-right {
+  flex:1; background:linear-gradient(135deg, #0078d4 0%, #0050a0 40%, #003378 100%);
+  display:flex; align-items:center; justify-content:center;
+  padding:48px;
+}
+.login-hero-text { color:#fff; max-width:420px; }
+.login-hero-text h2 { font-size:2.4rem; font-weight:300; letter-spacing:-.5px; line-height:1.2; margin-bottom:20px; }
+.login-hero-text h2 strong { font-weight:700; }
+.login-hero-text p { font-size:1rem; color:rgba(255,255,255,.75); line-height:1.6; margin-bottom:28px; }
+.login-hero-bullets { list-style:none; display:flex; flex-direction:column; gap:12px; }
+.login-hero-bullets li { display:flex; align-items:center; gap:12px; font-size:.875rem; color:rgba(255,255,255,.85); }
+.login-hero-bullets li::before { content:''; width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.6); flex-shrink:0; }
+.login-brand { display:flex; align-items:center; gap:12px; margin-bottom:40px; }
+.login-brand-icon { width:36px; height:36px; flex-shrink:0; }
+.login-brand-name { font-size:1.3rem; font-weight:700; color:var(--text); }
+.login-title { font-size:1.5rem; font-weight:600; color:var(--text); margin-bottom:6px; }
+.login-subtitle { font-size:.875rem; color:var(--text-muted); margin-bottom:32px; }
+.login-tabs { display:flex; border-bottom:2px solid var(--border); margin-bottom:24px; }
+.login-tab { padding:8px 16px 10px; font-size:.875rem; font-weight:600; color:var(--text-muted); background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .15s; }
+.login-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
+.login-tab-pane { display:none; }
+.login-tab-pane.active { display:block; }
+.form-group { margin-bottom:16px; }
+.form-label { display:block; font-size:.75rem; font-weight:600; color:var(--text); margin-bottom:4px; letter-spacing:.02em; text-transform:uppercase; }
+.form-input { width:100%; padding:8px 12px; border:1px solid #c8c6c4; border-radius:var(--radius); font-size:.9375rem; color:var(--text); background:#fff; outline:none; transition:border-color .15s,box-shadow .15s; }
+.form-input:focus { border-color:var(--primary); box-shadow:0 0 0 1px var(--primary); }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:8px 16px; border:1px solid transparent; border-radius:var(--radius); font-size:.875rem; font-weight:600; cursor:pointer; transition:all .15s; text-decoration:none; white-space:nowrap; }
+.btn-primary { background:var(--primary); color:#fff; border-color:var(--primary); width:100%; padding:10px; font-size:.9375rem; }
+.btn-primary:hover { background:var(--primary-dark); border-color:var(--primary-dark); }
+.btn-primary:disabled { opacity:.6; cursor:not-allowed; }
+.btn-secondary { background:var(--surface); color:var(--text); border-color:#c8c6c4; }
+.btn-secondary:hover { background:#f3f2f1; }
+.btn-ghost { background:transparent; border-color:transparent; color:var(--text-muted); }
+.btn-ghost:hover { background:var(--bg); color:var(--text); }
+.btn-danger { background:var(--danger); color:#fff; border-color:var(--danger); }
+.btn-social { display:flex; align-items:center; gap:10px; width:100%; padding:9px 16px; background:var(--surface); border:1px solid #c8c6c4; border-radius:var(--radius); font-size:.875rem; font-weight:600; cursor:pointer; color:var(--text); transition:background .15s,box-shadow .15s; margin-bottom:8px; }
+.btn-social:hover { background:#f3f2f1; box-shadow:var(--shadow-sm); }
+.btn-social svg { width:18px; height:18px; flex-shrink:0; }
+.social-divider { display:flex; align-items:center; gap:12px; margin:16px 0; }
+.social-divider::before,.social-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+.social-divider span { font-size:.75rem; color:var(--text-muted); font-weight:500; }
+.inline-error { color:var(--danger); font-size:.8rem; margin-top:6px; display:none; }
+.inline-error.show { display:block; }
+.inline-success { color:var(--success); font-size:.8rem; margin-top:6px; display:none; }
+.inline-success.show { display:block; }
+.otp-input { font-size:1.6rem; font-weight:700; letter-spacing:.4em; text-align:center; font-family:'Courier New',monospace; }
+.login-step { display:none; }
+.login-step.active { display:block; }
+.resend-row { text-align:center; margin-top:10px; font-size:.8rem; color:var(--text-muted); }
+.resend-link { background:none; border:none; color:var(--primary); cursor:pointer; font-size:inherit; text-decoration:underline; }
+.resend-link:disabled { opacity:.5; cursor:not-allowed; text-decoration:none; }
+.login-footer { margin-top:32px; padding-top:20px; border-top:1px solid var(--border); font-size:.8rem; color:var(--text-muted); }
+.login-footer a { color:var(--primary); text-decoration:none; }
+.login-footer a:hover { text-decoration:underline; }
+@media(max-width:800px){
+  .login-right { display:none; }
+  .login-left { width:100%; padding:40px 24px; }
 }
 
-html, body {
-  min-height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-/* ─── SCREENS ─── */
-.screen { display: none; }
-.screen.active { display: block; }
-
-/* ─── LOADING ─── */
-#screen-loading.active {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; flex-direction: column; gap: 14px;
-}
-.spinner {
-  width: 40px; height: 40px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* ─── LOGIN ─── */
-#screen-login.active {
-  display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; padding: 24px; background: var(--bg);
-}
-.login-card {
-  background: var(--surface);
-  border-radius: 16px;
-  padding: 44px 48px;
-  max-width: 760px;
-  width: 100%;
-  box-shadow: 0 4px 32px rgba(79,70,229,0.10), 0 1px 4px rgba(0,0,0,0.06);
-}
-.login-logo-wrap { text-align: center; margin-bottom: 20px; }
-.login-logo-wrap svg { width: 52px; height: 52px; }
-.login-brand { font-size: 1.65rem; font-weight: 800; color: var(--text); text-align: center; margin-bottom: 4px; letter-spacing: -0.3px; }
-.login-subtitle { color: var(--text-muted); text-align: center; font-size: 0.875rem; margin-bottom: 32px; }
-
-/* Two-column login layout */
-.login-cols {
-  display: grid;
-  grid-template-columns: 1fr 1px 1fr;
-  gap: 0 32px;
-  align-items: start;
-}
-.login-divider {
-  background: var(--border);
-  width: 1px;
-  align-self: stretch;
-  position: relative;
-}
-.login-divider-label {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--surface);
-  padding: 6px 4px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-.login-col-title { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 16px; }
-@media (max-width: 600px) {
-  .login-card { padding: 32px 24px; }
-  .login-cols { grid-template-columns: 1fr; gap: 0; }
-  .login-divider { width: 100%; height: 1px; margin: 24px 0; }
-  .login-divider-label { top: 0; left: 50%; transform: translate(-50%, -50%); }
-}
-
-.form-group { margin-bottom: 18px; }
-.form-label { display: block; font-size: 0.8125rem; font-weight: 600; color: var(--text); margin-bottom: 6px; letter-spacing: 0.02em; text-transform: uppercase; }
-.form-input {
-  width: 100%; padding: 11px 14px;
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 0.9375rem; color: var(--text);
-  background: var(--bg); outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-.form-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 3px rgba(79,70,229,0.1); }
-.otp-input {
-  font-family: 'Courier New', monospace;
-  font-size: 1.75rem; font-weight: 700;
-  letter-spacing: 0.4em; text-align: center;
-  padding: 14px 20px;
-}
-
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 11px 20px; border: none; border-radius: var(--radius);
-  font-size: 0.9375rem; font-weight: 600; cursor: pointer;
-  transition: all 0.15s; text-decoration: none; white-space: nowrap;
-}
-.btn-primary { background: var(--primary); color: #fff; width: 100%; padding: 13px; font-size: 1rem; }
-.btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,70,229,0.3); }
-.btn-primary:active { transform: translateY(0); }
-.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
-.btn-sm { padding: 7px 14px; font-size: 0.8125rem; }
-.btn-outline { background: transparent; color: var(--primary); border: 1.5px solid var(--primary); }
-.btn-outline:hover { background: var(--primary-light); }
-.btn-danger { background: var(--danger); color: #fff; }
-.btn-danger:hover { background: #b91c1c; }
-.btn-success-outline { background: transparent; color: var(--success); border: 1.5px solid var(--success); }
-.btn-success-outline:hover { background: var(--success-bg); }
-.btn-ghost { background: transparent; color: var(--text-muted); border: none; }
-.btn-ghost:hover { color: var(--text); background: var(--bg); }
-
-.btn-social {
-  display: flex; align-items: center; justify-content: center; gap: 10px;
-  width: 100%; padding: 12px 16px; border-radius: var(--radius);
-  font-size: 0.9375rem; font-weight: 600; cursor: pointer;
-  border: none; color: #fff;
-  text-decoration: none; transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
-  margin-bottom: 12px;
-}
-.btn-social:hover { opacity: 0.92; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.18); }
-.btn-social:active { transform: translateY(0); opacity: 1; }
-.btn-social svg { flex-shrink: 0; }
-.btn-google { background: #dd4b39; }
-.btn-microsoft { background: #2f2f2f; }
-.btn-social-sub { font-size: 0.78rem; color: var(--text-muted); text-align: center; margin-top: 10px; line-height: 1.5; }
-
-.inline-error { color: var(--danger); font-size: 0.8125rem; margin-top: 10px; display: none; }
-.inline-error.show { display: block; }
-.inline-success { color: var(--success); font-size: 0.8125rem; margin-top: 10px; display: none; }
-.inline-success.show { display: block; }
-
-.resend-row { text-align: center; margin-top: 14px; font-size: 0.8125rem; color: var(--text-muted); }
-.resend-link { color: var(--primary); background: none; border: none; cursor: pointer; font-size: inherit; text-decoration: underline; }
-.resend-link:disabled { opacity: 0.5; cursor: not-allowed; text-decoration: none; }
-
-.login-step { display: none; }
-.login-step.active { display: block; }
-
-/* ─── DASHBOARD SHELL ─── */
-#screen-dashboard.active { display: flex; flex-direction: column; min-height: 100vh; }
-
-/* Topnav */
+/* ═══ TOPNAV ════════════════════════════════════════════════ */
 .topnav {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0 24px;
-  height: 60px;
-  display: flex; align-items: center; justify-content: space-between;
-  position: sticky; top: 0; z-index: 100;
+  height:var(--topnav-h); background:var(--primary); color:#fff;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 16px; flex-shrink:0; position:sticky; top:0; z-index:300;
+  box-shadow:0 2px 6px rgba(0,0,0,.2);
 }
-.topnav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); font-weight: 800; font-size: 1.1rem; letter-spacing: -0.2px; }
-.topnav-logo svg { width: 32px; height: 32px; }
-.topnav-right { display: flex; align-items: center; gap: 14px; }
-.topnav-name { font-size: 0.875rem; font-weight: 500; color: var(--text); }
-.avatar {
-  width: 34px; height: 34px; border-radius: 50%;
-  background: var(--primary-light); color: var(--primary);
-  font-size: 0.8rem; font-weight: 700;
-  display: inline-flex; align-items: center; justify-content: center;
-  flex-shrink: 0;
-}
+.topnav-left { display:flex; align-items:center; gap:12px; }
+.topnav-brand { display:flex; align-items:center; gap:10px; text-decoration:none; color:#fff; }
+.topnav-brand-logo { height:28px; max-width:120px; object-fit:contain; }
+.topnav-brand-icon { width:28px; height:28px; flex-shrink:0; }
+.topnav-brand-name { font-size:1rem; font-weight:600; letter-spacing:-.02em; }
+.topnav-right { display:flex; align-items:center; gap:8px; }
+.topnav-user-btn { display:flex; align-items:center; gap:8px; padding:4px 10px; border-radius:var(--radius); border:none; background:transparent; color:#fff; cursor:pointer; transition:background .15s; font-size:.875rem; }
+.topnav-user-btn:hover { background:rgba(255,255,255,.12); }
+.topnav-avatar { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.7rem; font-weight:700; color:#fff; overflow:hidden; flex-shrink:0; }
+.topnav-avatar img { width:100%; height:100%; object-fit:cover; }
+.topnav-user-name { font-size:.8125rem; font-weight:500; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.btn-topnav-signout { background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.25); color:#fff; padding:5px 12px; border-radius:var(--radius); font-size:.8125rem; font-weight:500; cursor:pointer; transition:background .15s; }
+.btn-topnav-signout:hover { background:rgba(255,255,255,.2); }
+.topnav-menu-btn { background:none; border:none; color:#fff; padding:6px; cursor:pointer; display:none; border-radius:4px; }
+.topnav-menu-btn:hover { background:rgba(255,255,255,.12); }
 
-/* Main layout */
-.dashboard-body { display: flex; flex: 1; overflow: hidden; }
+/* ═══ LAYOUT ════════════════════════════════════════════════ */
+.portal-body { display:flex; flex:1; min-height:calc(100vh - var(--topnav-h)); overflow:hidden; }
 
-/* Sidebar */
+/* ═══ SIDEBAR ═══════════════════════════════════════════════ */
 .sidebar {
-  width: 220px; min-height: calc(100vh - 60px);
-  background: var(--surface);
-  border-right: 1px solid var(--border);
-  padding: 20px 12px;
-  flex-shrink: 0;
+  width:var(--sidebar-w); flex-shrink:0;
+  background:var(--surface); border-right:1px solid var(--border);
+  display:flex; flex-direction:column; overflow-y:auto;
+  padding:8px 0;
 }
+.sidebar-header { padding:16px 16px 8px; font-size:.6875rem; font-weight:700; color:var(--text-light); text-transform:uppercase; letter-spacing:.08em; }
 .nav-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 14px; border-radius: 8px;
-  font-size: 0.9rem; font-weight: 500; color: var(--text-muted);
-  cursor: pointer; transition: all 0.15s;
-  text-decoration: none; border: none; background: none; width: 100%;
-  margin-bottom: 2px;
+  display:flex; align-items:center; gap:10px;
+  padding:9px 16px; font-size:.875rem; font-weight:400; color:var(--text-muted);
+  cursor:pointer; transition:all .1s; border:none; background:none; width:100%;
+  text-decoration:none; position:relative;
 }
-.nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
-.nav-item:hover { background: var(--bg); color: var(--text); }
-.nav-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+.nav-item svg { width:16px; height:16px; flex-shrink:0; opacity:.7; }
+.nav-item:hover { background:var(--bg); color:var(--text); }
+.nav-item.active { background:var(--primary-light); color:var(--primary); font-weight:600; }
+.nav-item.active::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--primary); border-radius:0 2px 2px 0; }
+.nav-item.active svg { opacity:1; }
+.nav-item-badge { margin-left:auto; background:var(--primary); color:#fff; font-size:.65rem; font-weight:700; border-radius:10px; padding:1px 6px; }
+.sidebar-divider { height:1px; background:var(--border); margin:8px 16px; }
+.sidebar-catalog-box { margin:12px 12px 0; background:linear-gradient(135deg,#0078d4,#004e8c); border-radius:var(--radius-lg); padding:16px; color:#fff; }
+.sidebar-catalog-box h4 { font-size:.8125rem; font-weight:700; margin-bottom:4px; }
+.sidebar-catalog-box p { font-size:.75rem; color:rgba(255,255,255,.8); margin-bottom:12px; line-height:1.4; }
+.sidebar-catalog-box a { display:block; background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.3); color:#fff; text-align:center; padding:7px; border-radius:var(--radius); text-decoration:none; font-size:.8rem; font-weight:600; transition:background .15s; }
+.sidebar-catalog-box a:hover { background:rgba(255,255,255,.28); }
+.sidebar-spacer { flex:1; }
+.sidebar-overlay { display:none; position:fixed; inset:0; top:var(--topnav-h); background:rgba(0,0,0,.4); z-index:250; }
 
-/* Content area */
-.content-area { flex: 1; overflow-y: auto; padding: 32px 36px; }
+/* ═══ MAIN CONTENT ══════════════════════════════════════════ */
+.main-content { flex:1; overflow-y:auto; background:var(--bg); }
+.tab-pane { display:none; }
+.tab-pane.active { display:block; }
 
-/* Tabs (content panes) */
-.tab-pane { display: none; }
-.tab-pane.active { display: block; }
-
-/* ─── COMMON COMPONENTS ─── */
-.page-title { font-size: 1.35rem; font-weight: 700; color: var(--text); margin-bottom: 6px; letter-spacing: -0.2px; }
-.page-subtitle { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 28px; }
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+/* ═══ PAGE HEADER AREA ══════════════════════════════════════ */
+.page-banner {
+  background:linear-gradient(135deg, #0078d4 0%, #0050a0 60%, #003378 100%);
+  padding:40px 40px 32px;
+  color:#fff;
+  position:relative; overflow:hidden;
 }
-.card-body { padding: 24px; }
-.card-header { padding: 18px 24px; border-bottom: 1px solid var(--border); }
-.card-title { font-size: 1rem; font-weight: 700; color: var(--text); }
+.page-banner::after { content:''; position:absolute; right:-80px; top:-80px; width:320px; height:320px; border-radius:50%; background:rgba(255,255,255,.04); }
+.page-banner::before { content:''; position:absolute; right:120px; bottom:-100px; width:240px; height:240px; border-radius:50%; background:rgba(255,255,255,.03); }
+.banner-inner { position:relative; z-index:1; max-width:900px; }
+.banner-welcome { font-size:1.6rem; font-weight:300; letter-spacing:-.3px; margin-bottom:4px; }
+.banner-welcome strong { font-weight:700; }
+.banner-sub { font-size:.9375rem; color:rgba(255,255,255,.75); margin-bottom:20px; }
+.banner-stats { display:flex; gap:32px; flex-wrap:wrap; }
+.banner-stat { text-align:center; }
+.banner-stat-val { font-size:1.8rem; font-weight:700; line-height:1; }
+.banner-stat-lbl { font-size:.75rem; color:rgba(255,255,255,.7); margin-top:2px; }
 
-/* Stats row */
-.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 28px; }
-.stat-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px 22px;
-  box-shadow: var(--shadow-sm);
-}
-.stat-label { font-size: 0.8rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-.stat-value { font-size: 2rem; font-weight: 800; color: var(--text); line-height: 1; }
-.stat-value.primary { color: var(--primary); }
-.stat-value.success { color: var(--success); }
-.stat-value.warning { color: var(--warning); }
+/* ═══ CONTENT AREA ══════════════════════════════════════════ */
+.content-area { max-width:1100px; margin:0 auto; padding:28px 32px 60px; }
+.section-row { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; margin-top:28px; }
+.section-row:first-child { margin-top:0; }
+.section-title { font-size:1rem; font-weight:700; color:var(--text); }
+.section-link { font-size:.8125rem; color:var(--primary); text-decoration:none; font-weight:500; }
+.section-link:hover { text-decoration:underline; }
 
-/* Welcome card */
-.welcome-card {
-  background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
-  border-radius: var(--radius);
-  padding: 28px 32px;
-  color: #fff;
-  margin-bottom: 28px;
-  position: relative;
-  overflow: hidden;
-}
-.welcome-card::after {
-  content: '';
-  position: absolute; right: -20px; top: -20px;
-  width: 160px; height: 160px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.07);
-}
-.welcome-name { font-size: 1.35rem; font-weight: 700; margin-bottom: 4px; }
-.welcome-sub { font-size: 0.875rem; opacity: 0.85; }
-
-/* Section heading */
-.section-heading {
-  font-size: 0.9375rem; font-weight: 700; color: var(--text);
-  margin-bottom: 14px; margin-top: 28px;
-  display: flex; align-items: center; gap: 8px;
-}
-.section-heading:first-child { margin-top: 0; }
-
-/* Exam card */
-.exam-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+/* ═══ EXAM CARDS ════════════════════════════════════════════ */
+.exam-cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; }
 .exam-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
-  box-shadow: var(--shadow-sm);
-  display: flex; flex-direction: column; gap: 12px;
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm); overflow:hidden; display:flex; flex-direction:column;
+  transition:box-shadow .15s,transform .15s;
 }
-.exam-card-title { font-weight: 700; font-size: 0.9375rem; color: var(--text); line-height: 1.3; }
-.exam-card-meta { display: flex; flex-wrap: wrap; gap: 8px; }
-.meta-pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: var(--bg); border: 1px solid var(--border);
-  border-radius: 20px; padding: 3px 10px;
-  font-size: 0.75rem; font-weight: 500; color: var(--text-muted);
+.exam-card:hover { box-shadow:var(--shadow); transform:translateY(-2px); }
+.exam-card-thumb {
+  height:140px; background:linear-gradient(135deg,#0078d4,#004e8c);
+  display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden;
+  flex-shrink:0;
 }
-.meta-pill svg { width: 12px; height: 12px; }
-.btn-start { width: 100%; justify-content: center; margin-top: 4px; }
+.exam-card-thumb img { width:100%; height:100%; object-fit:cover; }
+.exam-card-thumb-placeholder { font-size:2.8rem; font-weight:900; color:rgba(255,255,255,.35); font-family:monospace; letter-spacing:-3px; }
+.exam-card-thumb.c0 { background:linear-gradient(135deg,#0078d4,#004e8c); }
+.exam-card-thumb.c1 { background:linear-gradient(135deg,#038387,#005b5e); }
+.exam-card-thumb.c2 { background:linear-gradient(135deg,#107c10,#054005); }
+.exam-card-thumb.c3 { background:linear-gradient(135deg,#8764b8,#5c3d99); }
+.exam-card-thumb.c4 { background:linear-gradient(135deg,#ca5010,#8a3600); }
+.exam-card-thumb.c5 { background:linear-gradient(135deg,#0078d4,#6b69d6); }
+.exam-card-status-ribbon { position:absolute; top:10px; right:10px; }
+.exam-card-body { padding:16px 18px 14px; flex:1; display:flex; flex-direction:column; }
+.exam-card-title { font-size:.9375rem; font-weight:700; color:var(--text); margin-bottom:6px; line-height:1.35; }
+.exam-card-desc { font-size:.8rem; color:var(--text-muted); margin-bottom:12px; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.exam-card-meta { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.meta-tag { display:inline-flex; align-items:center; gap:4px; font-size:.75rem; color:var(--text-muted); background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:2px 8px; }
+.meta-tag svg { width:11px; height:11px; }
+.exam-card-footer { margin-top:auto; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.chip { display:inline-flex; align-items:center; gap:4px; font-size:.72rem; font-weight:600; padding:3px 8px; border-radius:12px; }
+.chip-success { background:var(--success-bg); color:var(--success); }
+.chip-danger { background:var(--danger-bg); color:var(--danger); }
+.chip-warning { background:var(--warning-bg); color:var(--warning); }
+.chip-neutral { background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
+.chip-primary { background:var(--primary-light); color:var(--primary); }
+.btn-start-exam { background:var(--primary); color:#fff; padding:7px 16px; border-radius:var(--radius); font-size:.8125rem; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:background .15s; border:none; cursor:pointer; }
+.btn-start-exam:hover { background:var(--primary-dark); }
+.btn-start-exam svg { width:13px; height:13px; }
 
-/* Chip/badge */
-.chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  padding: 3px 10px; border-radius: 20px;
-  font-size: 0.75rem; font-weight: 600; line-height: 1.4;
+/* ═══ PENDING LIST ══════════════════════════════════════════ */
+.pending-list { display:flex; flex-direction:column; gap:8px; }
+.pending-item { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:16px; box-shadow:var(--shadow-sm); }
+.pending-item-title { font-size:.9rem; font-weight:600; color:var(--text); }
+.pending-item-sub { font-size:.75rem; color:var(--text-muted); margin-top:2px; }
+
+/* ═══ EMPTY STATE ════════════════════════════════════════════ */
+.empty-state { text-align:center; padding:56px 24px; color:var(--text-muted); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); }
+.empty-state svg { width:48px; height:48px; margin:0 auto 14px; display:block; stroke:var(--text-light); }
+.empty-state h3 { font-size:1rem; font-weight:700; color:var(--text); margin-bottom:6px; }
+.empty-state p { font-size:.875rem; margin-bottom:18px; }
+.empty-state a { color:var(--primary); text-decoration:none; font-weight:600; }
+.empty-state a:hover { text-decoration:underline; }
+
+/* ═══ RESULTS TABLE ══════════════════════════════════════════ */
+.table-wrap { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; box-shadow:var(--shadow-sm); }
+.table-wrap table { width:100%; border-collapse:collapse; }
+.table-wrap th { padding:11px 16px; font-size:.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border); background:var(--bg); text-align:left; white-space:nowrap; }
+.table-wrap td { padding:13px 16px; font-size:.875rem; border-bottom:1px solid var(--border); color:var(--text); }
+.table-wrap tr:last-child td { border-bottom:none; }
+.table-wrap tr:hover td { background:#f8f8f8; }
+.score-bar-wrap { display:flex; align-items:center; gap:8px; }
+.score-bar { height:5px; background:var(--border); border-radius:3px; flex:1; overflow:hidden; min-width:60px; }
+.score-bar-fill { height:100%; border-radius:3px; background:var(--primary); transition:width .5s ease; }
+.score-bar-fill.pass { background:var(--success); }
+.score-bar-fill.fail { background:var(--danger); }
+
+/* ═══ PROFILE PAGE ══════════════════════════════════════════ */
+/* Full-width cover header */
+.profile-cover { height:180px; background:linear-gradient(135deg,#0078d4 0%,#004e8c 60%,#003378 100%); position:relative; }
+.profile-cover-actions { position:absolute; top:12px; right:16px; display:flex; gap:8px; }
+.profile-cover-edit-btn { background:rgba(0,0,0,.3); border:1px solid rgba(255,255,255,.3); color:#fff; padding:5px 12px; border-radius:var(--radius); font-size:.75rem; font-weight:600; cursor:pointer; transition:background .15s; }
+.profile-cover-edit-btn:hover { background:rgba(0,0,0,.5); }
+
+.profile-identity {
+  background:var(--surface); border-bottom:1px solid var(--border);
+  padding:0 40px 20px;
 }
-.chip-success { background: var(--success-bg); color: var(--success); }
-.chip-danger { background: var(--danger-bg); color: var(--danger); }
-.chip-warning { background: var(--warning-bg); color: var(--warning); }
-.chip-neutral { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
-.chip-primary { background: var(--primary-light); color: var(--primary); }
-
-/* Table */
-.table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
-table { width: 100%; border-collapse: collapse; background: var(--surface); }
-thead { background: var(--bg); }
-th { padding: 11px 16px; text-align: left; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
-td { padding: 14px 16px; font-size: 0.875rem; color: var(--text); border-bottom: 1px solid var(--border); vertical-align: middle; }
-tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: var(--bg); }
-
-/* Profile */
-.profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.profile-field label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
-.profile-value { font-size: 0.9375rem; color: var(--text); font-weight: 500; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
-
-.edit-section { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
-.edit-section .profile-title { font-size: 0.9375rem; font-weight: 700; margin-bottom: 18px; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-
-/* Empty state */
-.empty-state { text-align: center; padding: 56px 24px; color: var(--text-muted); }
-.empty-state svg { width: 56px; height: 56px; margin-bottom: 16px; opacity: 0.35; }
-.empty-state p { font-size: 0.9375rem; margin-bottom: 16px; }
-.empty-state a { color: var(--primary); text-decoration: none; font-weight: 600; }
-.empty-state a:hover { text-decoration: underline; }
-
-/* Pending list */
-.pending-list { display: flex; flex-direction: column; gap: 10px; }
-.pending-item {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 18px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+.profile-identity-inner { display:flex; align-items:flex-end; gap:20px; position:relative; }
+.profile-avatar-container { position:relative; margin-top:-52px; flex-shrink:0; }
+.profile-avatar-xl {
+  width:104px; height:104px; border-radius:50%;
+  border:4px solid #fff; background:linear-gradient(135deg,#0078d4,#2b88d8);
+  display:flex; align-items:center; justify-content:center;
+  font-size:2.2rem; font-weight:700; color:#fff; overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.15);
 }
-.pending-item-title { font-weight: 600; font-size: 0.9rem; color: var(--text); }
-.pending-item-date { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
-
-/* Toast */
-#toast {
-  position: fixed; bottom: 28px; right: 28px; z-index: 9999;
-  background: var(--text); color: #fff;
-  padding: 12px 20px; border-radius: 10px;
-  font-size: 0.875rem; font-weight: 500;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-  opacity: 0; transform: translateY(12px);
-  transition: all 0.25s ease;
-  pointer-events: none; max-width: 320px;
+.profile-avatar-xl img { width:100%; height:100%; object-fit:cover; }
+.profile-photo-edit-btn {
+  position:absolute; bottom:4px; right:4px;
+  width:26px; height:26px; border-radius:50%;
+  background:#fff; border:2px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; box-shadow:var(--shadow-sm); transition:background .15s;
 }
-#toast.show { opacity: 1; transform: translateY(0); }
-#toast.toast-success { background: var(--success); }
-#toast.toast-error { background: var(--danger); }
+.profile-photo-edit-btn:hover { background:var(--bg); }
+.profile-photo-edit-btn svg { width:12px; height:12px; stroke:var(--text-muted); }
+.profile-identity-info { padding-bottom:4px; min-width:0; }
+.profile-identity-name { font-size:1.5rem; font-weight:700; color:var(--text); margin-bottom:2px; }
+.profile-identity-email { font-size:.875rem; color:var(--text-muted); }
+.profile-identity-org { font-size:.8rem; color:var(--text-muted); margin-top:2px; }
+.profile-identity-badges { display:flex; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
+.profile-badge { display:inline-flex; align-items:center; gap:5px; font-size:.75rem; font-weight:600; padding:3px 10px; border-radius:12px; }
+.profile-identity-actions { margin-left:auto; display:flex; gap:8px; flex-shrink:0; align-self:flex-end; padding-bottom:4px; }
 
-/* Divider */
-.divider { height: 1px; background: var(--border); margin: 24px 0; }
+/* Profile body with tabs */
+.profile-tabs { display:flex; border-bottom:1px solid var(--border); background:var(--surface); padding:0 40px; gap:0; }
+.profile-tab { padding:12px 18px 13px; font-size:.875rem; font-weight:500; color:var(--text-muted); background:none; border:none; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s; }
+.profile-tab:hover { color:var(--text); }
+.profile-tab.active { color:var(--primary); font-weight:700; border-bottom-color:var(--primary); }
+.profile-tab-pane { display:none; }
+.profile-tab-pane.active { display:block; }
+.profile-content { max-width:900px; margin:0 auto; padding:28px 40px 60px; }
 
-/* Hamburger / mobile sidebar */
-.sidebar-overlay { display: none; }
-.sidebar-toggle { display: none; }
+/* Profile cards */
+.pcard { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); margin-bottom:20px; }
+.pcard-header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.pcard-title { font-size:.9375rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px; }
+.pcard-title svg { width:16px; height:16px; stroke:var(--primary); }
+.pcard-body { padding:20px 24px; }
+.form-row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.form-row-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.form-section-divider { font-size:.72rem; font-weight:700; color:var(--text-light); text-transform:uppercase; letter-spacing:.07em; margin:20px 0 12px; padding-bottom:6px; border-bottom:1px solid var(--border); grid-column:1/-1; }
+.form-section-divider:first-child { margin-top:0; }
+.info-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid var(--border); font-size:.875rem; gap:16px; }
+.info-row:last-child { border-bottom:none; }
+.info-label { color:var(--text-muted); font-weight:500; flex-shrink:0; }
+.info-value { color:var(--text); font-weight:600; text-align:right; word-break:break-all; }
+.info-value.mono { font-family:'Courier New',monospace; font-size:.8rem; color:var(--text-muted); }
 
-/* ─── RESPONSIVE ─── */
-@media (max-width: 900px) {
-  .content-area { padding: 24px 20px; }
-  .stats-row { grid-template-columns: repeat(3, 1fr); gap: 12px; }
-  .profile-grid { grid-template-columns: 1fr; }
-  .form-row { grid-template-columns: 1fr; }
+/* ═══ REGISTER MODAL ════════════════════════════════════════ */
+.modal-overlay { display:none; position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.5); align-items:center; justify-content:center; padding:24px; }
+.modal-overlay.open { display:flex; }
+.modal-card { background:#fff; border-radius:var(--radius-lg); padding:36px 40px; max-width:460px; width:100%; box-shadow:var(--shadow-lg); position:relative; max-height:90vh; overflow-y:auto; }
+.modal-close { position:absolute; top:14px; right:16px; background:none; border:none; cursor:pointer; color:var(--text-light); font-size:1.3rem; line-height:1; padding:4px 6px; border-radius:4px; }
+.modal-close:hover { color:var(--text); background:var(--bg); }
+.modal-title { font-size:1.25rem; font-weight:700; color:var(--text); margin-bottom:4px; }
+.modal-sub { font-size:.875rem; color:var(--text-muted); margin-bottom:22px; }
+
+/* ═══ TOAST ═════════════════════════════════════════════════ */
+#toast { position:fixed; bottom:20px; right:20px; background:#323130; color:#fff; padding:12px 18px; border-radius:var(--radius); font-size:.875rem; font-weight:500; opacity:0; pointer-events:none; transition:opacity .2s; z-index:9999; max-width:320px; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow-lg); }
+#toast.show { opacity:1; pointer-events:auto; }
+#toast.toast-success { background:#107c10; }
+#toast.toast-error { background:#d13438; }
+
+/* ═══ RESPONSIVE ════════════════════════════════════════════ */
+@media(max-width:900px){
+  .content-area { padding:20px 20px 48px; }
+  .profile-content { padding:20px 20px 48px; }
+  .exam-cards-grid { grid-template-columns:1fr; }
+  .form-row-2,.form-row-3 { grid-template-columns:1fr; }
+  .profile-tabs { padding:0 20px; }
+  .banner-stats { gap:20px; }
 }
-@media (max-width: 720px) {
-  .sidebar {
-    position: fixed; top: 60px; left: -240px; bottom: 0;
-    width: 220px; z-index: 200;
-    transition: left 0.25s ease;
-    box-shadow: 4px 0 20px rgba(0,0,0,0.1);
-  }
-  .sidebar.open { left: 0; }
-  .sidebar-overlay {
-    display: block; position: fixed; inset: 0; top: 60px;
-    background: rgba(0,0,0,0.3); z-index: 199;
-    opacity: 0; pointer-events: none; transition: opacity 0.25s;
-  }
-  .sidebar-overlay.show { opacity: 1; pointer-events: all; }
-  .sidebar-toggle {
-    display: flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; border-radius: 8px;
-    border: 1px solid var(--border); background: var(--bg);
-    cursor: pointer; color: var(--text);
-  }
-  .stats-row { grid-template-columns: 1fr 1fr; }
-  .login-card { padding: 36px 28px; }
-  .exam-cards { grid-template-columns: 1fr; }
+@media(max-width:768px){
+  :root { --sidebar-w:280px; }
+  .sidebar { position:fixed; top:var(--topnav-h); left:calc(-1 * var(--sidebar-w)); bottom:0; z-index:260; transition:left .25s ease; box-shadow:none; }
+  .sidebar.open { left:0; box-shadow:4px 0 20px rgba(0,0,0,.15); }
+  .sidebar-overlay { display:block; opacity:0; pointer-events:none; transition:opacity .25s; }
+  .sidebar-overlay.show { opacity:1; pointer-events:all; }
+  .topnav-menu-btn { display:block; }
+  .topnav-user-name { display:none; }
+  .page-banner { padding:28px 20px 24px; }
+  .banner-welcome { font-size:1.3rem; }
+  .profile-cover { height:120px; }
+  .profile-avatar-xl { width:80px; height:80px; margin-top:-40px; }
+  .profile-identity { padding:0 20px 16px; }
+  .profile-identity-actions { display:none; }
 }
-@media (max-width: 480px) {
-  .stats-row { grid-template-columns: 1fr; }
-  .topnav-name { display: none; }
+@media(max-width:520px){
+  .banner-stats { gap:16px; }
+  .banner-stat-val { font-size:1.4rem; }
 }
 </style>
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════
-     LOADING SCREEN
-══════════════════════════════════════════ -->
+<!-- ══════════ LOADING ══════════ -->
 <div id="screen-loading" class="screen active">
   <div class="spinner"></div>
-  <span style="color:var(--text-muted);font-size:0.875rem;">Loading…</span>
+  <span style="color:var(--text-muted);font-size:.875rem;">Loading…</span>
 </div>
 
-<!-- ══════════════════════════════════════════
-     LOGIN SCREEN
-══════════════════════════════════════════ -->
+<!-- ══════════ LOGIN ══════════ -->
 <div id="screen-login" class="screen">
-  <div class="login-card">
-    <div class="login-logo-wrap">
-      <!-- Graduation cap SVG -->
-      <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect width="52" height="52" rx="14" fill="#4f46e5"/>
-        <path d="M26 14L10 22L26 30L42 22L26 14Z" fill="white"/>
-        <path d="M16 25.5V33C16 33 19 37 26 37C33 37 36 33 36 33V25.5L26 30L16 25.5Z" fill="white" opacity="0.85"/>
-        <rect x="39" y="22" width="2.5" height="12" rx="1.25" fill="white" opacity="0.7"/>
-        <circle cx="40.25" cy="35.5" r="2.25" fill="white" opacity="0.7"/>
+  <div class="login-left">
+    <div class="login-brand">
+      <img id="login-logo-img" src="" alt="" class="login-brand-icon login-brand-logo" style="display:none;height:36px;max-width:140px;object-fit:contain;">
+      <svg id="login-logo-default" class="login-brand-icon" viewBox="0 0 36 36" fill="none" style="display:block">
+        <rect width="36" height="36" rx="8" fill="#0078d4"/>
+        <path d="M18 7L8 13L18 19L28 13L18 7Z" fill="white"/>
+        <path d="M11 17V23C11 23 13.5 27 18 27C22.5 27 25 23 25 23V17L18 19L11 17Z" fill="white" opacity=".85"/>
       </svg>
+      <span id="login-brand-name" class="login-brand-name">Alaric Exam</span>
     </div>
-    <div class="login-brand">Alaric Exam</div>
-    <div class="login-subtitle">Candidate Portal</div>
 
-    <!-- Step 1: Password login (main) -->
-    <div id="login-step1" class="login-step active">
-      <div class="login-cols">
-        <!-- Left: email + password -->
-        <div>
-          <div class="login-col-title">Sign In</div>
-          <div class="form-group">
-            <label class="form-label" for="login-email">Email address</label>
-            <input id="login-email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" />
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="login-password">Password</label>
-            <input id="login-password" type="password" class="form-input" placeholder="Your password" autocomplete="current-password" />
-          </div>
-          <div id="step1-error" class="inline-error"></div>
-          <button id="btn-signin" class="btn btn-primary" style="margin-top:8px;">Sign In</button>
-          <div style="margin-top:14px;font-size:0.8125rem;color:var(--text-muted);">
-            Forgot password?
-            <button onclick="showStep('otp')" style="background:none;border:none;padding:0;color:var(--primary);font-size:inherit;cursor:pointer;text-decoration:underline;">Sign in with email code</button>
-          </div>
-          <div style="margin-top:8px;font-size:0.8125rem;color:var(--text-muted);">
-            No account? <button onclick="openRegisterModal()" style="background:none;border:none;padding:0;color:var(--primary);font-size:inherit;cursor:pointer;font-weight:600;text-decoration:none;">Register</button>
-          </div>
-        </div>
+    <h1 class="login-title">Sign in</h1>
+    <p id="login-subtitle" class="login-subtitle">Use your account to access the candidate portal</p>
 
-        <!-- Divider -->
-        <div class="login-divider">
-          <div class="login-divider-label">OR</div>
-        </div>
+    <div class="login-tabs">
+      <button class="login-tab active" onclick="switchLoginTab('password',this)">Email &amp; Password</button>
+      <button class="login-tab" onclick="switchLoginTab('otp',this)">Sign-in Code</button>
+    </div>
 
-        <!-- Right: social buttons (popup) -->
-        <div>
-          <div class="login-col-title">Social Login</div>
-          <button onclick="oauthPopup('google')" class="btn-social btn-google">
-            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/><path fill="#fff" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#fff" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#fff" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-3.59-13.46-8.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-            Log in with Google
-          </button>
-          <button onclick="oauthPopup('microsoft')" class="btn-social btn-microsoft">
-            <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#F25022"/><rect x="11" y="1" width="9" height="9" fill="#7FBA00"/><rect x="1" y="11" width="9" height="9" fill="#00A4EF"/><rect x="11" y="11" width="9" height="9" fill="#FFB900"/></svg>
-            Log in with Microsoft
-          </button>
-          <p class="btn-social-sub">Sign in with your existing Google or Microsoft account — no extra password needed.</p>
+    <!-- Password tab -->
+    <div id="login-tab-password" class="login-tab-pane active">
+      <div id="login-step1" class="login-step active">
+        <div class="form-group">
+          <label class="form-label" for="login-email">Email address</label>
+          <input id="login-email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email">
         </div>
+        <div class="form-group">
+          <label class="form-label" for="login-password">Password</label>
+          <input id="login-password" type="password" class="form-input" placeholder="Your password" autocomplete="current-password">
+        </div>
+        <div id="step1-error" class="inline-error"></div>
+        <button id="btn-signin" class="btn btn-primary" style="margin-top:8px;">Sign in</button>
       </div>
     </div>
 
-    <!-- Step OTP: forgot password / email code login -->
-    <div id="login-step-otp" class="login-step">
-      <p style="font-size:0.875rem;color:var(--text-muted);margin-bottom:18px;text-align:center;" id="otp-sent-msg"></p>
-      <div id="otp-email-row">
-        <div class="form-group">
-          <label class="form-label" for="login-email-otp">Email address</label>
-          <input id="login-email-otp" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" />
+    <!-- OTP tab -->
+    <div id="login-tab-otp" class="login-tab-pane">
+      <div id="login-step-otp" class="login-step active">
+        <div id="otp-email-row">
+          <div class="form-group">
+            <label class="form-label" for="login-email-otp">Email address</label>
+            <input id="login-email-otp" type="email" class="form-input" placeholder="you@example.com" autocomplete="email">
+          </div>
+          <div id="step-otp-error1" class="inline-error"></div>
+          <button id="btn-send-otp" class="btn btn-primary">Send Sign-In Code</button>
         </div>
-        <div id="step-otp-error1" class="inline-error"></div>
-        <button id="btn-send-otp" class="btn btn-primary" style="margin-top:8px;">Send Sign-In Code</button>
-      </div>
-      <div id="otp-verify-row" style="display:none;">
-        <div class="form-group">
-          <label class="form-label" for="login-otp">6-Digit Code</label>
-          <input id="login-otp" type="text" class="form-input otp-input" placeholder="000000" maxlength="6" autocomplete="one-time-code" inputmode="numeric" />
-        </div>
-        <div id="step2-error" class="inline-error"></div>
-        <button id="btn-verify-otp" class="btn btn-primary" style="margin-top:8px;">Sign In</button>
-        <div class="resend-row">
-          <button id="btn-resend" class="resend-link" disabled>Resend code</button>
-          <span id="resend-timer"></span>
+        <div id="otp-verify-row" style="display:none">
+          <div class="form-group">
+            <label class="form-label">Enter code</label>
+            <div id="otp-sent-msg" style="font-size:.8rem;color:var(--text-muted);margin-bottom:8px;"></div>
+            <input id="login-otp" type="text" class="form-input otp-input" placeholder="000000" maxlength="6" inputmode="numeric">
+          </div>
+          <div id="step2-error" class="inline-error"></div>
+          <button id="btn-verify-otp" class="btn btn-primary">Sign in</button>
+          <div class="resend-row">Didn't receive it? <button id="btn-resend" class="resend-link" disabled>Resend<span id="resend-timer"></span></button></div>
         </div>
       </div>
-      <div style="text-align:center;margin-top:14px;">
-        <button onclick="showStep(1)" style="background:none;border:none;color:var(--text-muted);font-size:0.8125rem;cursor:pointer;text-decoration:underline;">← Back to sign in</button>
-      </div>
+    </div>
+
+    <!-- Social buttons -->
+    <div class="social-divider"><span>or</span></div>
+    <button class="btn-social" onclick="oauthPopup('google')">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+    <button class="btn-social" onclick="oauthPopup('microsoft')">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#00a4ef" d="M13 1h10v10H13z"/><path fill="#7fba00" d="M1 13h10v10H1z"/><path fill="#ffb900" d="M13 13h10v10H13z"/></svg>
+      Continue with Microsoft
+    </button>
+
+    <div class="login-footer">
+      Don't have an account? <a href="#" onclick="openRegisterModal();return false;">Create one</a>
+    </div>
+  </div>
+
+  <div class="login-right">
+    <div class="login-hero-text">
+      <h2><strong>Professional</strong><br>Exam Platform</h2>
+      <p>Take assessments, track your progress, and manage your certification journey — all in one place.</p>
+      <ul class="login-hero-bullets">
+        <li>Secure, proctored exam environment</li>
+        <li>Instant results and score analysis</li>
+        <li>Full submission history and certificates</li>
+        <li>Request access to new exams anytime</li>
+      </ul>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     REGISTER MODAL
-══════════════════════════════════════════ -->
-<div id="register-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45);display:none;align-items:center;justify-content:center;padding:24px;">
-  <div style="background:#fff;border-radius:16px;padding:40px 40px 32px;max-width:460px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.18);position:relative;">
-    <button onclick="closeRegisterModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;cursor:pointer;color:#9ca3af;font-size:1.4rem;line-height:1;">&times;</button>
-    <div style="font-size:1.4rem;font-weight:800;color:var(--text);margin-bottom:4px;">Create Account</div>
-    <div style="font-size:0.85rem;color:var(--text-muted);margin-bottom:24px;">Sign up to access the candidate portal.</div>
-
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="form-group" style="grid-column:1/-1;">
-        <label class="form-label" for="reg-name">Full Name</label>
-        <input id="reg-name" type="text" class="form-input" placeholder="Jane Smith" autocomplete="name" />
-      </div>
-      <div class="form-group" style="grid-column:1/-1;">
-        <label class="form-label" for="reg-email">Email Address</label>
-        <input id="reg-email" type="email" class="form-input" placeholder="you@example.com" autocomplete="email" />
-      </div>
-      <div class="form-group">
-        <label class="form-label" for="reg-phone">Phone <span style="font-weight:400;color:var(--text-muted);text-transform:none;">(optional)</span></label>
-        <input id="reg-phone" type="tel" class="form-input" placeholder="+1 234 567 8900" autocomplete="tel" />
-      </div>
-      <div class="form-group" style="grid-column:1/-1;">
-        <label class="form-label" for="reg-password">Password</label>
-        <input id="reg-password" type="password" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password" />
-      </div>
-      <div class="form-group" style="grid-column:1/-1;">
-        <label class="form-label" for="reg-password2">Confirm Password</label>
-        <input id="reg-password2" type="password" class="form-input" placeholder="Repeat password" autocomplete="new-password" />
-      </div>
-    </div>
-    <div id="reg-error" class="inline-error"></div>
-    <button id="btn-register" class="btn btn-primary" style="margin-top:12px;">Create Account</button>
-    <p style="text-align:center;font-size:0.8125rem;margin-top:14px;color:var(--text-muted);">
-      Already have an account? <button onclick="closeRegisterModal()" style="background:none;border:none;padding:0;color:var(--primary);cursor:pointer;font-size:inherit;">Sign In</button>
-    </p>
-  </div>
-</div>
-
-<!-- ══════════════════════════════════════════
-     DASHBOARD SCREEN
-══════════════════════════════════════════ -->
+<!-- ══════════ DASHBOARD ══════════ -->
 <div id="screen-dashboard" class="screen">
 
-  <!-- Topnav -->
   <nav class="topnav">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle menu">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <div class="topnav-left">
+      <button class="topnav-menu-btn" id="sidebar-toggle" aria-label="Toggle menu">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
-      <a class="topnav-logo" href="#">
-        <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="32" height="32" rx="8" fill="#4f46e5"/>
-          <path d="M16 8L6 13L16 18L26 13L16 8Z" fill="white"/>
-          <path d="M10 15.5V20.5C10 20.5 12 23 16 23C20 23 22 20.5 22 20.5V15.5L16 18L10 15.5Z" fill="white" opacity="0.85"/>
+      <a class="topnav-brand" href="#">
+        <img id="topnav-logo" src="" alt="" class="topnav-brand-logo" style="display:none">
+        <svg id="topnav-logo-default" class="topnav-brand-icon" viewBox="0 0 36 36" fill="none">
+          <rect width="36" height="36" rx="8" fill="rgba(255,255,255,0.25)"/>
+          <path d="M18 7L8 13L18 19L28 13L18 7Z" fill="white"/>
+          <path d="M11 17V23C11 23 13.5 27 18 27C22.5 27 25 23 25 23V17L18 19L11 17Z" fill="white" opacity=".85"/>
         </svg>
-        Alaric Exam
+        <span id="topnav-brand-name" class="topnav-brand-name">Alaric Exam</span>
       </a>
     </div>
     <div class="topnav-right">
-      <span id="nav-user-name" class="topnav-name"></span>
-      <div id="nav-avatar" class="avatar"></div>
-      <button id="btn-signout" class="btn btn-ghost btn-sm" style="color:var(--text-muted);">Sign Out</button>
+      <div id="nav-user-chip" class="topnav-user-btn">
+        <div id="nav-avatar" class="topnav-avatar"></div>
+        <span id="nav-user-name" class="topnav-user-name"></span>
+      </div>
+      <button class="btn-topnav-signout" id="btn-signout">Sign Out</button>
     </div>
   </nav>
 
-  <div class="dashboard-body">
-    <!-- Sidebar -->
+  <div class="portal-body">
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
     <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">Navigation</div>
       <button class="nav-item active" data-tab="overview">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
         Dashboard
@@ -594,810 +514,800 @@ tbody tr:hover { background: var(--bg); }
       </button>
       <button class="nav-item" data-tab="results">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        My Results
+        Results &amp; History
       </button>
+      <div class="sidebar-divider"></div>
       <button class="nav-item" data-tab="profile">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Profile
+        My Profile
       </button>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-catalog-box">
+        <h4>Exam Catalog</h4>
+        <p>Browse and request access to available exams</p>
+        <a href="/catalog">Browse Exams →</a>
+      </div>
+      <div style="height:16px"></div>
     </aside>
-    <div class="sidebar-overlay" id="sidebar-overlay"></div>
 
-    <!-- Content area -->
-    <main class="content-area">
+    <main class="main-content" id="main-content">
 
-      <!-- ── OVERVIEW TAB ── -->
+      <!-- ──── OVERVIEW ──── -->
       <div id="tab-overview" class="tab-pane active">
-        <div class="welcome-card">
-          <div class="welcome-name" id="welcome-name">Welcome back!</div>
-          <div class="welcome-sub">Here's what's happening with your exams today.</div>
-        </div>
-
-        <div class="stats-row">
-          <div class="stat-card">
-            <div class="stat-label">Pending Requests</div>
-            <div class="stat-value warning" id="stat-pending">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Active Exams</div>
-            <div class="stat-value primary" id="stat-active">—</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Completed</div>
-            <div class="stat-value success" id="stat-completed">—</div>
+        <div class="page-banner">
+          <div class="banner-inner">
+            <div class="banner-welcome" id="banner-welcome">Welcome back!</div>
+            <div class="banner-sub" id="banner-sub"></div>
+            <div class="banner-stats">
+              <div class="banner-stat"><div class="banner-stat-val" id="stat-active">—</div><div class="banner-stat-lbl">Active Exams</div></div>
+              <div class="banner-stat"><div class="banner-stat-val" id="stat-pending">—</div><div class="banner-stat-lbl">Pending Requests</div></div>
+              <div class="banner-stat"><div class="banner-stat-val" id="stat-completed">—</div><div class="banner-stat-lbl">Completed</div></div>
+              <div class="banner-stat"><div class="banner-stat-val" id="stat-passed">—</div><div class="banner-stat-lbl">Passed</div></div>
+            </div>
           </div>
         </div>
 
-        <div id="overview-active-section" style="display:none;">
-          <div class="section-heading">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Ready to Take
+        <div class="content-area">
+          <div id="overview-active-section" style="display:none">
+            <div class="section-row">
+              <div class="section-title">Ready to Take</div>
+              <a href="#" class="section-link" onclick="switchTab('my-exams');return false;">View all</a>
+            </div>
+            <div class="exam-cards-grid" id="overview-active-cards"></div>
           </div>
-          <div class="exam-cards" id="overview-active-cards"></div>
-        </div>
-
-        <div id="overview-pending-section" style="display:none;">
-          <div class="section-heading" style="margin-top:28px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Pending Approval
+          <div id="overview-pending-section" style="display:none">
+            <div class="section-row" style="margin-top:28px">
+              <div class="section-title">Awaiting Approval</div>
+            </div>
+            <div class="pending-list" id="overview-pending-list"></div>
           </div>
-          <div class="pending-list" id="overview-pending-list"></div>
-        </div>
-
-        <div id="overview-empty" style="display:none;">
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-            <p>No active exams or pending requests yet.</p>
-            <a href="/catalog">Browse Exam Catalog →</a>
+          <div id="overview-empty" style="display:none;margin-top:8px">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+              <h3>No exams yet</h3>
+              <p>You don't have any active exam links or pending requests.</p>
+              <a href="/catalog">Browse the exam catalog to get started →</a>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- ── MY EXAMS TAB ── -->
+      <!-- ──── MY EXAMS ──── -->
       <div id="tab-my-exams" class="tab-pane">
-        <div class="page-title">My Exams</div>
-        <div class="page-subtitle">All your exam access requests and active exam links.</div>
-        <div id="exams-content">
-          <div class="empty-state"><div class="spinner"></div></div>
+        <div class="page-banner" style="padding:28px 40px;">
+          <div class="banner-inner">
+            <div class="banner-welcome" style="font-size:1.3rem;font-weight:600;">My Exams</div>
+            <div class="banner-sub">Active exam links and access requests</div>
+          </div>
+        </div>
+        <div class="content-area">
+          <div id="exams-content"><div style="text-align:center;padding:48px"><div class="spinner" style="margin:0 auto"></div></div></div>
         </div>
       </div>
 
-      <!-- ── RESULTS TAB ── -->
+      <!-- ──── RESULTS ──── -->
       <div id="tab-results" class="tab-pane">
-        <div class="page-title">My Results</div>
-        <div class="page-subtitle">Your exam submission history and scores.</div>
-        <div id="results-content">
-          <div class="empty-state"><div class="spinner"></div></div>
+        <div class="page-banner" style="padding:28px 40px;">
+          <div class="banner-inner">
+            <div class="banner-welcome" style="font-size:1.3rem;font-weight:600;">Results &amp; History</div>
+            <div class="banner-sub">Your exam submission history and scores</div>
+          </div>
+        </div>
+        <div class="content-area">
+          <div id="results-content"><div style="text-align:center;padding:48px"><div class="spinner" style="margin:0 auto"></div></div></div>
         </div>
       </div>
 
-      <!-- ── PROFILE TAB ── -->
+      <!-- ──── PROFILE ──── -->
       <div id="tab-profile" class="tab-pane">
-        <div class="page-title">Profile</div>
-        <div class="page-subtitle">Your account information.</div>
+        <!-- Cover photo -->
+        <div class="profile-cover" id="profile-cover">
+          <div class="profile-cover-actions">
+            <button class="profile-cover-edit-btn" onclick="document.getElementById('photo-input').click()">Change Photo</button>
+          </div>
+        </div>
 
-        <div class="card" style="max-width:600px;">
-          <div class="card-header"><div class="card-title">Account Details</div></div>
-          <div class="card-body">
-            <div class="profile-grid">
-              <div class="profile-field">
-                <label>Full Name</label>
-                <div class="profile-value" id="profile-name-display">—</div>
+        <!-- Identity bar -->
+        <div class="profile-identity">
+          <div class="profile-identity-inner">
+            <div class="profile-avatar-container">
+              <div class="profile-avatar-xl" id="profile-avatar-xl">
+                <img id="profile-photo-img" src="" alt="" style="display:none">
+                <span id="profile-avatar-initials"></span>
               </div>
-              <div class="profile-field">
-                <label>Email</label>
-                <div class="profile-value" id="profile-email-display">—</div>
+              <div class="profile-photo-edit-btn" onclick="document.getElementById('photo-input').click()" title="Change photo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
               </div>
-              <div class="profile-field">
-                <label>Phone</label>
-                <div class="profile-value" id="profile-phone-display">—</div>
-              </div>
-              <div class="profile-field">
-                <label>Member Since</label>
-                <div class="profile-value" id="profile-since-display">—</div>
+              <input id="photo-input" type="file" accept="image/*" style="display:none" onchange="uploadPhoto(this)">
+            </div>
+            <div class="profile-identity-info">
+              <div class="profile-identity-name" id="profile-name-header">—</div>
+              <div class="profile-identity-email" id="profile-email-header">—</div>
+              <div class="profile-identity-org" id="profile-org-header"></div>
+              <div class="profile-identity-badges">
+                <span class="profile-badge chip-primary" id="profile-member-since"></span>
               </div>
             </div>
-
-            <div class="edit-section">
-              <div class="profile-title">Update Profile</div>
-              <div class="form-row">
-                <div class="form-group">
-                  <label class="form-label" for="edit-name">Full Name</label>
-                  <input id="edit-name" type="text" class="form-input" placeholder="Your name" />
-                </div>
-                <div class="form-group">
-                  <label class="form-label" for="edit-phone">Phone</label>
-                  <input id="edit-phone" type="tel" class="form-input" placeholder="+1 555 000 0000" />
-                </div>
-              </div>
-              <div id="profile-error" class="inline-error"></div>
-              <div id="profile-success" class="inline-success"></div>
-              <button id="btn-save-profile" class="btn btn-primary" style="width:auto;margin-top:4px;">Save Changes</button>
+            <div class="profile-identity-actions">
+              <button class="btn btn-secondary btn-sm" id="btn-save-profile-top" style="font-size:.8125rem;padding:6px 14px;">Save Changes</button>
             </div>
           </div>
         </div>
-      </div>
+
+        <!-- Profile tabs -->
+        <div class="profile-tabs">
+          <button class="profile-tab active" onclick="switchProfileTab('personal',this)">Personal Info</button>
+          <button class="profile-tab" onclick="switchProfileTab('address',this)">Address</button>
+          <button class="profile-tab" onclick="switchProfileTab('security',this)">Security</button>
+          <button class="profile-tab" onclick="switchProfileTab('account',this)">Account</button>
+        </div>
+
+        <!-- Personal Info Tab -->
+        <div class="profile-tab-pane active" id="ptab-personal">
+          <div class="profile-content">
+            <div class="pcard">
+              <div class="pcard-header">
+                <div class="pcard-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                  Personal Information
+                </div>
+              </div>
+              <div class="pcard-body">
+                <div class="form-row-2">
+                  <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label" for="edit-name">Full Name *</label>
+                    <input id="edit-name" type="text" class="form-input" placeholder="Your full name">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="edit-phone">Phone Number</label>
+                    <input id="edit-phone" type="tel" class="form-input" placeholder="+1 555 000 0000">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="edit-org">Organization / Company</label>
+                    <input id="edit-org" type="text" class="form-input" placeholder="Company or University">
+                  </div>
+                </div>
+                <div id="profile-error" class="inline-error"></div>
+                <div id="profile-success" class="inline-success"></div>
+                <button id="btn-save-profile" class="btn btn-primary" style="width:auto;margin-top:14px;padding:9px 28px;">Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Address Tab -->
+        <div class="profile-tab-pane" id="ptab-address">
+          <div class="profile-content">
+            <div class="pcard">
+              <div class="pcard-header">
+                <div class="pcard-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  Address Details
+                </div>
+              </div>
+              <div class="pcard-body">
+                <div class="form-row-2">
+                  <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label" for="edit-address">Street Address</label>
+                    <input id="edit-address" type="text" class="form-input" placeholder="123 Main Street, Apt 4B">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="edit-city">City</label>
+                    <input id="edit-city" type="text" class="form-input" placeholder="New York">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="edit-state">State / Province</label>
+                    <input id="edit-state" type="text" class="form-input" placeholder="NY">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="edit-country">Country</label>
+                    <input id="edit-country" type="text" class="form-input" placeholder="United States">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="edit-postal">Postal / ZIP Code</label>
+                    <input id="edit-postal" type="text" class="form-input" placeholder="10001">
+                  </div>
+                </div>
+                <div id="addr-error" class="inline-error"></div>
+                <div id="addr-success" class="inline-success"></div>
+                <button id="btn-save-addr" class="btn btn-primary" style="width:auto;margin-top:14px;padding:9px 28px;">Save Address</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Security Tab -->
+        <div class="profile-tab-pane" id="ptab-security">
+          <div class="profile-content">
+            <div class="pcard">
+              <div class="pcard-header">
+                <div class="pcard-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Password
+                </div>
+              </div>
+              <div class="pcard-body">
+                <div class="form-row-2">
+                  <div class="form-group">
+                    <label class="form-label" for="pw-new">New Password</label>
+                    <input id="pw-new" type="password" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="pw-confirm">Confirm Password</label>
+                    <input id="pw-confirm" type="password" class="form-input" placeholder="Repeat new password" autocomplete="new-password">
+                  </div>
+                </div>
+                <div id="pw-error" class="inline-error"></div>
+                <div id="pw-success" class="inline-success"></div>
+                <button id="btn-change-pw" class="btn btn-primary" style="width:auto;margin-top:14px;padding:9px 28px;">Update Password</button>
+              </div>
+            </div>
+
+            <div class="pcard">
+              <div class="pcard-header">
+                <div class="pcard-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Sign-In Methods
+                </div>
+              </div>
+              <div class="pcard-body">
+                <div class="info-row">
+                  <span class="info-label">Email / Password</span>
+                  <span class="chip chip-success">Active</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Sign-in Code (OTP)</span>
+                  <span class="chip chip-success">Available</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Google SSO</span>
+                  <span class="chip chip-neutral">Optional</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Microsoft SSO</span>
+                  <span class="chip chip-neutral">Optional</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Account Tab -->
+        <div class="profile-tab-pane" id="ptab-account">
+          <div class="profile-content">
+            <div class="pcard">
+              <div class="pcard-header">
+                <div class="pcard-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Account Details
+                </div>
+              </div>
+              <div class="pcard-body">
+                <div class="info-row">
+                  <span class="info-label">Email address</span>
+                  <span class="info-value" id="acct-email">—</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Member since</span>
+                  <span class="info-value" id="acct-since">—</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Account ID</span>
+                  <span class="info-value mono" id="acct-id">—</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Account type</span>
+                  <span class="info-value">Candidate</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pcard">
+              <div class="pcard-header">
+                <div class="pcard-title">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+                  Danger Zone
+                </div>
+              </div>
+              <div class="pcard-body">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+                  <div>
+                    <div style="font-weight:600;font-size:.9rem;color:var(--text);margin-bottom:2px;">Sign out everywhere</div>
+                    <div style="font-size:.8rem;color:var(--text-muted);">Revoke all active sessions on all devices</div>
+                  </div>
+                  <button class="btn btn-danger" onclick="doSignoutAll()" style="font-size:.8125rem;padding:7px 16px;flex-shrink:0;">Sign Out All Devices</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /tab-profile -->
 
     </main>
   </div>
+</div><!-- /screen-dashboard -->
+
+<!-- ══════════ REGISTER MODAL ══════════ -->
+<div id="register-modal" class="modal-overlay">
+  <div class="modal-card">
+    <button class="modal-close" onclick="closeRegisterModal()">&times;</button>
+    <div class="modal-title">Create your account</div>
+    <div class="modal-sub">Join the platform to access exams and track your progress</div>
+    <div class="social-divider" style="margin-bottom:16px;"><span>Quick register with</span></div>
+    <button class="btn-social" onclick="oauthPopup('google')">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continue with Google
+    </button>
+    <button class="btn-social" onclick="oauthPopup('microsoft')">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="#f25022" d="M1 1h10v10H1z"/><path fill="#00a4ef" d="M13 1h10v10H13z"/><path fill="#7fba00" d="M1 13h10v10H1z"/><path fill="#ffb900" d="M13 13h10v10H13z"/></svg>
+      Continue with Microsoft
+    </button>
+    <div class="social-divider"><span>or fill in details</span></div>
+    <div class="form-group">
+      <label class="form-label" for="reg-name">Full Name *</label>
+      <input id="reg-name" type="text" class="form-input" placeholder="Your full name">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="reg-email">Email Address *</label>
+      <input id="reg-email" type="email" class="form-input" placeholder="you@example.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="reg-phone">Phone Number</label>
+      <input id="reg-phone" type="tel" class="form-input" placeholder="+1 555 000 0000">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="reg-org">Organization</label>
+      <input id="reg-org" type="text" class="form-input" placeholder="Company / University">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="reg-password">Password *</label>
+      <input id="reg-password" type="password" class="form-input" placeholder="Min. 6 characters" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="reg-password2">Confirm Password *</label>
+      <input id="reg-password2" type="password" class="form-input" placeholder="Repeat password" autocomplete="new-password">
+    </div>
+    <div id="reg-error" class="inline-error"></div>
+    <button id="btn-register" class="btn btn-primary" style="margin-top:8px;">Create Account</button>
+    <p style="font-size:.8rem;color:var(--text-muted);margin-top:14px;text-align:center;">
+      Already have an account? <button onclick="closeRegisterModal()" style="background:none;border:none;padding:0;color:var(--primary);cursor:pointer;font-size:inherit;text-decoration:underline;">Sign In</button>
+    </p>
+  </div>
 </div>
 
-<!-- Toast -->
 <div id="toast"></div>
 
 <script>
 'use strict';
-
-/* ════════════════════════════════════════════
-   CONSTANTS & STATE
-════════════════════════════════════════════ */
 const API = '';
-let appState = { token: null, candidate: null };
+let appState = { token: null, candidate: null, branding: null };
 let resendInterval = null;
 
-/* ════════════════════════════════════════════
-   UTILITIES
-════════════════════════════════════════════ */
-function setCookie(name, value, days) {
-  const d = new Date();
-  d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/;SameSite=Lax`;
-}
-function getCookie(name) {
-  const v = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith(name + '='));
-  return v ? v.split('=').slice(1).join('=') : null;
-}
-function deleteCookie(name) {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;
-}
-function getToken() {
-  return appState.token || getCookie('portal_token') || localStorage.getItem('portal_token');
-}
-function saveToken(t) {
-  appState.token = t;
-  setCookie('portal_token', t, 7);
-  localStorage.setItem('portal_token', t);
-}
-function clearAuth() {
-  appState.token = null; appState.candidate = null;
-  deleteCookie('portal_token');
-  localStorage.removeItem('portal_token');
-}
+/* ── UTILS ── */
+function setCookie(n,v,d){const x=new Date();x.setTime(x.getTime()+d*864e5);document.cookie=`${n}=${v};expires=${x.toUTCString()};path=/;SameSite=Lax`;}
+function getCookie(n){const v=document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith(n+'='));return v?v.split('=').slice(1).join('='):null;}
+function deleteCookie(n){document.cookie=`${n}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`;}
+function getToken(){return appState.token||getCookie('portal_token')||localStorage.getItem('portal_token');}
+function saveToken(t){appState.token=t;setCookie('portal_token',t,7);localStorage.setItem('portal_token',t);}
+function clearAuth(){appState.token=null;appState.candidate=null;deleteCookie('portal_token');localStorage.removeItem('portal_token');}
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function esc(s){const d=document.createElement('div');d.textContent=s||'';return d.innerHTML;}
+function initials(n){if(!n)return'?';return n.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();}
+function fmtDate(s){if(!s)return'—';try{return new Date(s).toLocaleDateString('en-US',{year:'numeric',month:'short',day:'numeric'});}catch{return s;}}
+function fmtDateTime(s){if(!s)return'—';try{return new Date(s).toLocaleString('en-US',{year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});}catch{return s;}}
+function expiresIn(s){if(!s)return'';const d=new Date(s)-Date.now();if(d<=0)return'Expired';const days=Math.floor(d/864e5);if(days>0)return`Expires in ${days}d`;const h=Math.floor(d/36e5);return`Expires in ${h}h`;}
+function showToast(msg,type=''){const t=document.getElementById('toast');t.textContent=msg;t.className='show'+(type?' toast-'+type:'');clearTimeout(t._to);t._to=setTimeout(()=>{t.className='';},3200);}
+function avatarColor(name){const colors=['#0078d4','#038387','#107c10','#8764b8','#ca5010','#c239b3','#004e8c'];const i=((name||'').charCodeAt(0)||0)%colors.length;return colors[i];}
 
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-}
-
-function showToast(msg, type = '') {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'show' + (type ? ' toast-' + type : '');
-  clearTimeout(t._to);
-  t._to = setTimeout(() => { t.className = ''; }, 3200);
-}
-
-function fmtDate(str) {
-  if (!str) return '—';
-  try { return new Date(str).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }); }
-  catch { return str; }
-}
-function fmtDateTime(str) {
-  if (!str) return '—';
-  try { return new Date(str).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
-  catch { return str; }
-}
-function expiresIn(str) {
-  if (!str) return '';
-  const diff = new Date(str) - Date.now();
-  if (diff <= 0) return 'Expired';
-  const days = Math.floor(diff / 86400000);
-  if (days > 0) return `Expires in ${days} day${days !== 1 ? 's' : ''}`;
-  const hrs = Math.floor(diff / 3600000);
-  return `Expires in ${hrs} hour${hrs !== 1 ? 's' : ''}`;
-}
-function initials(name) {
-  if (!name) return '?';
-  return name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s || '';
-  return d.innerHTML;
-}
-
-/* ════════════════════════════════════════════
-   API HELPER
-════════════════════════════════════════════ */
-async function apiCall(method, path, body) {
-  const headers = { 'Content-Type': 'application/json' };
-  const token = getToken();
-  if (token) headers['Authorization'] = 'Bearer ' + token;
-  const opts = { method, headers };
-  if (body !== undefined) opts.body = JSON.stringify(body);
+/* ── API ── */
+async function apiCall(method,path,body){
+  const headers={'Content-Type':'application/json'};
+  const token=getToken();
+  if(token)headers['Authorization']='Bearer '+token;
+  const opts={method,headers};
+  if(body!==undefined)opts.body=JSON.stringify(body);
   let res;
-  try { res = await fetch(API + path, opts); }
-  catch (e) { throw new Error('Network error. Please check your connection.'); }
-  if (res.status === 401) { clearAuth(); showScreen('screen-login'); throw new Error('Session expired. Please sign in again.'); }
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.message || data.error || `Request failed (${res.status})`);
+  try{res=await fetch(API+path,opts);}
+  catch(e){throw new Error('Network error. Please check your connection.');}
+  if(res.status===401){clearAuth();showScreen('screen-login');throw new Error('Session expired. Please sign in again.');}
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw new Error(data.message||data.error||`Request failed (${res.status})`);
   return data;
 }
 
-/* ════════════════════════════════════════════
-   LOGIN FLOW
-════════════════════════════════════════════ */
-function showStep(n) {
-  document.querySelectorAll('.login-step').forEach(s => s.classList.remove('active'));
-  const el = (n === 1 || n === 'password')
-    ? document.getElementById('login-step1')
-    : document.getElementById('login-step-otp');
-  if (el) el.classList.add('active');
-  if (n === 'otp') {
-    document.getElementById('otp-email-row').style.display = '';
-    document.getElementById('otp-verify-row').style.display = 'none';
-    setTimeout(() => document.getElementById('login-email-otp').focus(), 100);
+/* ── BRANDING ── */
+async function loadBranding(){
+  try{
+    const b=await fetch('/api/settings/branding').then(r=>r.json());
+    appState.branding=b;
+    const name=b.app_name||'Alaric Exam';
+    const tagline=b.app_tagline||'Candidate Portal';
+    document.title=name+' — '+tagline;
+    document.getElementById('login-brand-name').textContent=name;
+    document.getElementById('login-subtitle').textContent='Use your account to access the '+name+' portal';
+    document.getElementById('topnav-brand-name').textContent=name;
+    if(b.app_logo){
+      ['login-logo-img','topnav-logo'].forEach(id=>{
+        const el=document.getElementById(id);if(!el)return;
+        el.src=b.app_logo;el.style.display='block';
+      });
+      document.getElementById('login-logo-default').style.display='none';
+      document.getElementById('topnav-logo-default').style.display='none';
+    }
+  }catch(e){}
+}
+
+/* ── LOGIN TABS ── */
+function switchLoginTab(tab, btn) {
+  document.querySelectorAll('.login-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.login-tab-pane').forEach(p=>p.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  document.getElementById('login-tab-'+tab).classList.add('active');
+}
+
+/* ── LOGIN ── */
+function showStep(n){
+  document.querySelectorAll('.login-step').forEach(s=>s.classList.remove('active'));
+  const el=(n===1||n==='password')?document.getElementById('login-step1'):document.getElementById('login-step-otp');
+  if(el)el.classList.add('active');
+  if(n==='otp'){
+    document.getElementById('otp-email-row').style.display='';
+    document.getElementById('otp-verify-row').style.display='none';
+    setTimeout(()=>document.getElementById('login-email-otp').focus(),100);
   }
 }
 
-function startResendTimer(seconds) {
+function startResendTimer(s){
   clearInterval(resendInterval);
-  const btn = document.getElementById('btn-resend');
-  const timerEl = document.getElementById('resend-timer');
-  btn.disabled = true;
-  let left = seconds;
-  const tick = () => {
-    if (left <= 0) {
-      clearInterval(resendInterval);
-      btn.disabled = false;
-      timerEl.textContent = '';
-      return;
-    }
-    timerEl.textContent = ` (${left}s)`;
-    left--;
+  const btn=document.getElementById('btn-resend'),timerEl=document.getElementById('resend-timer');
+  btn.disabled=true;let left=s;
+  const tick=()=>{if(left<=0){clearInterval(resendInterval);btn.disabled=false;timerEl.textContent='';return;}timerEl.textContent=` (${left}s)`;left--;};
+  tick();resendInterval=setInterval(tick,1000);
+}
+
+async function signInWithPassword(){
+  const email=document.getElementById('login-email').value.trim();
+  const password=document.getElementById('login-password').value;
+  const err=document.getElementById('step1-error'),btn=document.getElementById('btn-signin');
+  err.classList.remove('show');
+  if(!email||!password){err.textContent='Please enter your email and password.';err.classList.add('show');return;}
+  btn.disabled=true;btn.textContent='Signing in…';
+  try{
+    const data=await apiCall('POST','/api/portal/login',{email,password});
+    saveToken(data.token);appState.candidate=data.candidate;
+    await loadDashboard();showScreen('screen-dashboard');
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Sign in';}
+}
+
+async function sendOtp(email){
+  const err=document.getElementById('step-otp-error1'),btn=document.getElementById('btn-send-otp');
+  err.classList.remove('show');btn.disabled=true;btn.textContent='Sending…';
+  try{
+    await apiCall('POST','/api/portal/request-otp',{email});
+    document.getElementById('otp-sent-msg').textContent=`A 6-digit code was sent to ${email}`;
+    document.getElementById('otp-email-row').style.display='none';
+    document.getElementById('otp-verify-row').style.display='';
+    startResendTimer(60);setTimeout(()=>document.getElementById('login-otp').focus(),100);
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Send Sign-In Code';}
+}
+
+async function verifyOtp(email,otp){
+  const err=document.getElementById('step2-error'),btn=document.getElementById('btn-verify-otp');
+  err.classList.remove('show');btn.disabled=true;btn.textContent='Signing in…';
+  try{
+    const data=await apiCall('POST','/api/portal/verify-otp',{email,otp});
+    saveToken(data.token);appState.candidate=data.candidate;
+    clearInterval(resendInterval);await loadDashboard();showScreen('screen-dashboard');
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Sign in';}
+}
+
+/* event bindings */
+document.getElementById('btn-signin').addEventListener('click',signInWithPassword);
+document.getElementById('login-email').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('login-password').focus();});
+document.getElementById('login-password').addEventListener('keydown',e=>{if(e.key==='Enter')signInWithPassword();});
+document.getElementById('btn-send-otp').addEventListener('click',()=>{const e=document.getElementById('login-email-otp').value.trim();if(!e||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)){const er=document.getElementById('step-otp-error1');er.textContent='Please enter a valid email.';er.classList.add('show');return;}sendOtp(e);});
+document.getElementById('login-email-otp').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-send-otp').click();});
+document.getElementById('btn-verify-otp').addEventListener('click',()=>{const e=document.getElementById('login-email-otp').value.trim(),o=document.getElementById('login-otp').value.trim();if(!o||o.length<4){const er=document.getElementById('step2-error');er.textContent='Enter the code from your email.';er.classList.add('show');return;}verifyOtp(e,o);});
+document.getElementById('login-otp').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('btn-verify-otp').click();});
+document.getElementById('btn-resend').addEventListener('click',()=>{const e=document.getElementById('login-email-otp').value.trim();if(e)sendOtp(e);});
+
+/* ── OAUTH ── */
+function oauthPopup(provider){
+  const w=520,h=620,left=Math.round(window.screenX+(window.outerWidth-w)/2),top=Math.round(window.screenY+(window.outerHeight-h)/2);
+  const popup=window.open('/api/portal/auth/'+provider,'oauth_'+provider,`width=${w},height=${h},left=${left},top=${top},toolbar=0,menubar=0,location=0,scrollbars=1`);
+  if(!popup){const err=document.getElementById('step1-error');err.textContent='Popup was blocked. Please allow popups for this site.';err.classList.add('show');return;}
+  const handler=(e)=>{
+    if(e.origin!==window.location.origin)return;
+    if(e.data&&e.data.type==='oauth_success'){window.removeEventListener('message',handler);handleOAuthToken(e.data.token);}
+    if(e.data&&e.data.type==='oauth_error'){window.removeEventListener('message',handler);const err=document.getElementById('step1-error');err.textContent=e.data.error;err.classList.add('show');}
   };
-  tick();
-  resendInterval = setInterval(tick, 1000);
+  window.addEventListener('message',handler);
+}
+async function handleOAuthToken(token){
+  saveToken(token);appState.token=token;
+  try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');}
+  catch(e){clearAuth();const err=document.getElementById('step1-error');err.textContent='Sign-in failed. Please try again.';err.classList.add('show');showScreen('screen-login');}
 }
 
-async function signInWithPassword() {
-  const email = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-  const err = document.getElementById('step1-error');
-  const btn = document.getElementById('btn-signin');
+/* ── REGISTER MODAL ── */
+function openRegisterModal(){document.getElementById('register-modal').classList.add('open');setTimeout(()=>document.getElementById('reg-name').focus(),100);}
+function closeRegisterModal(){document.getElementById('register-modal').classList.remove('open');document.getElementById('reg-error').classList.remove('show');}
+document.getElementById('register-modal').addEventListener('click',e=>{if(e.target===document.getElementById('register-modal'))closeRegisterModal();});
+document.getElementById('btn-register').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-register'),err=document.getElementById('reg-error');
   err.classList.remove('show');
-  if (!email || !password) { err.textContent = 'Please enter your email and password.'; err.classList.add('show'); return; }
-  btn.disabled = true; btn.textContent = 'Signing in…';
-  try {
-    const data = await apiCall('POST', '/api/portal/login', { email, password });
-    saveToken(data.token);
-    appState.candidate = data.candidate;
-    await loadDashboard();
-    showScreen('screen-dashboard');
-  } catch(e) {
-    err.textContent = e.message; err.classList.add('show');
-    if (e.message && e.message.includes('social login')) {
-      err.innerHTML = e.message + ' &nbsp;<a href="/api/portal/auth/google" style="color:var(--primary);">Google</a> / <a href="/api/portal/auth/microsoft" style="color:var(--primary);">Microsoft</a>';
-    }
-  } finally {
-    btn.disabled = false; btn.textContent = 'Sign In';
-  }
-}
-
-async function sendOtp(email) {
-  const err = document.getElementById('step-otp-error1');
-  const btn = document.getElementById('btn-send-otp');
-  err.classList.remove('show');
-  btn.disabled = true; btn.textContent = 'Sending…';
-  try {
-    await apiCall('POST', '/api/portal/request-otp', { email });
-    document.getElementById('otp-sent-msg').textContent = `A 6-digit code was sent to ${email}`;
-    document.getElementById('otp-email-row').style.display = 'none';
-    document.getElementById('otp-verify-row').style.display = '';
-    startResendTimer(60);
-    setTimeout(() => document.getElementById('login-otp').focus(), 100);
-  } catch(e) {
-    err.textContent = e.message; err.classList.add('show');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Send Sign-In Code';
-  }
-}
-
-async function verifyOtp(email, otp) {
-  const err = document.getElementById('step2-error');
-  const btn = document.getElementById('btn-verify-otp');
-  err.classList.remove('show');
-  btn.disabled = true; btn.textContent = 'Signing in…';
-  try {
-    const data = await apiCall('POST', '/api/portal/verify-otp', { email, otp });
-    saveToken(data.token);
-    appState.candidate = data.candidate;
-    clearInterval(resendInterval);
-    await loadDashboard();
-    showScreen('screen-dashboard');
-  } catch(e) {
-    err.textContent = e.message; err.classList.add('show');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Sign In';
-  }
-}
-
-document.getElementById('btn-signin').addEventListener('click', signInWithPassword);
-document.getElementById('login-email').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('login-password').focus(); });
-document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') signInWithPassword(); });
-
-document.getElementById('btn-send-otp').addEventListener('click', () => {
-  const email = document.getElementById('login-email-otp').value.trim();
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    const err = document.getElementById('step-otp-error1');
-    err.textContent = 'Please enter a valid email address.'; err.classList.add('show'); return;
-  }
-  sendOtp(email);
-});
-document.getElementById('login-email-otp').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-send-otp').click(); });
-
-document.getElementById('btn-verify-otp').addEventListener('click', () => {
-  const email = document.getElementById('login-email-otp').value.trim();
-  const otp = document.getElementById('login-otp').value.trim();
-  if (!otp || otp.length < 4) {
-    const err = document.getElementById('step2-error');
-    err.textContent = 'Enter the code from your email.'; err.classList.add('show'); return;
-  }
-  verifyOtp(email, otp);
-});
-document.getElementById('login-otp').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('btn-verify-otp').click(); });
-
-document.getElementById('btn-resend').addEventListener('click', () => {
-  const email = document.getElementById('login-email-otp').value.trim();
-  if (email) sendOtp(email);
+  const name=document.getElementById('reg-name').value.trim(),email=document.getElementById('reg-email').value.trim(),phone=document.getElementById('reg-phone').value.trim(),org=document.getElementById('reg-org').value.trim(),pw=document.getElementById('reg-password').value,pw2=document.getElementById('reg-password2').value;
+  if(!name||!email||!pw){err.textContent='Name, email and password are required.';err.classList.add('show');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.textContent='Please enter a valid email address.';err.classList.add('show');return;}
+  if(pw.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
+  if(pw!==pw2){err.textContent='Passwords do not match.';err.classList.add('show');return;}
+  btn.disabled=true;btn.textContent='Creating account…';
+  try{
+    const data=await apiCall('POST','/api/portal/register',{name,email,phone:phone||null,organization:org||null,password:pw});
+    saveToken(data.token);appState.candidate=data.candidate;closeRegisterModal();await loadDashboard();showScreen('screen-dashboard');
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Create Account';}
 });
 
-/* ════════════════════════════════════════════
-   OAUTH POPUP
-════════════════════════════════════════════ */
-function oauthPopup(provider) {
-  const w = 520, h = 620;
-  const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
-  const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
-  const popup = window.open(
-    '/api/portal/auth/' + provider,
-    'oauth_' + provider,
-    `width=${w},height=${h},left=${left},top=${top},toolbar=0,menubar=0,location=0,scrollbars=1`
-  );
-  if (!popup) {
-    const err = document.getElementById('step1-error');
-    err.textContent = 'Popup was blocked by your browser. Please allow popups for this site.';
-    err.classList.add('show');
-    return;
-  }
-  const handler = (e) => {
-    if (e.origin !== window.location.origin) return;
-    if (e.data && e.data.type === 'oauth_success') {
-      window.removeEventListener('message', handler);
-      handleOAuthToken(e.data.token);
-    }
-    if (e.data && e.data.type === 'oauth_error') {
-      window.removeEventListener('message', handler);
-      const err = document.getElementById('step1-error');
-      err.textContent = e.data.error; err.classList.add('show');
-    }
-  };
-  window.addEventListener('message', handler);
-}
-
-async function handleOAuthToken(token) {
-  saveToken(token);
-  appState.token = token;
-  try {
-    const p = await apiCall('GET', '/api/portal/profile');
-    appState.candidate = p;
-    await loadDashboard();
-    showScreen('screen-dashboard');
-  } catch(e) {
-    clearAuth();
-    const err = document.getElementById('step1-error');
-    err.textContent = 'Sign-in failed. Please try again.'; err.classList.add('show');
-    showScreen('screen-login');
-  }
-}
-
-/* ════════════════════════════════════════════
-   REGISTER MODAL
-════════════════════════════════════════════ */
-function openRegisterModal() {
-  const m = document.getElementById('register-modal');
-  m.style.display = 'flex';
-  setTimeout(() => document.getElementById('reg-name').focus(), 100);
-}
-function closeRegisterModal() {
-  document.getElementById('register-modal').style.display = 'none';
-  document.getElementById('reg-error').classList.remove('show');
-}
-document.getElementById('register-modal').addEventListener('click', (e) => {
-  if (e.target === document.getElementById('register-modal')) closeRegisterModal();
-});
-
-document.getElementById('btn-register').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-register');
-  const err = document.getElementById('reg-error');
-  err.classList.remove('show');
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const phone = document.getElementById('reg-phone').value.trim();
-  const password = document.getElementById('reg-password').value;
-  const password2 = document.getElementById('reg-password2').value;
-  if (!name || !email || !password) { err.textContent = 'Name, email and password are required.'; err.classList.add('show'); return; }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { err.textContent = 'Please enter a valid email address.'; err.classList.add('show'); return; }
-  if (password.length < 6) { err.textContent = 'Password must be at least 6 characters.'; err.classList.add('show'); return; }
-  if (password !== password2) { err.textContent = 'Passwords do not match.'; err.classList.add('show'); return; }
-  btn.disabled = true; btn.textContent = 'Creating account…';
-  try {
-    const data = await apiCall('POST', '/api/portal/register', { name, email, phone: phone || null, password });
-    saveToken(data.token);
-    appState.candidate = data.candidate;
-    closeRegisterModal();
-    await loadDashboard();
-    showScreen('screen-dashboard');
-  } catch(e) {
-    err.textContent = e.message; err.classList.add('show');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Create Account';
-  }
-});
-
-/* ════════════════════════════════════════════
-   SIGN OUT
-════════════════════════════════════════════ */
-document.getElementById('btn-signout').addEventListener('click', () => {
+/* ── SIGN OUT ── */
+document.getElementById('btn-signout').addEventListener('click',()=>{
   clearAuth();
-  document.getElementById('login-email').value = '';
-  document.getElementById('login-otp').value = '';
-  showStep(1);
-  showScreen('screen-login');
+  ['login-email','login-password','login-otp','login-email-otp'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  showStep(1);showScreen('screen-login');
+  try{fetch('/api/portal/logout',{method:'POST'});}catch(e){}
 });
 
-/* ════════════════════════════════════════════
-   SIDEBAR NAV
-════════════════════════════════════════════ */
-function switchTab(tabName) {
-  document.querySelectorAll('.nav-item').forEach(n => {
-    n.classList.toggle('active', n.dataset.tab === tabName);
-  });
-  document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-  const pane = document.getElementById('tab-' + tabName);
-  if (pane) pane.classList.add('active');
+async function doSignoutAll(){
+  if(!confirm('Sign out from all devices?'))return;
+  clearAuth();showScreen('screen-login');
+  try{fetch('/api/portal/logout',{method:'POST'});}catch(e){}
+}
+
+/* ── SIDEBAR ── */
+function switchTab(name){
+  document.querySelectorAll('.nav-item[data-tab]').forEach(n=>n.classList.toggle('active',n.dataset.tab===name));
+  document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+  const pane=document.getElementById('tab-'+name);if(pane)pane.classList.add('active');
   closeSidebar();
+  document.getElementById('main-content').scrollTop=0;
+  if(name==='my-exams')loadExamsTab();
+  if(name==='results')loadResultsTab();
+  if(name==='profile')loadProfileTab();
+}
+document.querySelectorAll('.nav-item[data-tab]').forEach(btn=>btn.addEventListener('click',()=>switchTab(btn.dataset.tab)));
+const sidebarEl=document.getElementById('sidebar'),overlayEl=document.getElementById('sidebar-overlay');
+function closeSidebar(){sidebarEl.classList.remove('open');overlayEl.classList.remove('show');}
+document.getElementById('sidebar-toggle').addEventListener('click',()=>{sidebarEl.classList.toggle('open');overlayEl.classList.toggle('show');});
+overlayEl.addEventListener('click',closeSidebar);
 
-  if (tabName === 'my-exams') loadExamsTab();
-  if (tabName === 'results') loadResultsTab();
-  if (tabName === 'profile') loadProfileTab();
+/* ── PROFILE TABS ── */
+function switchProfileTab(name, btn){
+  document.querySelectorAll('.profile-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.profile-tab-pane').forEach(p=>p.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  const pane=document.getElementById('ptab-'+name);if(pane)pane.classList.add('active');
 }
 
-document.querySelectorAll('.nav-item[data-tab]').forEach(btn => {
-  btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-});
-
-/* Mobile sidebar */
-const sidebarEl = document.getElementById('sidebar');
-const overlayEl = document.getElementById('sidebar-overlay');
-function closeSidebar() {
-  sidebarEl.classList.remove('open');
-  overlayEl.classList.remove('show');
-}
-document.getElementById('sidebar-toggle').addEventListener('click', () => {
-  sidebarEl.classList.toggle('open');
-  overlayEl.classList.toggle('show');
-});
-overlayEl.addEventListener('click', closeSidebar);
-
-/* ════════════════════════════════════════════
-   DASHBOARD LOAD
-════════════════════════════════════════════ */
-async function loadDashboard() {
-  // Update nav user info
-  const cand = appState.candidate;
-  if (cand) {
-    document.getElementById('nav-user-name').textContent = cand.name || cand.email;
-    document.getElementById('nav-avatar').textContent = initials(cand.name || cand.email);
-    document.getElementById('welcome-name').textContent = 'Welcome back, ' + (cand.name || 'Candidate') + '!';
-  }
-
-  // Load all data in parallel
-  let exams = [], requests = [], history = [];
-  try {
-    [exams, requests, history] = await Promise.all([
-      apiCall('GET', '/api/portal/my-exams').catch(() => []),
-      apiCall('GET', '/api/portal/requests').catch(() => []),
-      apiCall('GET', '/api/portal/history').catch(() => []),
-    ]);
-  } catch(e) { /* handled per call */ }
-
-  const pending = requests.filter(r => r.status === 'pending');
-  const completed = history.length;
-
-  // Stats
-  document.getElementById('stat-pending').textContent = pending.length;
-  document.getElementById('stat-active').textContent = exams.length;
-  document.getElementById('stat-completed').textContent = completed;
-
-  // Active exams section
-  const activeSection = document.getElementById('overview-active-section');
-  const activeCards = document.getElementById('overview-active-cards');
-  if (exams.length > 0) {
-    activeSection.style.display = '';
-    activeCards.innerHTML = exams.map(e => examCardHtml(e)).join('');
-  }
-
-  // Pending section
-  const pendingSection = document.getElementById('overview-pending-section');
-  const pendingList = document.getElementById('overview-pending-list');
-  if (pending.length > 0) {
-    pendingSection.style.display = '';
-    pendingList.innerHTML = pending.map(r => `
-      <div class="pending-item">
-        <div>
-          <div class="pending-item-title">${esc(r.exam_title)}</div>
-          <div class="pending-item-date">Submitted ${fmtDate(r.created_at)}</div>
-        </div>
-        <span class="chip chip-warning">Awaiting Review</span>
-      </div>
-    `).join('');
-  }
-
-  // Empty state
-  if (exams.length === 0 && pending.length === 0) {
-    document.getElementById('overview-empty').style.display = '';
-  }
-}
-
-function examCardHtml(e) {
-  const exp = e.expires_at ? expiresIn(e.expires_at) : '';
-  const expClass = exp === 'Expired' ? 'chip-danger' : 'chip-warning';
-  return `
-    <div class="exam-card">
+/* ── EXAM CARD HTML ── */
+function thumbClass(idx){return 'c'+(idx%6);}
+function examCardHtml(e,idx=0){
+  const exp=expiresIn(e.expires_at);
+  const expired=exp==='Expired';
+  const thumb=e.thumbnail?`<img src="${esc(e.thumbnail)}" alt="">`:`<div class="exam-card-thumb-placeholder">${esc((e.code||e.title||'EX').slice(0,3).toUpperCase())}</div>`;
+  const ribbonChip=expired?`<span class="chip chip-danger">Expired</span>`:exp?`<span class="chip chip-warning">${esc(exp)}</span>`:'';
+  return `<div class="exam-card">
+    <div class="exam-card-thumb ${thumbClass(idx)}">${thumb}${ribbonChip?`<div class="exam-card-status-ribbon">${ribbonChip}</div>`:''}</div>
+    <div class="exam-card-body">
       <div class="exam-card-title">${esc(e.title)}</div>
+      ${e.catalog_description?`<div class="exam-card-desc">${esc(e.catalog_description)}</div>`:''}
       <div class="exam-card-meta">
-        ${e.code ? `<span class="meta-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-          ${esc(e.code)}
-        </span>` : ''}
-        ${e.duration_minutes ? `<span class="meta-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          ${e.duration_minutes} min
-        </span>` : ''}
-        ${e.total_marks ? `<span class="meta-pill">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-          ${e.total_marks} marks
-        </span>` : ''}
-        ${exp ? `<span class="chip ${expClass}" style="font-size:0.72rem;">${exp}</span>` : ''}
+        ${e.code?`<span class="meta-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>${esc(e.code)}</span>`:''}
+        ${e.duration_minutes?`<span class="meta-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${e.duration_minutes} min</span>`:''}
+        ${e.total_marks?`<span class="meta-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${e.total_marks} marks</span>`:''}
       </div>
-      ${e.exam_url && exp !== 'Expired' ? `<a href="${esc(e.exam_url)}" class="btn btn-primary btn-start" target="_blank">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
-        Start Exam
-      </a>` : exp === 'Expired' ? '<span class="chip chip-danger">Link Expired</span>' : ''}
+      <div class="exam-card-footer">
+        <span></span>
+        ${e.exam_url&&!expired?`<a href="${esc(e.exam_url)}" class="btn-start-exam" target="_blank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Start Exam</a>`:`<span style="font-size:.8rem;color:var(--text-muted)">${expired?'Link expired':'No link yet'}</span>`}
+      </div>
     </div>
-  `;
+  </div>`;
 }
 
-/* ════════════════════════════════════════════
-   MY EXAMS TAB
-════════════════════════════════════════════ */
-async function loadExamsTab() {
-  const el = document.getElementById('exams-content');
-  el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
-  try {
-    const [exams, requests] = await Promise.all([
-      apiCall('GET', '/api/portal/my-exams').catch(() => []),
-      apiCall('GET', '/api/portal/requests').catch(() => []),
-    ]);
-
-    let html = '';
-
-    if (exams.length > 0) {
-      html += `<div class="section-heading">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-        Active Exams
-      </div>`;
-      html += '<div class="exam-cards">' + exams.map(e => examCardHtml(e)).join('') + '</div>';
-    }
-
-    const pending = requests.filter(r => r.status === 'pending');
-    const rejected = requests.filter(r => r.status === 'rejected');
-
-    if (pending.length > 0) {
-      html += `<div class="section-heading" style="margin-top:28px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Pending Approval
-      </div>`;
-      html += '<div class="pending-list">' + pending.map(r => `
-        <div class="pending-item">
-          <div>
-            <div class="pending-item-title">${esc(r.exam_title)}</div>
-            <div class="pending-item-date">Submitted ${fmtDate(r.created_at)}</div>
-          </div>
-          <span class="chip chip-warning">Awaiting Review</span>
-        </div>
-      `).join('') + '</div>';
-    }
-
-    if (rejected.length > 0) {
-      html += `<div class="section-heading" style="margin-top:28px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-        Not Approved
-      </div>`;
-      html += '<div class="pending-list">' + rejected.map(r => `
-        <div class="pending-item">
-          <div>
-            <div class="pending-item-title">${esc(r.exam_title)}</div>
-            <div class="pending-item-date">Submitted ${fmtDate(r.created_at)}</div>
-          </div>
-          <span class="chip chip-danger">Not Approved</span>
-        </div>
-      `).join('') + '</div>';
-    }
-
-    if (!html) {
-      html = `<div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
-        <p>You don't have any exam requests yet.</p>
-        <a href="/catalog">Browse Exam Catalog →</a>
-      </div>`;
-    }
-
-    el.innerHTML = html;
-  } catch(e) {
-    el.innerHTML = `<div class="empty-state"><p style="color:var(--danger);">${esc(e.message)}</p></div>`;
+/* ── DASHBOARD ── */
+async function loadDashboard(){
+  const cand=appState.candidate;
+  if(cand){
+    const ini=initials(cand.name||cand.email);
+    const color=avatarColor(cand.name||cand.email);
+    document.getElementById('nav-user-name').textContent=cand.name||cand.email;
+    const navAv=document.getElementById('nav-avatar');
+    navAv.style.background=color;
+    if(cand.photo){navAv.innerHTML=`<img src="${esc(cand.photo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;}
+    else{navAv.textContent=ini;}
+    document.getElementById('banner-welcome').innerHTML=`Welcome back, <strong>${esc(cand.name||'Candidate')}</strong>`;
+    document.getElementById('banner-sub').textContent=cand.email||'';
   }
+  let exams=[],requests=[],history=[];
+  try{[exams,requests,history]=await Promise.all([apiCall('GET','/api/portal/my-exams').catch(()=>[]),apiCall('GET','/api/portal/requests').catch(()=>[]),apiCall('GET','/api/portal/history').catch(()=>[])]);}catch(e){}
+  const pending=requests.filter(r=>r.status==='pending');
+  const passed=history.filter(h=>(h.result_released||h.show_result_immediately)&&h.passed).length;
+  document.getElementById('stat-pending').textContent=pending.length;
+  document.getElementById('stat-active').textContent=exams.length;
+  document.getElementById('stat-completed').textContent=history.length;
+  document.getElementById('stat-passed').textContent=passed;
+  const activeSection=document.getElementById('overview-active-section');
+  if(exams.length>0){activeSection.style.display='';document.getElementById('overview-active-cards').innerHTML=exams.map((e,i)=>examCardHtml(e,i)).join('');}
+  const pendingSection=document.getElementById('overview-pending-section');
+  if(pending.length>0){
+    pendingSection.style.display='';
+    document.getElementById('overview-pending-list').innerHTML=pending.map(r=>`<div class="pending-item"><div><div class="pending-item-title">${esc(r.exam_title)}</div><div class="pending-item-sub">Submitted ${fmtDate(r.created_at)}</div></div><span class="chip chip-warning">Awaiting Review</span></div>`).join('');
+  }
+  if(exams.length===0&&pending.length===0)document.getElementById('overview-empty').style.display='';
 }
 
-/* ════════════════════════════════════════════
-   RESULTS TAB
-════════════════════════════════════════════ */
-async function loadResultsTab() {
-  const el = document.getElementById('results-content');
-  el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
-  try {
-    const history = await apiCall('GET', '/api/portal/history');
-    if (!history.length) {
-      el.innerHTML = `<div class="empty-state">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-        <p>No completed exams yet. Your results will appear here.</p>
-      </div>`;
-      return;
+/* ── MY EXAMS TAB ── */
+async function loadExamsTab(){
+  const el=document.getElementById('exams-content');
+  el.innerHTML='<div style="text-align:center;padding:48px"><div class="spinner" style="margin:0 auto"></div></div>';
+  try{
+    const [exams,requests]=await Promise.all([apiCall('GET','/api/portal/my-exams').catch(()=>[]),apiCall('GET','/api/portal/requests').catch(()=>[])]);
+    let html='';
+    if(exams.length>0){html+=`<div class="section-row"><div class="section-title">Active Exam Links</div></div><div class="exam-cards-grid">${exams.map((e,i)=>examCardHtml(e,i)).join('')}</div>`;}
+    const pending=requests.filter(r=>r.status==='pending');
+    const rejected=requests.filter(r=>r.status==='rejected');
+    if(pending.length>0){html+=`<div class="section-row" style="margin-top:28px"><div class="section-title">Pending Approval</div></div><div class="pending-list">${pending.map(r=>`<div class="pending-item"><div><div class="pending-item-title">${esc(r.exam_title)}</div><div class="pending-item-sub">Submitted ${fmtDate(r.created_at)}</div></div><span class="chip chip-warning">Under Review</span></div>`).join('')}</div>`;}
+    if(rejected.length>0){html+=`<div class="section-row" style="margin-top:28px"><div class="section-title">Not Approved</div></div><div class="pending-list">${rejected.map(r=>`<div class="pending-item"><div><div class="pending-item-title">${esc(r.exam_title)}</div><div class="pending-item-sub">Submitted ${fmtDate(r.created_at)}</div></div><span class="chip chip-danger">Not Approved</span></div>`).join('')}</div>`;}
+    if(!html){html=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg><h3>No exams yet</h3><p>You haven't requested access to any exams.</p><a href="/catalog">Browse Exam Catalog →</a></div>`;}
+    el.innerHTML=html;
+  }catch(e){el.innerHTML=`<div class="empty-state"><p style="color:var(--danger)">${esc(e.message)}</p></div>`;}
+}
+
+/* ── RESULTS TAB ── */
+async function loadResultsTab(){
+  const el=document.getElementById('results-content');
+  el.innerHTML='<div style="text-align:center;padding:48px"><div class="spinner" style="margin:0 auto"></div></div>';
+  try{
+    const history=await apiCall('GET','/api/portal/history');
+    if(!history.length){el.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h3>No results yet</h3><p>Your completed exam results will appear here.</p></div>`;return;}
+    el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Date</th><th>Score</th><th>Result</th></tr></thead><tbody>${history.map(h=>{
+      const showScore=h.result_released||h.show_result_immediately;
+      const pct=showScore&&h.score!=null&&h.total_marks?Math.round(h.score/h.total_marks*100):null;
+      const barClass=pct!=null?(h.passed?'pass':'fail'):'';
+      let chip='';
+      if(!h.result_released&&!h.show_result_immediately)chip='<span class="chip chip-neutral">Pending</span>';
+      else if(h.passed)chip='<span class="chip chip-success">✓ Pass</span>';
+      else chip='<span class="chip chip-danger">✗ Fail</span>';
+      const scoreHtml=showScore?`<div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill ${barClass}" style="width:${pct||0}%"></div></div><span style="font-size:.8rem;font-weight:700;color:var(--text);min-width:36px">${pct!=null?pct+'%':'—'}</span></div>`:'<span style="color:var(--text-muted);font-style:italic;font-size:.8rem">Hidden</span>';
+      return `<tr><td><strong>${esc(h.exam_title)}</strong>${h.code?`<br><span style="font-size:.75rem;color:var(--text-muted)">${esc(h.code)}</span>`:''}</td><td style="color:var(--text-muted);font-size:.875rem;white-space:nowrap">${fmtDateTime(h.completed_at||h.started_at)}</td><td>${scoreHtml}</td><td>${chip}</td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }catch(e){el.innerHTML=`<div class="empty-state"><p style="color:var(--danger)">${esc(e.message)}</p></div>`;}
+}
+
+/* ── PROFILE TAB ── */
+async function loadProfileTab(){
+  try{
+    const p=await apiCall('GET','/api/portal/profile');
+    appState.candidate=p;
+    const ini=initials(p.name||p.email);
+    const color=avatarColor(p.name||p.email);
+    document.getElementById('profile-name-header').textContent=p.name||'—';
+    document.getElementById('profile-email-header').textContent=p.email||'—';
+    document.getElementById('profile-org-header').textContent=p.organization||'';
+    document.getElementById('profile-member-since').textContent=p.created_at?'Member since '+fmtDate(p.created_at):'';
+    document.getElementById('profile-avatar-initials').textContent=ini;
+    document.getElementById('profile-avatar-xl').style.background=`linear-gradient(135deg,${color},${color}aa)`;
+    document.getElementById('acct-email').textContent=p.email||'—';
+    document.getElementById('acct-since').textContent=p.created_at?fmtDate(p.created_at):'—';
+    document.getElementById('acct-id').textContent='#'+p.id;
+    if(p.photo){
+      const img=document.getElementById('profile-photo-img');
+      img.src=p.photo;img.style.display='block';
+      document.getElementById('profile-avatar-initials').style.display='none';
+    } else {
+      document.getElementById('profile-photo-img').style.display='none';
+      document.getElementById('profile-avatar-initials').style.display='';
     }
-    el.innerHTML = `
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Exam</th>
-              <th>Date</th>
-              <th>Score</th>
-              <th>Result</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${history.map(h => {
-              let resultChip;
-              if (!h.result_released && !h.show_result_immediately) {
-                resultChip = '<span class="chip chip-neutral">Pending</span>';
-              } else if (h.passed) {
-                resultChip = '<span class="chip chip-success">Pass</span>';
-              } else {
-                resultChip = '<span class="chip chip-danger">Fail</span>';
-              }
-              const showScore = h.result_released || h.show_result_immediately;
-              const scoreStr = showScore
-                ? `${h.score != null ? h.score : '—'} / ${h.total_marks || '—'}`
-                : '<span style="color:var(--text-muted);font-style:italic;">Hidden</span>';
-              return `
-                <tr>
-                  <td><strong>${esc(h.exam_title)}</strong></td>
-                  <td style="color:var(--text-muted);">${fmtDateTime(h.completed_at || h.started_at)}</td>
-                  <td>${scoreStr}</td>
-                  <td>${resultChip}</td>
-                </tr>
-              `;
-            }).join('')}
-          </tbody>
-        </table>
-      </div>
-    `;
-  } catch(e) {
-    el.innerHTML = `<div class="empty-state"><p style="color:var(--danger);">${esc(e.message)}</p></div>`;
-  }
+    document.getElementById('edit-name').value=p.name||'';
+    document.getElementById('edit-phone').value=p.phone||'';
+    document.getElementById('edit-org').value=p.organization||'';
+    document.getElementById('edit-address').value=p.address||'';
+    document.getElementById('edit-city').value=p.city||'';
+    document.getElementById('edit-state').value=p.state||'';
+    document.getElementById('edit-country').value=p.country||'';
+    document.getElementById('edit-postal').value=p.postal_code||'';
+    document.getElementById('nav-user-name').textContent=p.name||p.email;
+  }catch(e){}
 }
 
-/* ════════════════════════════════════════════
-   PROFILE TAB
-════════════════════════════════════════════ */
-async function loadProfileTab() {
-  try {
-    const p = await apiCall('GET', '/api/portal/profile');
-    appState.candidate = p;
-    document.getElementById('profile-name-display').textContent = p.name || '—';
-    document.getElementById('profile-email-display').textContent = p.email || '—';
-    document.getElementById('profile-phone-display').textContent = p.phone || '—';
-    document.getElementById('profile-since-display').textContent = p.created_at ? fmtDate(p.created_at) : 'N/A';
-    document.getElementById('edit-name').value = p.name || '';
-    document.getElementById('edit-phone').value = p.phone || '';
-  } catch(e) { /* handled elsewhere */ }
+async function saveProfile(){
+  const btn=document.getElementById('btn-save-profile');
+  const err=document.getElementById('profile-error'),suc=document.getElementById('profile-success');
+  err.classList.remove('show');suc.classList.remove('show');
+  const name=document.getElementById('edit-name').value.trim();
+  if(!name){err.textContent='Name cannot be empty.';err.classList.add('show');return;}
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    await apiCall('PUT','/api/portal/profile',{name,phone:document.getElementById('edit-phone').value.trim()||null,organization:document.getElementById('edit-org').value.trim()||null});
+    appState.candidate={...(appState.candidate||{}),name};
+    document.getElementById('profile-name-header').textContent=name;
+    document.getElementById('nav-user-name').textContent=name;
+    document.getElementById('banner-welcome').innerHTML=`Welcome back, <strong>${esc(name)}</strong>`;
+    suc.textContent='Profile saved.';suc.classList.add('show');showToast('Profile updated.','success');
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Save Changes';}
 }
 
-document.getElementById('btn-save-profile').addEventListener('click', async () => {
-  const btn = document.getElementById('btn-save-profile');
-  const errEl = document.getElementById('profile-error');
-  const sucEl = document.getElementById('profile-success');
-  const name = document.getElementById('edit-name').value.trim();
-  const phone = document.getElementById('edit-phone').value.trim();
-  errEl.classList.remove('show'); sucEl.classList.remove('show');
-  if (!name) { errEl.textContent = 'Name cannot be empty.'; errEl.classList.add('show'); return; }
-  btn.disabled = true; btn.textContent = 'Saving…';
-  try {
-    await apiCall('PUT', '/api/portal/profile', { name, phone });
-    appState.candidate = { ...(appState.candidate || {}), name, phone };
-    document.getElementById('nav-user-name').textContent = name;
-    document.getElementById('nav-avatar').textContent = initials(name);
-    document.getElementById('welcome-name').textContent = 'Welcome back, ' + name + '!';
-    document.getElementById('profile-name-display').textContent = name;
-    document.getElementById('profile-phone-display').textContent = phone || '—';
-    sucEl.textContent = 'Profile updated successfully.'; sucEl.classList.add('show');
-    showToast('Profile saved.', 'success');
-  } catch(e) {
-    errEl.textContent = e.message; errEl.classList.add('show');
-  } finally {
-    btn.disabled = false; btn.textContent = 'Save Changes';
-  }
+async function saveAddress(){
+  const btn=document.getElementById('btn-save-addr');
+  const err=document.getElementById('addr-error'),suc=document.getElementById('addr-success');
+  err.classList.remove('show');suc.classList.remove('show');
+  btn.disabled=true;btn.textContent='Saving…';
+  try{
+    await apiCall('PUT','/api/portal/profile',{address:document.getElementById('edit-address').value.trim()||null,city:document.getElementById('edit-city').value.trim()||null,state:document.getElementById('edit-state').value.trim()||null,country:document.getElementById('edit-country').value.trim()||null,postal_code:document.getElementById('edit-postal').value.trim()||null});
+    suc.textContent='Address saved.';suc.classList.add('show');showToast('Address updated.','success');
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Save Address';}
+}
+
+document.getElementById('btn-save-profile').addEventListener('click',saveProfile);
+document.getElementById('btn-save-profile-top').addEventListener('click',saveProfile);
+document.getElementById('btn-save-addr').addEventListener('click',saveAddress);
+
+document.getElementById('btn-change-pw').addEventListener('click',async()=>{
+  const btn=document.getElementById('btn-change-pw'),err=document.getElementById('pw-error'),suc=document.getElementById('pw-success');
+  err.classList.remove('show');suc.classList.remove('show');
+  const np=document.getElementById('pw-new').value,cp=document.getElementById('pw-confirm').value;
+  if(!np||np.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
+  if(np!==cp){err.textContent='Passwords do not match.';err.classList.add('show');return;}
+  btn.disabled=true;btn.textContent='Updating…';
+  try{
+    await apiCall('POST','/api/portal/set-password',{new_password:np});
+    document.getElementById('pw-new').value='';document.getElementById('pw-confirm').value='';
+    suc.textContent='Password updated.';suc.classList.add('show');showToast('Password changed.','success');
+  }catch(e){err.textContent=e.message;err.classList.add('show');}
+  finally{btn.disabled=false;btn.textContent='Update Password';}
 });
 
-/* ════════════════════════════════════════════
-   INIT
-════════════════════════════════════════════ */
-async function init() {
-  const params = new URLSearchParams(window.location.search);
-  const oauthToken = params.get('token');
-  const oauthError = params.get('oauth_error');
-
-  if (oauthToken) {
-    history.replaceState({}, '', '/portal');
-    saveToken(oauthToken);
-    appState.token = oauthToken;
-    try {
-      const p = await apiCall('GET', '/api/portal/profile');
-      appState.candidate = p;
-      await loadDashboard();
-      showScreen('screen-dashboard');
-    } catch(e) {
-      clearAuth();
-      showScreen('screen-login');
-    }
-    return;
-  }
-
-  if (oauthError) {
-    history.replaceState({}, '', '/portal');
-    showScreen('screen-login');
-    const err = document.getElementById('step1-error');
-    err.textContent = decodeURIComponent(oauthError);
-    err.classList.add('show');
-    return;
-  }
-
-  showScreen('screen-loading');
-  const token = getToken();
-  if (!token) { showScreen('screen-login'); return; }
-  appState.token = token;
-  try {
-    const p = await apiCall('GET', '/api/portal/profile');
-    appState.candidate = p;
-    await loadDashboard();
-    showScreen('screen-dashboard');
-  } catch(e) {
-    clearAuth();
-    showScreen('screen-login');
-  }
+/* ── PHOTO UPLOAD ── */
+async function uploadPhoto(input){
+  if(!input.files?.[0])return;
+  const file=input.files[0];
+  if(file.size>1200000){showToast('Image too large. Please use an image under 1MB.','error');input.value='';return;}
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    const photo=e.target.result;
+    try{
+      await apiCall('POST','/api/portal/profile/photo',{photo});
+      const img=document.getElementById('profile-photo-img');
+      img.src=photo;img.style.display='block';
+      document.getElementById('profile-avatar-initials').style.display='none';
+      const navAv=document.getElementById('nav-avatar');
+      navAv.innerHTML=`<img src="${esc(photo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+      if(appState.candidate)appState.candidate.photo=photo;
+      showToast('Profile photo updated.','success');
+    }catch(err2){showToast(err2.message||'Upload failed.','error');}
+  };
+  reader.readAsDataURL(file);
 }
 
+/* ── INIT ── */
+async function init(){
+  await loadBranding();
+  const params=new URLSearchParams(window.location.search);
+  const oauthToken=params.get('token'),oauthError=params.get('oauth_error');
+  if(oauthToken){history.replaceState({},'','/portal');saveToken(oauthToken);appState.token=oauthToken;try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');}catch(e){clearAuth();showScreen('screen-login');}return;}
+  if(oauthError){history.replaceState({},'','/portal');showScreen('screen-login');const err=document.getElementById('step1-error');err.textContent=decodeURIComponent(oauthError);err.classList.add('show');return;}
+  showScreen('screen-loading');
+  const token=getToken();
+  if(!token){showScreen('screen-login');return;}
+  appState.token=token;
+  try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');}
+  catch(e){clearAuth();showScreen('screen-login');}
+}
 init();
 </script>
 </body>

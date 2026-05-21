@@ -34,6 +34,11 @@ function initDb() {
   migrateEmailProfiles(d);
   // JS migration: add password_hash column to candidates
   try { d.exec(`ALTER TABLE candidates ADD COLUMN password_hash TEXT`); } catch(e) { /* already exists */ }
+  // JS migration: extended candidate profile fields
+  const candidateExtras = ['organization', 'address', 'city', 'state', 'country', 'postal_code', 'photo'];
+  for (const col of candidateExtras) {
+    try { d.exec(`ALTER TABLE candidates ADD COLUMN ${col} TEXT`); } catch(e) { /* already exists */ }
+  }
   console.log('Database initialized at', path.resolve(DB_PATH));
 }
 
