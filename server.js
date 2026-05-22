@@ -3,10 +3,11 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const path = require('path');
-const { initDb } = require('./database/index');
+const { initDb, getDb } = require('./database/index');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const SERVER_START = Date.now();
 
 // Init DB
 initDb();
@@ -42,6 +43,9 @@ app.use('/api/portal', require('./src/routes/portal'));
 app.use('/api/catalog', require('./src/routes/catalog'));
 app.use('/exam', require('./src/routes/examPublic'));
 
+// Health endpoint — used by admin panel to detect Render deploys
+app.get('/api/health', (req, res) => res.json({ ok: true, started: SERVER_START, uptime: Math.floor(process.uptime()) }));
+
 // SPA fallback — serve admin shell for /admin/* paths
 app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin', 'login.html')));
 app.get('/admin/*', (req, res) => {
@@ -58,24 +62,29 @@ app.get('/catalog', (req, res) => res.sendFile(path.join(__dirname, 'public', 'c
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register', 'index.html')));
 app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
 
-// Custom URL slug routes — read from DB settings once at startup
-;(function registerCustomSlugs() {
-  try {
-    const { getDb } = require('./database/index');
-    const db = getDb();
-    const portalSlug = db.prepare("SELECT value FROM settings WHERE key='portal_slug'").get()?.value || 'portal';
-    const catalogSlug = db.prepare("SELECT value FROM settings WHERE key='catalog_slug'").get()?.value || 'catalog';
-    if (portalSlug !== 'portal') {
-      app.get(`/${portalSlug}`, (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
-      app.get(`/${portalSlug}/*`, (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
-      console.log(`  Custom portal slug: /${portalSlug} → /portal`);
-    }
-    if (catalogSlug !== 'catalog') {
-      app.get(`/${catalogSlug}`, (req, res) => res.sendFile(path.join(__dirname, 'public', 'catalog', 'index.html')));
-      console.log(`  Custom catalog slug: /${catalogSlug} → /catalog`);
-    }
-  } catch(e) { /* DB not ready yet — default slugs in use */ }
-}());
+// Dynamic custom slug middleware — reads from DB with 10s cache, no restart needed
+let _slugCache = null, _slugCacheAt = 0;
+app.use((req, res, next) => {
+  const now = Date.now();
+  if (!_slugCache || now - _slugCacheAt > 10000) {
+    try {
+      const db = getDb();
+      _slugCache = {
+        portal:  db.prepare("SELECT value FROM settings WHERE key='portal_slug'").get()?.value  || 'portal',
+        catalog: db.prepare("SELECT value FROM settings WHERE key='catalog_slug'").get()?.value || 'catalog',
+      };
+    } catch(e) { _slugCache = { portal: 'portal', catalog: 'catalog' }; }
+    _slugCacheAt = now;
+  }
+  const p = req.path;
+  if (_slugCache.portal !== 'portal' && (p === `/${_slugCache.portal}` || p.startsWith(`/${_slugCache.portal}/`))) {
+    return res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html'));
+  }
+  if (_slugCache.catalog !== 'catalog' && p === `/${_slugCache.catalog}`) {
+    return res.sendFile(path.join(__dirname, 'public', 'catalog', 'index.html'));
+  }
+  next();
+});
 
 // Error handler
 app.use((err, req, res, next) => {
