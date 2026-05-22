@@ -79,6 +79,8 @@ function initDb() {
   } catch(e) {}
   // JS migration: is_abandoned flag on submissions
   try { d.exec(`ALTER TABLE submissions ADD COLUMN is_abandoned INTEGER DEFAULT 0`); } catch(e) {}
+  // JS migration: screen monitoring consent gate per exam
+  try { d.exec(`ALTER TABLE exams ADD COLUMN require_screen_consent INTEGER DEFAULT 0`); } catch(e) {}
   // JS migration: recycle bin tables
   try { d.exec(`CREATE TABLE IF NOT EXISTS deleted_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

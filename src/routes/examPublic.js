@@ -71,7 +71,8 @@ router.get('/:token', (req, res) => {
     exam: {
       id: exam.id, title: exam.title, description: exam.description, instructions: exam.instructions,
       duration_minutes: exam.duration_minutes, total_marks: exam.total_marks, pass_marks: exam.pass_marks,
-      allow_review: exam.allow_review, branding_color: exam.branding_color, branding_logo: exam.branding_logo
+      allow_review: exam.allow_review, branding_color: exam.branding_color, branding_logo: exam.branding_logo,
+      require_screen_consent: exam.require_screen_consent || 0
     },
     sections, questions, settings
   });

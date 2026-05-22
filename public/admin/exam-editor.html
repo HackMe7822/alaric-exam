@@ -355,6 +355,15 @@ textarea.form-control-sm { resize: vertical; min-height: 72px; }
         <label class="toggle-sw"><input type="checkbox" id="s-is-open-test"><span class="sw-track"></span></label>
       </div>
 
+      <div class="panel-section-title">Proctoring</div>
+      <div class="toggle-row">
+        <div>
+          <label style="display:block;font-weight:600">Require Monitoring Consent</label>
+          <span style="font-size:11px;color:var(--gray);display:block;margin-top:2px">Candidate must agree to session monitoring before starting. If on, exam cannot begin without consent.</span>
+        </div>
+        <label class="toggle-sw" style="flex-shrink:0"><input type="checkbox" id="s-require-consent"><span class="sw-track"></span></label>
+      </div>
+
       <div class="panel-section-title">Branding</div>
       <div class="form-group-sm">
         <label>Brand Color</label>
@@ -842,6 +851,7 @@ function populateSettings() {
   chk('s-allow-review', e.allow_review);
   chk('s-is-public',    e.is_public);
   chk('s-is-open-test', e.is_open_test);
+  chk('s-require-consent', e.require_screen_consent);
 
   const color = e.branding_color || '#0078D4';
   set('s-color',     color);
@@ -916,7 +926,8 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
     show_result_immediately: document.getElementById('s-show-result').checked,
     allow_review:         document.getElementById('s-allow-review').checked,
     is_public:            document.getElementById('s-is-public').checked,
-    is_open_test:         document.getElementById('s-is-open-test').checked,
+    is_open_test:            document.getElementById('s-is-open-test').checked,
+    require_screen_consent:  document.getElementById('s-require-consent').checked,
     branding_color:       document.getElementById('s-color-hex').value || document.getElementById('s-color').value,
     catalog_description:  document.getElementById('s-catalog-desc').value || null,
     catalog_image:        window._pendingCatalogImg !== undefined ? window._pendingCatalogImg : (_exam.catalog_image || null),
