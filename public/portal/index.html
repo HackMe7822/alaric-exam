@@ -704,9 +704,22 @@ html,body { height:100%; background:var(--bg); color:var(--text); font-family:'S
                     <label class="form-label" for="edit-name">Full Name *</label>
                     <input id="edit-name" type="text" class="form-input" placeholder="Your full name">
                   </div>
-                  <div class="form-group">
-                    <label class="form-label" for="edit-phone">Phone Number</label>
-                    <input id="edit-phone" type="tel" class="form-input" placeholder="+1 555 000 0000">
+                  <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Phone Number
+                      <span id="phone-verified-badge" style="display:none;margin-left:8px;font-size:.72rem;font-weight:700;background:#dff6dd;color:#107c10;padding:2px 8px;border-radius:10px;letter-spacing:.03em">✓ Verified</span>
+                      <span id="phone-unverified-badge" style="display:none;margin-left:8px;font-size:.72rem;font-weight:700;background:#fff4ce;color:#ca5010;padding:2px 8px;border-radius:10px;letter-spacing:.03em">Unverified</span>
+                    </label>
+                    <div style="display:flex;gap:8px;align-items:stretch">
+                      <select id="edit-phone-cc" class="form-input" style="width:160px;flex-shrink:0;padding-right:4px"></select>
+                      <input id="edit-phone-num" type="tel" class="form-input" placeholder="Phone number" style="flex:1">
+                      <button type="button" id="btn-send-phone-otp" class="btn btn-secondary" style="white-space:nowrap;padding:8px 14px;font-size:.8rem" onclick="sendPhoneOtp()">Send Code</button>
+                    </div>
+                    <div id="phone-otp-row" style="display:none;margin-top:8px;display:none;gap:8px;align-items:center">
+                      <input id="phone-otp-input" type="text" class="form-input" placeholder="6-digit code" maxlength="6" style="width:160px;letter-spacing:4px;font-size:1rem;text-align:center">
+                      <button type="button" class="btn btn-primary" style="padding:8px 16px;font-size:.8rem" onclick="verifyPhoneOtp()">Verify</button>
+                      <button type="button" class="btn btn-ghost" style="padding:8px 10px;font-size:.8rem" onclick="document.getElementById('phone-otp-row').style.display='none'">Cancel</button>
+                    </div>
+                    <div id="phone-otp-msg" style="font-size:.78rem;margin-top:5px;display:none"></div>
                   </div>
                   <div class="form-group">
                     <label class="form-label" for="edit-org">Organization / Company</label>
@@ -899,8 +912,11 @@ html,body { height:100%; background:var(--bg); color:var(--text); font-family:'S
       <input id="reg-email" type="email" class="form-input" placeholder="you@example.com">
     </div>
     <div class="form-group">
-      <label class="form-label" for="reg-phone">Phone Number</label>
-      <input id="reg-phone" type="tel" class="form-input" placeholder="+1 555 000 0000">
+      <label class="form-label">Phone Number</label>
+      <div style="display:flex;gap:8px">
+        <select id="reg-phone-cc" class="form-input" style="width:155px;flex-shrink:0;padding-right:4px"></select>
+        <input id="reg-phone-num" type="tel" class="form-input" placeholder="Phone number" style="flex:1">
+      </div>
     </div>
     <div class="form-group">
       <label class="form-label" for="reg-org">Organization</label>
@@ -929,6 +945,104 @@ html,body { height:100%; background:var(--bg); color:var(--text); font-family:'S
 const API = '';
 let appState = { token: null, candidate: null, branding: null };
 let resendInterval = null;
+
+/* ── PHONE CODES ── */
+const PHONE_CODES=[
+  ['+1','🇺🇸 US / Canada'],
+  ['+44','🇬🇧 United Kingdom'],
+  ['+91','🇮🇳 India'],
+  ['+61','🇦🇺 Australia'],
+  ['+86','🇨🇳 China'],
+  ['+81','🇯🇵 Japan'],
+  ['+82','🇰🇷 South Korea'],
+  ['+49','🇩🇪 Germany'],
+  ['+33','🇫🇷 France'],
+  ['+39','🇮🇹 Italy'],
+  ['+34','🇪🇸 Spain'],
+  ['+55','🇧🇷 Brazil'],
+  ['+52','🇲🇽 Mexico'],
+  ['+971','🇦🇪 UAE'],
+  ['+966','🇸🇦 Saudi Arabia'],
+  ['+974','🇶🇦 Qatar'],
+  ['+965','🇰🇼 Kuwait'],
+  ['+968','🇴🇲 Oman'],
+  ['+973','🇧🇭 Bahrain'],
+  ['+65','🇸🇬 Singapore'],
+  ['+60','🇲🇾 Malaysia'],
+  ['+63','🇵🇭 Philippines'],
+  ['+62','🇮🇩 Indonesia'],
+  ['+84','🇻🇳 Vietnam'],
+  ['+66','🇹🇭 Thailand'],
+  ['+880','🇧🇩 Bangladesh'],
+  ['+92','🇵🇰 Pakistan'],
+  ['+94','🇱🇰 Sri Lanka'],
+  ['+852','🇭🇰 Hong Kong'],
+  ['+90','🇹🇷 Turkey'],
+  ['+972','🇮🇱 Israel'],
+  ['+961','🇱🇧 Lebanon'],
+  ['+962','🇯🇴 Jordan'],
+  ['+964','🇮🇶 Iraq'],
+  ['+20','🇪🇬 Egypt'],
+  ['+27','🇿🇦 South Africa'],
+  ['+234','🇳🇬 Nigeria'],
+  ['+254','🇰🇪 Kenya'],
+  ['+212','🇲🇦 Morocco'],
+  ['+7','🇷🇺 Russia'],
+  ['+380','🇺🇦 Ukraine'],
+  ['+48','🇵🇱 Poland'],
+  ['+46','🇸🇪 Sweden'],
+  ['+47','🇳🇴 Norway'],
+  ['+45','🇩🇰 Denmark'],
+  ['+41','🇨🇭 Switzerland'],
+  ['+43','🇦🇹 Austria'],
+  ['+31','🇳🇱 Netherlands'],
+  ['+32','🇧🇪 Belgium'],
+  ['+351','🇵🇹 Portugal'],
+  ['+353','🇮🇪 Ireland'],
+  ['+358','🇫🇮 Finland'],
+  ['+30','🇬🇷 Greece'],
+  ['+36','🇭🇺 Hungary'],
+  ['+40','🇷🇴 Romania'],
+  ['+420','🇨🇿 Czech Republic'],
+  ['+54','🇦🇷 Argentina'],
+  ['+56','🇨🇱 Chile'],
+  ['+57','🇨🇴 Colombia'],
+  ['+51','🇵🇪 Peru'],
+  ['+64','🇳🇿 New Zealand'],
+  ['+98','🇮🇷 Iran'],
+];
+// Sort by code length descending for greedy prefix matching
+const PHONE_CODES_SORTED = [...PHONE_CODES].sort((a,b) => b[0].length - a[0].length);
+
+function buildPhoneOptions() {
+  return PHONE_CODES.map(([code, name]) => `<option value="${code}">${name} (${code})</option>`).join('');
+}
+function initPhoneSelects() {
+  document.querySelectorAll('select[id$="-phone-cc"]').forEach(sel => {
+    sel.innerHTML = buildPhoneOptions();
+  });
+}
+function parsePhone(full) {
+  if (!full) return { cc: '+1', num: '' };
+  full = full.trim();
+  if (!full.startsWith('+')) return { cc: '+1', num: full };
+  for (const [code] of PHONE_CODES_SORTED) {
+    if (full.startsWith(code)) return { cc: code, num: full.slice(code.length).trim() };
+  }
+  return { cc: '+1', num: full };
+}
+function getPhone(ccId, numId) {
+  const cc = document.getElementById(ccId)?.value || '+1';
+  const num = document.getElementById(numId)?.value.trim() || '';
+  return num ? cc + ' ' + num : '';
+}
+function setPhone(ccId, numId, full) {
+  const { cc, num } = parsePhone(full);
+  const sel = document.getElementById(ccId);
+  if (sel) sel.value = cc;
+  const inp = document.getElementById(numId);
+  if (inp) inp.value = num;
+}
 
 /* ── UTILS ── */
 function setCookie(n,v,d){const x=new Date();x.setTime(x.getTime()+d*864e5);document.cookie=`${n}=${v};expires=${x.toUTCString()};path=/;SameSite=Lax`;}
@@ -1141,7 +1255,7 @@ document.getElementById('register-modal').addEventListener('click',e=>{if(e.targ
 document.getElementById('btn-register').addEventListener('click',async()=>{
   const btn=document.getElementById('btn-register'),err=document.getElementById('reg-error');
   err.classList.remove('show');
-  const name=document.getElementById('reg-name').value.trim(),email=document.getElementById('reg-email').value.trim(),phone=document.getElementById('reg-phone').value.trim(),org=document.getElementById('reg-org').value.trim(),pw=document.getElementById('reg-password').value,pw2=document.getElementById('reg-password2').value;
+  const name=document.getElementById('reg-name').value.trim(),email=document.getElementById('reg-email').value.trim(),phone=getPhone('reg-phone-cc','reg-phone-num'),org=document.getElementById('reg-org').value.trim(),pw=document.getElementById('reg-password').value,pw2=document.getElementById('reg-password2').value;
   if(!name||!email||!pw){err.textContent='Name, email and password are required.';err.classList.add('show');return;}
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){err.textContent='Please enter a valid email address.';err.classList.add('show');return;}
   if(pw.length<6){err.textContent='Password must be at least 6 characters.';err.classList.add('show');return;}
@@ -1343,7 +1457,10 @@ async function loadProfileTab(){
       document.getElementById('profile-avatar-initials').style.display='';
     }
     document.getElementById('edit-name').value=p.name||'';
-    document.getElementById('edit-phone').value=p.phone||'';
+    setPhone('edit-phone-cc','edit-phone-num',p.phone||'');
+    // Phone verification badge
+    document.getElementById('phone-verified-badge').style.display=p.phone&&p.phone_verified?'':'none';
+    document.getElementById('phone-unverified-badge').style.display=p.phone&&!p.phone_verified?'':'none';
     document.getElementById('edit-org').value=p.organization||'';
     document.getElementById('edit-address').value=p.address||'';
     document.getElementById('edit-city').value=p.city||'';
@@ -1362,7 +1479,11 @@ async function saveProfile(){
   if(!name){err.textContent='Name cannot be empty.';err.classList.add('show');return;}
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    await apiCall('PUT','/api/portal/profile',{name,phone:document.getElementById('edit-phone').value.trim()||null,organization:document.getElementById('edit-org').value.trim()||null});
+    await apiCall('PUT','/api/portal/profile',{name,phone:getPhone('edit-phone-cc','edit-phone-num')||null,organization:document.getElementById('edit-org').value.trim()||null});
+    // Update verification badge (phone change clears verified status)
+    const newPhone=getPhone('edit-phone-cc','edit-phone-num');
+    document.getElementById('phone-verified-badge').style.display='none';
+    document.getElementById('phone-unverified-badge').style.display=newPhone?'':'none';
     appState.candidate={...(appState.candidate||{}),name};
     document.getElementById('profile-name-header').textContent=name;
     document.getElementById('nav-user-name').textContent=name;
@@ -1561,8 +1682,55 @@ async function pollPortalChanges(seed){
   }catch(e){}
 }
 
+/* ── PHONE OTP VERIFICATION ── */
+let _phoneOtpCooldown = null;
+async function sendPhoneOtp(){
+  const phone = getPhone('edit-phone-cc','edit-phone-num');
+  if(!phone){ showToast('Enter a phone number first.','warning',3000); return; }
+  const btn = document.getElementById('btn-send-phone-otp');
+  const msg = document.getElementById('phone-otp-msg');
+  btn.disabled = true;
+  try{
+    await apiCall('POST','/api/portal/phone/send-otp',{ phone });
+    document.getElementById('phone-otp-row').style.display='flex';
+    msg.textContent='A 6-digit code was sent to your email address. Enter it below to verify this number.';
+    msg.style.color='var(--text-muted)'; msg.style.display='block';
+    // Cooldown countdown
+    let secs = 60;
+    clearInterval(_phoneOtpCooldown);
+    btn.textContent = `Resend (${secs}s)`;
+    _phoneOtpCooldown = setInterval(()=>{
+      secs--;
+      if(secs<=0){ clearInterval(_phoneOtpCooldown); btn.disabled=false; btn.textContent='Resend Code'; }
+      else btn.textContent=`Resend (${secs}s)`;
+    },1000);
+  }catch(e){
+    msg.textContent=e.message; msg.style.color='var(--danger)'; msg.style.display='block';
+    btn.disabled=false;
+  }
+}
+async function verifyPhoneOtp(){
+  const otp = document.getElementById('phone-otp-input').value.trim();
+  if(otp.length!==6){ showToast('Enter the 6-digit code.','warning',3000); return; }
+  const msg = document.getElementById('phone-otp-msg');
+  try{
+    const data = await apiCall('POST','/api/portal/phone/verify-otp',{ otp });
+    document.getElementById('phone-otp-row').style.display='none';
+    document.getElementById('phone-otp-input').value='';
+    document.getElementById('phone-verified-badge').style.display='';
+    document.getElementById('phone-unverified-badge').style.display='none';
+    msg.textContent='✓ Phone number verified successfully!'; msg.style.color='var(--success)'; msg.style.display='block';
+    showToast('Phone number verified!','success',4000);
+    clearInterval(_phoneOtpCooldown);
+    const btn=document.getElementById('btn-send-phone-otp'); btn.disabled=false; btn.textContent='Send Code';
+  }catch(e){
+    msg.textContent=e.message; msg.style.color='var(--danger)'; msg.style.display='block';
+  }
+}
+
 /* ── INIT ── */
 async function init(){
+  initPhoneSelects();
   await loadBranding();
   const params=new URLSearchParams(window.location.search);
   const oauthToken=params.get('token'),oauthError=params.get('oauth_error');

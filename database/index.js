@@ -45,6 +45,8 @@ function initDb() {
   for (const col of candidateExtras) {
     try { d.exec(`ALTER TABLE candidates ADD COLUMN ${col} TEXT`); } catch(e) { /* already exists */ }
   }
+  // JS migration: phone_verified flag on candidates
+  try { d.exec(`ALTER TABLE candidates ADD COLUMN phone_verified INTEGER DEFAULT 0`); } catch(e) {}
   // JS migration: test candidate for portal demos
   try {
     const existing = d.prepare("SELECT id FROM candidates WHERE email='test@test.com'").get();

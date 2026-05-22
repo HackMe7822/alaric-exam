@@ -127,7 +127,7 @@ router.post('/verify-otp', (req, res) => {
 // GET /api/portal/profile
 router.get('/profile', candidateAuth, (req, res) => {
   const db = getDb();
-  const c = db.prepare('SELECT id, name, email, phone, employee_id, organization, address, city, state, country, postal_code, photo, created_at FROM candidates WHERE id=?').get(req.candidateId);
+  const c = db.prepare('SELECT id, name, email, phone, phone_verified, employee_id, organization, address, city, state, country, postal_code, photo, created_at FROM candidates WHERE id=?').get(req.candidateId);
   if (!c) return res.status(404).json({ error: 'Not found' });
   res.json(c);
 });
@@ -137,9 +137,76 @@ router.put('/profile', candidateAuth, (req, res) => {
   const db = getDb();
   const { name, phone, organization, address, city, state, country, postal_code } = req.body;
   if (!name) return res.status(400).json({ error: 'Name is required' });
-  db.prepare(`UPDATE candidates SET name=?, phone=?, organization=?, address=?, city=?, state=?, country=?, postal_code=?, updated_at=datetime('now') WHERE id=?`)
-    .run(name.trim(), phone?.trim()||null, organization?.trim()||null, address?.trim()||null, city?.trim()||null, state?.trim()||null, country?.trim()||null, postal_code?.trim()||null, req.candidateId);
+  // If phone changed, clear phone_verified
+  const existing = db.prepare('SELECT phone FROM candidates WHERE id=?').get(req.candidateId);
+  const phoneChanged = phone?.trim() !== (existing?.phone || '');
+  db.prepare(`UPDATE candidates SET name=?, phone=?, phone_verified=?, organization=?, address=?, city=?, state=?, country=?, postal_code=?, updated_at=datetime('now') WHERE id=?`)
+    .run(name.trim(), phone?.trim()||null, phoneChanged ? 0 : (existing?.phone_verified || 0),
+         organization?.trim()||null, address?.trim()||null, city?.trim()||null,
+         state?.trim()||null, country?.trim()||null, postal_code?.trim()||null, req.candidateId);
   res.json({ ok: true });
+});
+
+// POST /api/portal/phone/send-otp — send OTP to email to verify a phone number
+router.post('/phone/send-otp', candidateAuth, (req, res) => {
+  const db = getDb();
+  const { phone } = req.body;
+  if (!phone || phone.trim().length < 5) return res.status(400).json({ error: 'Valid phone number required' });
+  const candidate = db.prepare('SELECT id, email, name FROM candidates WHERE id=?').get(req.candidateId);
+  if (!candidate) return res.status(404).json({ error: 'Not found' });
+  // Rate-limit: one OTP per 60s
+  const recent = db.prepare(`SELECT id FROM email_otps WHERE email=? AND purpose='phone_verify' AND datetime(created_at) > datetime('now','-60 seconds')`).get(candidate.email);
+  if (recent) return res.status(429).json({ error: 'Please wait 60 seconds before requesting another code.' });
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expires_at = new Date(Date.now() + 15 * 60000).toISOString();
+  db.prepare(`DELETE FROM email_otps WHERE email=? AND purpose='phone_verify'`).run(candidate.email);
+  db.prepare(`INSERT INTO email_otps(email, otp_code, expires_at, purpose, payload) VALUES(?,?,?,?,?)`)
+    .run(candidate.email, otp, expires_at, 'phone_verify', JSON.stringify({ phone: phone.trim() }));
+  setImmediate(async () => {
+    try {
+      const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:10px">
+        <h2 style="color:#0078d4;margin:0 0 8px">Verify Your Phone Number</h2>
+        <p style="color:#555;margin:0 0 24px">Hi ${candidate.name || 'there'}, use this code to verify <strong>${phone.trim()}</strong> as your phone number.</p>
+        <div style="background:#f0f7ff;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px">
+          <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#111827;font-family:monospace">${otp}</span>
+        </div>
+        <p style="color:#888;font-size:13px;margin:0">This code expires in 15 minutes. If you did not request this, please ignore this email.</p>
+      </div>`;
+      await sendEmail({ to: candidate.email, subject: `${otp} — verify your phone number`, html, templateCode: 'phone_verify', purpose: 'system' });
+    } catch(e) { console.error('[portal] phone OTP email error:', e.message); }
+  });
+  res.json({ ok: true });
+});
+
+// POST /api/portal/phone/verify-otp — confirm code and mark phone verified
+router.post('/phone/verify-otp', candidateAuth, (req, res) => {
+  const db = getDb();
+  const { otp } = req.body;
+  if (!otp) return res.status(400).json({ error: 'OTP required' });
+  const candidate = db.prepare('SELECT email FROM candidates WHERE id=?').get(req.candidateId);
+  if (!candidate) return res.status(404).json({ error: 'Not found' });
+  const record = db.prepare(`SELECT * FROM email_otps WHERE email=? AND purpose='phone_verify'`).get(candidate.email);
+  if (!record) return res.status(400).json({ error: 'No pending verification. Please request a new code.' });
+  if (new Date(record.expires_at) < new Date()) {
+    db.prepare(`DELETE FROM email_otps WHERE id=?`).run(record.id);
+    return res.status(400).json({ error: 'Code expired. Please request a new one.' });
+  }
+  if ((record.attempts || 0) >= 5) {
+    db.prepare(`DELETE FROM email_otps WHERE id=?`).run(record.id);
+    return res.status(400).json({ error: 'Too many incorrect attempts. Please request a new code.' });
+  }
+  if (record.otp_code !== otp.trim()) {
+    db.prepare(`UPDATE email_otps SET attempts=attempts+1 WHERE id=?`).run(record.id);
+    return res.status(400).json({ error: 'Incorrect code. Please try again.' });
+  }
+  let payload = {};
+  try { payload = JSON.parse(record.payload || '{}'); } catch(e) {}
+  db.prepare(`DELETE FROM email_otps WHERE id=?`).run(record.id);
+  if (payload.phone) {
+    db.prepare(`UPDATE candidates SET phone=?, phone_verified=1, updated_at=datetime('now') WHERE id=?`)
+      .run(payload.phone, req.candidateId);
+  }
+  res.json({ ok: true, phone: payload.phone });
 });
 
 // POST /api/portal/profile/photo — upload profile photo (base64, max ~1MB)

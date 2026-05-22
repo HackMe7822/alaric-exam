@@ -302,7 +302,10 @@
       <div class="form-row">
         <div class="form-group">
           <label>Phone</label>
-          <input type="tel" class="form-control" id="cm-phone" placeholder="+1 555 000 0000">
+          <div style="display:flex;gap:6px">
+            <select id="cm-phone-cc" class="form-control" style="width:155px;flex-shrink:0;padding-right:4px"></select>
+            <input type="tel" class="form-control" id="cm-phone-num" placeholder="Phone number" style="flex:1">
+          </div>
         </div>
         <div class="form-group">
           <label>Employee ID</label>
@@ -523,6 +526,14 @@
 <div id="tc"></div>
 
 <script>
+// ── Phone codes ────────────────────────────────────────────────────────────────
+const ADMIN_PHONE_CODES=[['+1','🇺🇸 US/CA'],['+44','🇬🇧 UK'],['+91','🇮🇳 India'],['+61','🇦🇺 AU'],['+86','🇨🇳 CN'],['+81','🇯🇵 JP'],['+82','🇰🇷 KR'],['+49','🇩🇪 DE'],['+33','🇫🇷 FR'],['+39','🇮🇹 IT'],['+34','🇪🇸 ES'],['+55','🇧🇷 BR'],['+52','🇲🇽 MX'],['+971','🇦🇪 UAE'],['+966','🇸🇦 SA'],['+974','🇶🇦 QA'],['+965','🇰🇼 KW'],['+968','🇴🇲 OM'],['+973','🇧🇭 BH'],['+65','🇸🇬 SG'],['+60','🇲🇾 MY'],['+63','🇵🇭 PH'],['+62','🇮🇩 ID'],['+84','🇻🇳 VN'],['+66','🇹🇭 TH'],['+880','🇧🇩 BD'],['+92','🇵🇰 PK'],['+94','🇱🇰 LK'],['+852','🇭🇰 HK'],['+90','🇹🇷 TR'],['+972','🇮🇱 IL'],['+20','🇪🇬 EG'],['+27','🇿🇦 ZA'],['+234','🇳🇬 NG'],['+254','🇰🇪 KE'],['+7','🇷🇺 RU'],['+380','🇺🇦 UA'],['+48','🇵🇱 PL'],['+46','🇸🇪 SE'],['+49','🇩🇪 DE'],['+41','🇨🇭 CH'],['+31','🇳🇱 NL'],['+32','🇧🇪 BE'],['+351','🇵🇹 PT'],['+353','🇮🇪 IE'],['+54','🇦🇷 AR'],['+56','🇨🇱 CL'],['+57','🇨🇴 CO'],['+64','🇳🇿 NZ'],['+98','🇮🇷 IR']];
+const ADMIN_PC_SORTED=[...ADMIN_PHONE_CODES].sort((a,b)=>b[0].length-a[0].length);
+function adminParsePhone(full){if(!full)return{cc:'+1',num:''};full=full.trim();if(!full.startsWith('+'))return{cc:'+1',num:full};for(const[c]of ADMIN_PC_SORTED){if(full.startsWith(c))return{cc:c,num:full.slice(c.length).trim()}}return{cc:'+1',num:full};}
+function adminGetPhone(ccId,numId){const cc=document.getElementById(ccId)?.value||'+1';const num=document.getElementById(numId)?.value.trim()||'';return num?cc+' '+num:'';}
+function adminSetPhone(ccId,numId,full){const{cc,num}=adminParsePhone(full);const s=document.getElementById(ccId);if(s)s.value=cc;const i=document.getElementById(numId);if(i)i.value=num;}
+(function initAdminPhoneSelects(){const opts=ADMIN_PHONE_CODES.map(([c,n])=>`<option value="${c}">${n} (${c})</option>`).join('');document.querySelectorAll('select[id$="-phone-cc"]').forEach(s=>s.innerHTML=opts);})();
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let _candidates = [];
 let _departments= [];
@@ -770,14 +781,15 @@ function openCandModal(id) {
     document.getElementById('cm-id').value    = id;
     document.getElementById('cm-name').value  = c.full_name||c.name||'';
     document.getElementById('cm-email').value = c.email||'';
-    document.getElementById('cm-phone').value = c.phone||'';
+    adminSetPhone('cm-phone-cc','cm-phone-num',c.phone||'');
     document.getElementById('cm-empid').value = c.employee_id||'';
     document.getElementById('cm-dept').value  = c.department_id||'';
     document.getElementById('cm-tags').value  = Array.isArray(c.tags)?c.tags.join(', '):(c.tags||'');
     document.getElementById('cm-notes').value = c.notes||'';
   } else {
     document.getElementById('cand-modal-title').textContent='Add Candidate';
-    ['cm-id','cm-name','cm-email','cm-phone','cm-empid','cm-tags','cm-notes'].forEach(id=>document.getElementById(id).value='');
+    ['cm-id','cm-name','cm-email','cm-phone-num','cm-empid','cm-tags','cm-notes'].forEach(id=>document.getElementById(id).value='');
+    document.getElementById('cm-phone-cc').value='+1';
     document.getElementById('cm-dept').value='';
   }
   openModal('cand-modal');
@@ -794,7 +806,7 @@ document.getElementById('cm-save-btn').onclick = async ()=>{
     full_name:     name,
     name:          name,
     email,
-    phone:         document.getElementById('cm-phone').value.trim()||null,
+    phone:         adminGetPhone('cm-phone-cc','cm-phone-num')||null,
     employee_id:   document.getElementById('cm-empid').value.trim()||null,
     department_id: document.getElementById('cm-dept').value||null,
     tags:          document.getElementById('cm-tags').value.split(',').map(t=>t.trim()).filter(Boolean),
