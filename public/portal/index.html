@@ -1853,9 +1853,29 @@ async function init(){
   if(oauthError){history.replaceState({},'','/portal');showScreen('screen-login');const err=document.getElementById('step1-error');err.textContent=decodeURIComponent(oauthError);err.classList.add('show');return;}
   showScreen('screen-loading');
   const token=getToken();
-  if(!token){showScreen('screen-login');document.getElementById('test-credentials-notice').style.display='';return;}
+  const examIdParam=params.get('exam_id');
+  const tabParam=params.get('tab');
+  if(!token){
+    showScreen('screen-login');document.getElementById('test-credentials-notice').style.display='';
+    if(tabParam==='register') setTimeout(()=>{const rb=document.getElementById('btn-show-register');if(rb)rb.click();},200);
+    return;
+  }
   appState.token=token;
-  try{const p=await apiCall('GET','/api/portal/profile');appState.candidate=p;await loadDashboard();showScreen('screen-dashboard');startPortalPolling();}
+  try{
+    const p=await apiCall('GET','/api/portal/profile');
+    appState.candidate=p;
+    await loadDashboard();showScreen('screen-dashboard');startPortalPolling();
+    if(examIdParam){
+      history.replaceState({},'','/portal');
+      switchTab('browse');
+      const tryOpen=async(t=0)=>{
+        const ex=_browseExams.find(e=>e.id===parseInt(examIdParam));
+        if(ex){openPortalRequestModal(ex.id,ex.title);}
+        else if(t<12){setTimeout(()=>tryOpen(t+1),300);}
+      };
+      setTimeout(()=>tryOpen(),400);
+    }
+  }
   catch(e){clearAuth();showScreen('screen-login');}
 }
 init();
