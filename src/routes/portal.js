@@ -392,8 +392,17 @@ router.post('/request-access', candidateAuth, (req, res) => {
     .get(exam.id, candidate.email);
   if (existing) return res.status(409).json({ error: 'You already have a pending request for this exam.' });
 
-  const alreadyApproved = db.prepare(`SELECT id FROM exam_links WHERE exam_id=? AND candidate_email=?`)
-    .get(exam.id, candidate.email);
+  // Only block if the candidate has a link that is still usable (not yet started, or currently in-progress)
+  // Cancelled / expired / revoked links do not block a new request
+  const alreadyApproved = db.prepare(`
+    SELECT el.id FROM exam_links el
+    WHERE el.exam_id=? AND el.candidate_email=? AND el.is_revoked=0
+      AND (el.expires_at IS NULL OR datetime(el.expires_at) > datetime('now'))
+      AND (
+        el.is_used=0
+        OR EXISTS(SELECT 1 FROM submissions s WHERE s.link_id=el.id AND s.status='in_progress')
+      )
+  `).get(exam.id, candidate.email);
   if (alreadyApproved) return res.status(409).json({ error: 'You already have an active link for this exam. Check your My Exams tab.' });
 
   db.prepare(`INSERT INTO exam_access_requests(exam_id, name, email, message) VALUES(?,?,?,?)`)

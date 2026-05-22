@@ -24,7 +24,14 @@ router.get('/:token', (req, res) => {
   const link = db.prepare('SELECT * FROM exam_links WHERE token=? AND is_revoked=0').get(req.params.token);
   if (!link) return res.status(404).json({ error: 'Invalid or expired exam link' });
   const oneTime = link.one_time_link !== undefined ? link.one_time_link : 1;
-  if (link.is_used && oneTime) return res.status(410).json({ error: 'This link has already been used' });
+  if (link.is_used && oneTime) {
+    const latestSub = db.prepare('SELECT status FROM submissions WHERE link_id=? ORDER BY started_at DESC LIMIT 1').get(link.id);
+    if (!latestSub || latestSub.status !== 'cancelled') {
+      return res.status(410).json({ error: 'This link has already been used' });
+    }
+    // Cancelled submission — reset the link so the candidate can restart
+    db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
+  }
   if (link.expires_at && new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'This link has expired' });
 
   const exam = db.prepare(`SELECT * FROM exams WHERE id=? AND status='published'`).get(link.exam_id);
@@ -62,7 +69,14 @@ router.post('/:token/start', (req, res) => {
   if (!link) return res.status(410).json({ error: 'Link is invalid or revoked' });
   if (link.expires_at && new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'Link has expired' });
   const oneTime = link.one_time_link !== undefined ? link.one_time_link : 1;
-  if (link.is_used && oneTime) return res.status(410).json({ error: 'Link is invalid, used, or revoked' });
+  if (link.is_used && oneTime) {
+    const latestSub = db.prepare('SELECT status FROM submissions WHERE link_id=? ORDER BY started_at DESC LIMIT 1').get(link.id);
+    if (!latestSub || latestSub.status !== 'cancelled') {
+      return res.status(410).json({ error: 'Link is invalid, used, or revoked' });
+    }
+    // Cancelled submission — reset so candidate can restart
+    db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
+  }
 
   db.prepare(`UPDATE exam_links SET is_used=1, used_at=datetime('now'), ip_used=? WHERE id=?`).run(req.ip, link.id);
 
