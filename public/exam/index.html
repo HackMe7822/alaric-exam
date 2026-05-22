@@ -42,6 +42,12 @@
   #screen-error { align-items: center; justify-content: center; flex-direction: column; gap: 16px; padding: 40px; text-align: center; }
   #screen-error h2 { color: var(--danger); font-size: 1.5rem; }
   #screen-error p { color: var(--text-muted); max-width: 480px; }
+  .error-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:8px; }
+  .btn-error-primary { padding:11px 22px; background:var(--accent); color:#fff; border:none; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; transition:opacity .15s; }
+  .btn-error-primary:hover { opacity:.88; }
+  .btn-error-primary:disabled { opacity:.5; cursor:not-allowed; }
+  .btn-error-ghost { padding:11px 22px; background:#fff; color:var(--text); border:1.5px solid var(--border); border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; text-decoration:none; display:inline-block; transition:border-color .15s; }
+  .btn-error-ghost:hover { border-color:var(--text-muted); }
 
   /* ===== INFO SCREEN ===== */
   #screen-info { align-items: center; justify-content: center; padding: 24px; }
@@ -348,9 +354,10 @@
 
 <!-- Error -->
 <div id="screen-error" class="screen">
-  <span style="font-size:3rem">&#9940;</span>
+  <span id="error-icon" style="font-size:3rem">&#9940;</span>
   <h2 id="error-title">Cannot Load Exam</h2>
   <p id="error-message">The exam link may be invalid, expired, or already used.</p>
+  <div class="error-actions" id="error-actions"></div>
 </div>
 
 <!-- Info / Pre-exam -->
@@ -571,9 +578,15 @@ async function loadExam() {
   const { status, data } = await api('GET', '');
   if (status !== 200) {
     let title = 'Exam Not Found';
-    if (status === 410) title = 'Link Expired or Already Used';
+    if (status === 410) title = 'Link Already Used';
     if (status === 404) title = 'Invalid Exam Link';
-    showError(title, data.error || 'Unable to load this exam. Please check your link and try again.');
+    const actions = [];
+    if (status === 410 && data.exam_id) {
+      // Link is exhausted — offer to request a new one
+      actions.push({ label: '📩 Request New Access', id: 'btn-req-new', primary: true });
+    }
+    actions.push({ label: '← Go to Portal', href: '/portal', primary: false });
+    showError(title, data.error || 'Unable to load this exam. Please check your link and try again.', actions, data);
     return;
   }
   state.examData = data;
@@ -682,7 +695,8 @@ async function startExam() {
   if (status !== 200) {
     btn.disabled = false;
     btn.textContent = 'Start Exam';
-    showError('Cannot Start Exam', data.error || 'Failed to start the exam. Please try again or contact support.');
+    const actions = [{ label: '← Go to Portal', href: '/portal', primary: false }];
+    showError('Cannot Start Exam', data.error || 'Failed to start the exam. Please try again or contact support.', actions);
     return;
   }
 
@@ -1864,9 +1878,41 @@ function showScreen(name) {
   if (el) el.classList.add('active');
 }
 
-function showError(title, message) {
+function showError(title, message, actions = [], errorData = {}) {
   document.getElementById('error-title').textContent = title;
   document.getElementById('error-message').textContent = message;
+  const actEl = document.getElementById('error-actions');
+  actEl.innerHTML = actions.map(a =>
+    a.href
+      ? `<a href="${a.href}" class="btn-error-ghost">${a.label}</a>`
+      : `<button id="${a.id||''}" class="btn-error-${a.primary?'primary':'ghost'}">${a.label}</button>`
+  ).join('');
+  // Wire up request-new button
+  const reqBtn = document.getElementById('btn-req-new');
+  if (reqBtn) {
+    reqBtn.addEventListener('click', async () => {
+      reqBtn.disabled = true; reqBtn.textContent = 'Sending request…';
+      try {
+        const r = await fetch(`/exam/${state.token}/request-new`, { method: 'POST' });
+        const d = await r.json();
+        if (d.already_pending) {
+          reqBtn.textContent = '✓ Request already pending';
+        } else if (d.ok) {
+          reqBtn.textContent = '✅ Request sent — check your email';
+          document.getElementById('error-message').textContent =
+            `Your request for "${errorData.exam_title || 'this exam'}" has been sent to the administrator. You'll receive a new link by email once approved.`;
+        } else {
+          reqBtn.textContent = '📩 Request New Access';
+          reqBtn.disabled = false;
+          showToast('Failed to send request. Please try again.', 'error');
+        }
+      } catch (e) {
+        reqBtn.textContent = '📩 Request New Access';
+        reqBtn.disabled = false;
+        showToast('Network error. Please try again.', 'error');
+      }
+    });
+  }
   showScreen('error');
 }
 

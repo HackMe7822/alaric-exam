@@ -26,11 +26,26 @@ router.get('/:token', (req, res) => {
   const oneTime = link.one_time_link !== undefined ? link.one_time_link : 1;
   if (link.is_used && oneTime) {
     const latestSub = db.prepare('SELECT status FROM submissions WHERE link_id=? ORDER BY started_at DESC LIMIT 1').get(link.id);
-    if (!latestSub || latestSub.status !== 'cancelled') {
-      return res.status(410).json({ error: 'This link has already been used' });
+    if (!latestSub || latestSub.status === 'cancelled') {
+      db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
+    } else {
+      // Check if exam allows more attempts and candidate still has some remaining
+      const exam = db.prepare('SELECT max_attempts, title FROM exams WHERE id=?').get(link.exam_id);
+      const attemptsUsed = link.candidate_id
+        ? db.prepare('SELECT COUNT(*) as c FROM submissions WHERE exam_id=? AND candidate_id=? AND COALESCE(is_abandoned,0)=0').get(link.exam_id, link.candidate_id).c
+        : db.prepare('SELECT COUNT(*) as c FROM submissions WHERE link_id=? AND COALESCE(is_abandoned,0)=0').get(link.id).c;
+      if (exam && exam.max_attempts > 1 && attemptsUsed < exam.max_attempts) {
+        // More attempts still allowed — reset the link
+        db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
+      } else {
+        return res.status(410).json({
+          error: 'This link has already been used',
+          exam_id: link.exam_id,
+          exam_title: exam?.title || '',
+          candidate_email: link.candidate_email || ''
+        });
+      }
     }
-    // Cancelled submission — reset the link so the candidate can restart
-    db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
   }
   if (link.expires_at && new Date(link.expires_at) < new Date()) return res.status(410).json({ error: 'This link has expired' });
 
@@ -71,11 +86,19 @@ router.post('/:token/start', (req, res) => {
   const oneTime = link.one_time_link !== undefined ? link.one_time_link : 1;
   if (link.is_used && oneTime) {
     const latestSub = db.prepare('SELECT status FROM submissions WHERE link_id=? ORDER BY started_at DESC LIMIT 1').get(link.id);
-    if (!latestSub || latestSub.status !== 'cancelled') {
-      return res.status(410).json({ error: 'Link is invalid, used, or revoked' });
+    if (!latestSub || latestSub.status === 'cancelled') {
+      db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
+    } else {
+      const exam = db.prepare('SELECT max_attempts FROM exams WHERE id=?').get(link.exam_id);
+      const attemptsUsed = link.candidate_id
+        ? db.prepare('SELECT COUNT(*) as c FROM submissions WHERE exam_id=? AND candidate_id=? AND COALESCE(is_abandoned,0)=0').get(link.exam_id, link.candidate_id).c
+        : db.prepare('SELECT COUNT(*) as c FROM submissions WHERE link_id=? AND COALESCE(is_abandoned,0)=0').get(link.id).c;
+      if (exam && exam.max_attempts > 1 && attemptsUsed < exam.max_attempts) {
+        db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
+      } else {
+        return res.status(410).json({ error: 'Link is invalid, used, or revoked' });
+      }
     }
-    // Cancelled submission — reset so candidate can restart
-    db.prepare(`UPDATE exam_links SET is_used=0, used_at=NULL WHERE id=?`).run(link.id);
   }
 
   db.prepare(`UPDATE exam_links SET is_used=1, used_at=datetime('now'), ip_used=? WHERE id=?`).run(req.ip, link.id);
@@ -230,6 +253,21 @@ router.post('/:token/abandon', (req, res) => {
       db.prepare("INSERT INTO exam_events(submission_id, event_type) VALUES(?,?)").run(sub.id, `abandoned_${cancelReason}`);
     }
   } catch(e) {}
+  res.json({ ok: true });
+});
+
+// POST /exam/:token/request-new — candidate at dead-end requests a new link
+router.post('/:token/request-new', (req, res) => {
+  const db = getDb();
+  const link = db.prepare('SELECT * FROM exam_links WHERE token=?').get(req.params.token);
+  if (!link || !link.candidate_email) return res.status(404).json({ error: 'Invalid link' });
+  const email = link.candidate_email.toLowerCase();
+  const name = link.candidate_name || email;
+  // Don't create duplicate pending requests
+  const existing = db.prepare(`SELECT id FROM exam_access_requests WHERE exam_id=? AND email=? AND status='pending'`).get(link.exam_id, email);
+  if (existing) return res.json({ ok: true, already_pending: true });
+  db.prepare(`INSERT INTO exam_access_requests(exam_id, name, email, message) VALUES(?,?,?,?)`)
+    .run(link.exam_id, name, email, 'Candidate requested a new exam link (previous link exhausted).');
   res.json({ ok: true });
 });
 
