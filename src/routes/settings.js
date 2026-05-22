@@ -42,6 +42,46 @@ router.put('/branding', auth, requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/notifications — aggregated admin notifications (last 7 days)
+router.get('/notifications', auth, (req, res) => {
+  const db = getDb();
+  try {
+    const rows = db.prepare(`
+      SELECT * FROM (
+        SELECT 'ar_' || r.id        AS id, 'access_request' AS type,
+          COALESCE(r.name,r.email,'Someone') || ' requested access to ' || e.title AS body,
+          '/admin/access-requests' AS href, r.created_at
+        FROM exam_access_requests r JOIN exams e ON e.id=r.exam_id
+        WHERE r.status='pending' AND r.created_at > datetime('now','-7 days')
+        UNION ALL
+        SELECT 'sub_' || s.id, 'submission',
+          COALESCE(s.candidate_name,s.candidate_email,'Candidate') || ' submitted ' || e.title,
+          '/admin/checker', s.submitted_at
+        FROM submissions s JOIN exams e ON e.id=s.exam_id
+        WHERE s.status IN ('submitted','auto_submitted','grading')
+          AND s.submitted_at > datetime('now','-7 days')
+        UNION ALL
+        SELECT 'cand_' || id, 'candidate',
+          COALESCE(name,email,'Someone') || ' registered as a candidate',
+          '/admin/candidates', created_at
+        FROM candidates
+        WHERE created_at > datetime('now','-48 hours')
+        UNION ALL
+        SELECT 'flag_' || s.id, 'flag',
+          'High risk flagged: ' || COALESCE(s.candidate_name,s.candidate_email,'Candidate') || ' — ' || e.title,
+          '/admin/results', s.submitted_at
+        FROM submissions s JOIN exams e ON e.id=s.exam_id
+        WHERE s.risk_level='high' AND s.result_released=0
+          AND s.submitted_at > datetime('now','-7 days')
+      )
+      ORDER BY created_at DESC LIMIT 40
+    `).all();
+    res.json(rows);
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // GET /api/settings
 router.get('/', auth, (req, res) => {
   const db = getDb();
