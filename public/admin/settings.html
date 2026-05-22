@@ -118,8 +118,28 @@
             </div>
           </div>
         </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <label for="appUrl">Public App URL</label>
+            <p>Base URL of this platform (e.g. <code>https://alaric-exam.onrender.com</code>). Used in exam links, emails and candidate-facing pages.</p>
+          </div>
+          <div class="setting-ctrl" style="min-width:280px">
+            <input type="url" class="form-control" id="appUrl" placeholder="https://your-app.onrender.com">
+          </div>
+        </div>
         <div style="margin-top:16px">
           <button class="btn btn-primary" id="btnSaveBranding" onclick="saveBranding()">Save Branding</button>
+        </div>
+      </div>
+
+      <!-- Platform URLs quick-reference card -->
+      <div class="card" style="margin-top:16px;border-left:4px solid #16a34a">
+        <div class="card-header" style="background:linear-gradient(135deg,#f0fdf4,#fff)">
+          <span class="card-title" style="font-size:15px">🔗 Platform URLs</span>
+          <span style="font-size:12px;color:var(--gray)">Share these links with candidates and staff</span>
+        </div>
+        <div id="platform-urls-list" style="padding:12px 0 4px">
+          <p style="color:var(--gray);font-size:13px;padding:8px 20px">Set the App URL above and save to see your platform links.</p>
         </div>
       </div>
 
@@ -580,12 +600,14 @@ async function loadSettings() {
   // Use branding endpoint for display name (returns plain strings)
   document.getElementById('appName').value = branding?.app_name || val('app_name','') || 'Alaric Exam';
   document.getElementById('appTagline').value = branding?.app_tagline || val('app_tagline','');
+  document.getElementById('appUrl').value = branding?.app_url || val('app_url','') || '';
   if (branding?.app_logo) {
     const img = document.getElementById('logoPreview');
     img.src = branding.app_logo; img.style.display = 'block';
     document.getElementById('btnRemoveLogo').style.display = '';
   }
   window._savedLogo = branding?.app_logo || null;
+  renderPlatformUrls(branding?.app_url || val('app_url','') || '');
   document.getElementById('allowPublicCatalog').checked = val('allow_public_catalog','0') === '1';
   document.getElementById('webcamEnabled').checked = val('webcam_enabled','1') === '1';
   document.getElementById('webcamInterval').value = val('webcam_interval', 30);
@@ -619,14 +641,17 @@ async function saveBranding() {
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const appName = document.getElementById('appName').value.trim() || 'Alaric Exam';
+    const appUrl = document.getElementById('appUrl').value.trim().replace(/\/$/, '');
     const brandBody = {
       app_name: appName,
-      app_tagline: document.getElementById('appTagline').value.trim()
+      app_tagline: document.getElementById('appTagline').value.trim(),
+      app_url: appUrl,
     };
     if (window._pendingLogo !== undefined) brandBody.app_logo = window._pendingLogo || null;
     const result = await api('PUT', '/api/settings/branding', brandBody);
     if (!result || result.error) { toast(result?.error || 'Save failed', 'error'); return; }
     window._pendingLogo = undefined;
+    renderPlatformUrls(appUrl);
     // Update sidebar brand + page title immediately without requiring a page refresh
     const brandEl = document.querySelector('#sidebar .brand');
     if (brandEl) {
@@ -1038,6 +1063,42 @@ async function geoSave() {
   } catch(e){ alert(e.message); }
 }
 // ── END GEO MANAGEMENT ──
+
+// ── PLATFORM URLS ─────────────────────────────────────────────────────────────
+function renderPlatformUrls(base) {
+  const el = document.getElementById('platform-urls-list');
+  if (!base) {
+    el.innerHTML = '<p style="color:var(--gray);font-size:13px;padding:8px 20px">Set the App URL above and save to see your platform links.</p>';
+    return;
+  }
+  const links = [
+    { label: 'Candidate Portal', url: base + '/portal', icon: '👤', desc: 'Login, register, browse exams, track progress' },
+    { label: 'Exam Catalog', url: base + '/catalog', icon: '📚', desc: 'Public page — browse & request access without login' },
+    { label: 'Admin Panel', url: base + '/admin', icon: '🔧', desc: 'Admin login and management (staff only)' },
+  ];
+  el.innerHTML = links.map(l => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <span style="font-size:1.1rem">${l.icon}</span>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${l.label}</div>
+          <div style="font-size:11px;color:var(--gray);margin-top:1px">${l.desc}</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <code style="font-size:11px;background:#f3f4f6;padding:3px 8px;border-radius:4px;color:#374151;word-break:break-all">${esc(l.url)}</code>
+        <button onclick="copyUrl('${esc(l.url)}')" title="Copy" style="padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--white);cursor:pointer;font-size:11px;color:var(--gray)">Copy</button>
+        <a href="${esc(l.url)}" target="_blank" style="padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--white);text-decoration:none;font-size:11px;color:var(--gray)">Open ↗</a>
+      </div>
+    </div>`).join('');
+}
+function copyUrl(url) {
+  navigator.clipboard.writeText(url).then(() => toast('URL copied!'), () => {
+    const inp = document.createElement('input'); inp.value = url;
+    document.body.appendChild(inp); inp.select(); document.execCommand('copy');
+    document.body.removeChild(inp); toast('URL copied!');
+  });
+}
 
 // ── SMS CONFIG ────────────────────────────────────────────────────────────────
 function onSmsProviderChange() {

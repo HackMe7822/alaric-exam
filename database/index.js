@@ -53,6 +53,30 @@ function initDb() {
   d.exec(`CREATE TABLE IF NOT EXISTS geo_cities (id INTEGER PRIMARY KEY AUTOINCREMENT, country_id INTEGER NOT NULL, state_id INTEGER REFERENCES geo_states(id) ON DELETE SET NULL, name TEXT NOT NULL, is_active INTEGER DEFAULT 1)`);
   const { seedGeo } = require('./geo-seed');
   seedGeo(d);
+  // Seed default super admin if none exists
+  try {
+    const adminExists = d.prepare("SELECT id FROM users WHERE role='super_admin' LIMIT 1").get();
+    if (!adminExists) {
+      const hash = bcrypt.hashSync('Admin@1234', 12);
+      d.prepare("INSERT INTO users(username, email, password_hash, full_name, role) VALUES('admin','admin@alaric.local',?,'Super Admin','super_admin')").run(hash);
+      console.log('Database: default admin created (admin / Admin@1234)');
+    }
+  } catch(e) { console.error('Database: admin seed failed:', e.message); }
+  // Seed default departments if none exist
+  try {
+    const deptExists = d.prepare('SELECT id FROM departments LIMIT 1').get();
+    if (!deptExists) {
+      const ins = d.prepare('INSERT OR IGNORE INTO departments(name, code) VALUES(?,?)');
+      for (const [n, c] of [['Engineering','ENG'],['Finance','FIN'],['Human Resources','HR'],['Operations','OPS'],['Sales','SALES']]) ins.run(n, c);
+      console.log('Database: default departments created');
+    }
+  } catch(e) {}
+  // Seed app_url from APP_URL env var if not set
+  try {
+    const appUrl = process.env.APP_URL || '';
+    if (appUrl) d.prepare("INSERT OR IGNORE INTO settings(key, value, description) VALUES('app_url',?,'Public base URL of the platform (e.g. https://alaric-exam.onrender.com)')").run(appUrl);
+    else d.prepare("INSERT OR IGNORE INTO settings(key, value, description) VALUES('app_url','','Public base URL of the platform (e.g. https://alaric-exam.onrender.com)')").run();
+  } catch(e) {}
   // JS migration: test candidate for portal demos
   try {
     const existing = d.prepare("SELECT id FROM candidates WHERE email='test@test.com'").get();

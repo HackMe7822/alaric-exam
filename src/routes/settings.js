@@ -16,17 +16,19 @@ router.get('/branding', (req, res) => {
     app_name: get('app_name') || 'Alaric Exam',
     app_logo: get('app_logo') || null,
     app_tagline: get('app_tagline') || 'Candidate Portal',
+    app_url: get('app_url') || process.env.APP_URL || '',
   });
 });
 
 // PUT /api/settings/branding — admin only
 router.put('/branding', auth, requireSuperAdmin, (req, res) => {
   const db = getDb();
-  const { app_name, app_logo, app_tagline } = req.body;
+  const { app_name, app_logo, app_tagline, app_url } = req.body;
   const upsert = db.prepare(`INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`);
   if (app_name !== undefined) upsert.run('app_name', app_name?.trim() || 'Alaric Exam');
   if (app_logo !== undefined) upsert.run('app_logo', app_logo || null);
   if (app_tagline !== undefined) upsert.run('app_tagline', app_tagline?.trim() || '');
+  if (app_url !== undefined) upsert.run('app_url', app_url?.trim().replace(/\/$/, '') || '');
   res.json({ ok: true });
 });
 
