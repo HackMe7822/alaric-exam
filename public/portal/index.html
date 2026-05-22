@@ -1808,7 +1808,7 @@ async function sendPhoneOtp(){
   try{
     await apiCall('POST','/api/portal/phone/send-otp',{ phone });
     document.getElementById('phone-otp-row').style.display='flex';
-    msg.textContent='A 6-digit code was sent to your email address. Enter it below to verify this number.';
+    msg.textContent=`A 6-digit code was sent via SMS to ${phone}. Enter it below to verify.`;
     msg.style.color='var(--text-muted)'; msg.style.display='block';
     // Cooldown countdown
     let secs = 60;

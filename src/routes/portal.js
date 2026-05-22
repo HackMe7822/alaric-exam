@@ -161,20 +161,15 @@ router.post('/phone/send-otp', candidateAuth, async (req, res) => {
   db.prepare(`DELETE FROM email_otps WHERE email=? AND purpose='phone_verify'`).run(candidate.email);
   db.prepare(`INSERT INTO email_otps(email, otp_code, expires_at, purpose, payload) VALUES(?,?,?,?,?)`)
     .run(candidate.email, otp, expires_at, 'phone_verify', JSON.stringify({ phone: phone.trim() }));
-  const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:10px">
-    <h2 style="color:#0078d4;margin:0 0 8px">Verify Your Phone Number</h2>
-    <p style="color:#555;margin:0 0 24px">Hi ${candidate.name || 'there'}, use this code to verify <strong>${phone.trim()}</strong> as your phone number.</p>
-    <div style="background:#f0f7ff;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px">
-      <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#111827;font-family:monospace">${otp}</span>
-    </div>
-    <p style="color:#888;font-size:13px;margin:0">This code expires in 15 minutes. If you did not request this, please ignore this email.</p>
-  </div>`;
+  // Send OTP via SMS to the phone being verified
+  const smsTo = phone.trim().replace(/\s+/g, '');
   try {
-    await sendEmail({ to: candidate.email, subject: `${otp} — verify your phone number`, html, templateCode: 'phone_verify', purpose: 'system' });
+    const { sendSms } = require('../utils/sms');
+    await sendSms({ to: smsTo, body: `${otp} is your Alaric Exam phone verification code. Expires in 15 minutes.` });
   } catch(e) {
-    console.error('[portal] phone OTP email error:', e.message);
+    console.error('[portal] phone OTP SMS error:', e.message);
     db.prepare(`DELETE FROM email_otps WHERE email=? AND purpose='phone_verify'`).run(candidate.email);
-    return res.status(503).json({ error: 'Failed to send verification email. Please check your email settings or try again.' });
+    return res.status(503).json({ error: `Failed to send SMS: ${e.message}` });
   }
   res.json({ ok: true });
 });

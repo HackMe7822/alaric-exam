@@ -515,4 +515,64 @@ router.put('/email-routing', auth, requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── SMS Config ────────────────────────────────────────────────────────────────
+// GET /api/settings/sms-config
+router.get('/sms-config', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const keys = ['sms_provider', 'sms_account_sid', 'sms_auth_token', 'sms_from', 'sms_enabled'];
+  const rows = db.prepare(
+    `SELECT key, value FROM settings WHERE key IN (${keys.map(() => '?').join(',')})`
+  ).all(...keys);
+  const cfg = {};
+  for (const r of rows) cfg[r.key] = r.value;
+  res.json(cfg);
+});
+
+// PUT /api/settings/sms-config
+router.put('/sms-config', auth, requireSuperAdmin, (req, res) => {
+  const db = getDb();
+  const { sms_provider, sms_account_sid, sms_auth_token, sms_from, sms_enabled } = req.body;
+  const updates = {
+    sms_provider: sms_provider || 'twilio',
+    sms_account_sid: sms_account_sid?.trim() || '',
+    sms_auth_token: sms_auth_token?.trim() || '',
+    sms_from: sms_from?.trim() || '',
+    sms_enabled: sms_enabled === false || sms_enabled === '0' ? '0' : '1',
+  };
+  const upd = db.prepare(
+    `INSERT INTO settings(key,value,updated_by,updated_at) VALUES(?,?,?,datetime('now'))
+     ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_by=excluded.updated_by, updated_at=excluded.updated_at`
+  );
+  db.transaction(() => {
+    for (const [key, value] of Object.entries(updates)) upd.run(key, value, req.user.id);
+  })();
+  audit(req.user.id, 'update_sms_config', 'settings', null, updates, req);
+  res.json({ ok: true });
+});
+
+// POST /api/settings/sms-config/test — verify Twilio credentials
+router.post('/sms-config/test', auth, requireSuperAdmin, async (req, res) => {
+  try {
+    const { testSmsConnection } = require('../utils/sms');
+    const cfg = req.body;
+    await testSmsConnection(cfg);
+    res.json({ ok: true, message: 'Credentials are valid.' });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
+// POST /api/settings/sms-config/send-test — send a real test SMS
+router.post('/sms-config/send-test', auth, requireSuperAdmin, async (req, res) => {
+  const { to } = req.body;
+  if (!to) return res.status(400).json({ error: 'Destination number required (e.g. +919876543210)' });
+  try {
+    const { sendSms } = require('../utils/sms');
+    await sendSms({ to, body: 'Alaric Exam — SMS test. Your configuration is working correctly.' });
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(400).json({ error: e.message });
+  }
+});
+
 module.exports = router;

@@ -72,6 +72,7 @@
       <button class="tab-btn" onclick="switchTab('auditlog',this)">Audit Log</button>
       <button class="tab-btn" onclick="switchTab('gdpr',this)">GDPR</button>
       <button class="tab-btn" onclick="switchTab('locations',this)">Locations</button>
+      <button class="tab-btn" onclick="switchTab('smsconfig',this)">SMS Config</button>
     </div>
 
     <!-- General Tab -->
@@ -390,6 +391,50 @@
         </div>
       </div>
     </div>
+
+    <!-- SMS Config Tab -->
+    <div id="tab-smsconfig" class="tab-pane">
+      <div class="card" style="max-width:560px">
+        <h3 style="margin:0 0 4px;font-size:16px">📱 SMS Configuration</h3>
+        <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px">Used to send OTP codes to candidates' mobile phones for phone number verification.</p>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+          <label style="font-size:13px;font-weight:600">Enable SMS</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input type="checkbox" id="sms-enabled" style="width:16px;height:16px">
+            <span style="font-size:13px;color:var(--text-muted)">Active</span>
+          </label>
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label">Provider</label>
+          <select id="sms-provider" class="form-control" style="max-width:220px">
+            <option value="twilio">Twilio</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label">Account SID</label>
+          <input id="sms-account-sid" class="form-control" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label">Auth Token</label>
+          <input id="sms-auth-token" class="form-control" type="password" placeholder="Your Twilio auth token" autocomplete="new-password">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Get these from <a href="https://console.twilio.com" target="_blank" style="color:var(--primary)">console.twilio.com</a> → Account Info</div>
+        </div>
+        <div class="form-group" style="margin-bottom:20px">
+          <label class="form-label">From Number</label>
+          <input id="sms-from" class="form-control" placeholder="+15017122661" style="max-width:220px">
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Must be a Twilio number in E.164 format (e.g. +15017122661)</div>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-primary" onclick="saveSmsConfig()">Save SMS Config</button>
+          <button class="btn btn-secondary" onclick="testSmsCredentials()">Test Credentials</button>
+          <div style="display:flex;gap:6px;align-items:center;flex:1;min-width:200px">
+            <input id="sms-test-to" class="form-control" placeholder="+919876543210" style="max-width:200px">
+            <button class="btn btn-ghost" onclick="sendTestSms()">Send Test SMS</button>
+          </div>
+        </div>
+        <div id="sms-msg" style="margin-top:12px;font-size:13px;display:none"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -504,6 +549,7 @@ function switchTab(name, el) {
   if (name === 'auditlog') loadAuditLog();
   if (name === 'security') loadSecurityInfo();
   if (name === 'locations') geoLoadCountries();
+  if (name === 'smsconfig') loadSmsConfig();
 }
 
 // ── Page init ──────────────────────────────────────────────────────────────
@@ -978,6 +1024,63 @@ async function geoSave() {
   } catch(e){ alert(e.message); }
 }
 // ── END GEO MANAGEMENT ──
+
+// ── SMS CONFIG ────────────────────────────────────────────────────────────────
+async function loadSmsConfig() {
+  try {
+    const cfg = await api('GET', '/api/settings/sms-config');
+    document.getElementById('sms-enabled').checked = cfg.sms_enabled !== '0';
+    document.getElementById('sms-provider').value = cfg.sms_provider || 'twilio';
+    document.getElementById('sms-account-sid').value = cfg.sms_account_sid || '';
+    document.getElementById('sms-auth-token').value = cfg.sms_auth_token || '';
+    document.getElementById('sms-from').value = cfg.sms_from || '';
+  } catch(e) { showSmsMsg('Failed to load SMS config: ' + e.message, 'error'); }
+}
+
+async function saveSmsConfig() {
+  const body = {
+    sms_enabled: document.getElementById('sms-enabled').checked,
+    sms_provider: document.getElementById('sms-provider').value,
+    sms_account_sid: document.getElementById('sms-account-sid').value.trim(),
+    sms_auth_token: document.getElementById('sms-auth-token').value.trim(),
+    sms_from: document.getElementById('sms-from').value.trim(),
+  };
+  try {
+    await api('PUT', '/api/settings/sms-config', body);
+    showSmsMsg('SMS configuration saved.', 'success');
+  } catch(e) { showSmsMsg('Save failed: ' + e.message, 'error'); }
+}
+
+async function testSmsCredentials() {
+  const body = {
+    sms_provider: document.getElementById('sms-provider').value,
+    sms_account_sid: document.getElementById('sms-account-sid').value.trim(),
+    sms_auth_token: document.getElementById('sms-auth-token').value.trim(),
+    sms_from: document.getElementById('sms-from').value.trim(),
+  };
+  showSmsMsg('Testing credentials...', 'info');
+  try {
+    const r = await api('POST', '/api/settings/sms-config/test', body);
+    showSmsMsg('✓ ' + r.message, 'success');
+  } catch(e) { showSmsMsg('✗ ' + e.message, 'error'); }
+}
+
+async function sendTestSms() {
+  const to = document.getElementById('sms-test-to').value.trim();
+  if (!to) { showSmsMsg('Enter a destination number first.', 'error'); return; }
+  showSmsMsg('Sending test SMS...', 'info');
+  try {
+    await api('POST', '/api/settings/sms-config/send-test', { to });
+    showSmsMsg('✓ Test SMS sent to ' + to, 'success');
+  } catch(e) { showSmsMsg('✗ ' + e.message, 'error'); }
+}
+
+function showSmsMsg(msg, type) {
+  const el = document.getElementById('sms-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.style.color = type === 'success' ? 'var(--success)' : type === 'error' ? 'var(--danger)' : 'var(--text-muted)';
+}
 
 init();
 </script>
