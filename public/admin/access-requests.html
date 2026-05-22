@@ -8,7 +8,7 @@
   /* ── Page layout ── */
   #ar-page { display:flex; gap:0; height:calc(100vh - 56px); overflow:hidden; }
   #ar-left  { width:420px; min-width:320px; border-right:1px solid var(--border); display:flex; flex-direction:column; background:#fff; }
-  #ar-right { flex:1; overflow-y:auto; background:#f8f9fb; display:flex; flex-direction:column; }
+  #ar-right { flex:1; min-width:0; min-height:0; background:#f8f9fb; display:flex; flex-direction:column; overflow:hidden; }
   #ar-right.empty-state { align-items:center; justify-content:center; }
 
   /* ── Left toolbar ── */
@@ -45,7 +45,9 @@
   .ar-detail-placeholder { color:var(--gray); text-align:center; }
   .ar-detail-placeholder .icon { font-size:3rem; margin-bottom:12px; display:block; }
   .ar-detail-placeholder p { font-size:13px; }
-  #ar-detail-content { flex:1; overflow-y:auto; padding:22px 24px; display:flex; flex-direction:column; gap:18px; }
+  #ar-detail-content { flex:1; overflow-y:auto; padding:22px 24px; min-height:0; display:block; }
+  #ar-detail-content > * { margin-bottom:18px; }
+  #ar-detail-content > *:last-child { margin-bottom:0; }
 
   /* Exam card */
   .ar-exam-card { background:linear-gradient(135deg,#002B5C 0%,#0052a3 100%); color:#fff; border-radius:10px; padding:18px 20px; }
