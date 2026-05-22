@@ -17,18 +17,28 @@ router.get('/branding', (req, res) => {
     app_logo: get('app_logo') || null,
     app_tagline: get('app_tagline') || 'Candidate Portal',
     app_url: get('app_url') || process.env.APP_URL || '',
+    portal_slug: get('portal_slug') || 'portal',
+    catalog_slug: get('catalog_slug') || 'catalog',
   });
 });
 
 // PUT /api/settings/branding — admin only
 router.put('/branding', auth, requireSuperAdmin, (req, res) => {
   const db = getDb();
-  const { app_name, app_logo, app_tagline, app_url } = req.body;
+  const { app_name, app_logo, app_tagline, app_url, portal_slug, catalog_slug } = req.body;
   const upsert = db.prepare(`INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`);
   if (app_name !== undefined) upsert.run('app_name', app_name?.trim() || 'Alaric Exam');
   if (app_logo !== undefined) upsert.run('app_logo', app_logo || null);
   if (app_tagline !== undefined) upsert.run('app_tagline', app_tagline?.trim() || '');
   if (app_url !== undefined) upsert.run('app_url', app_url?.trim().replace(/\/$/, '') || '');
+  if (portal_slug !== undefined) {
+    const slug = (portal_slug?.trim() || 'portal').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'portal';
+    upsert.run('portal_slug', slug);
+  }
+  if (catalog_slug !== undefined) {
+    const slug = (catalog_slug?.trim() || 'catalog').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'catalog';
+    upsert.run('catalog_slug', slug);
+  }
   res.json({ ok: true });
 });
 

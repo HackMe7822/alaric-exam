@@ -58,6 +58,25 @@ app.get('/catalog', (req, res) => res.sendFile(path.join(__dirname, 'public', 'c
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register', 'index.html')));
 app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
 
+// Custom URL slug routes — read from DB settings once at startup
+;(function registerCustomSlugs() {
+  try {
+    const { getDb } = require('./database/index');
+    const db = getDb();
+    const portalSlug = db.prepare("SELECT value FROM settings WHERE key='portal_slug'").get()?.value || 'portal';
+    const catalogSlug = db.prepare("SELECT value FROM settings WHERE key='catalog_slug'").get()?.value || 'catalog';
+    if (portalSlug !== 'portal') {
+      app.get(`/${portalSlug}`, (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
+      app.get(`/${portalSlug}/*`, (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
+      console.log(`  Custom portal slug: /${portalSlug} → /portal`);
+    }
+    if (catalogSlug !== 'catalog') {
+      app.get(`/${catalogSlug}`, (req, res) => res.sendFile(path.join(__dirname, 'public', 'catalog', 'index.html')));
+      console.log(`  Custom catalog slug: /${catalogSlug} → /catalog`);
+    }
+  } catch(e) { /* DB not ready yet — default slugs in use */ }
+}());
+
 // Error handler
 app.use((err, req, res, next) => {
   console.error(err);

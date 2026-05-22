@@ -29,6 +29,21 @@
 .perm-check input { width:14px; height:14px; }
 .perm-check label { font-size:13px; cursor:pointer; }
 .section-title { font-size:13px; font-weight:600; color:var(--gray); text-transform:uppercase; letter-spacing:.06em; margin-bottom:12px; margin-top:4px; }
+.url-row { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+.url-row:last-of-type { border-bottom:none; }
+.url-row-icon { font-size:1.5rem; margin-top:2px; flex-shrink:0; }
+.url-row-info { flex:1; min-width:180px; }
+.url-row-label { font-weight:700; font-size:13.5px; color:var(--dark); }
+.url-row-desc { font-size:12px; color:var(--gray); margin-top:2px; }
+.url-slug-row { display:flex; align-items:center; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.url-slug-prefix { font-size:14px; color:var(--gray); font-family:monospace; font-weight:700; }
+.url-slug-input { font-family:monospace; font-size:13px; width:150px; }
+.url-preview { font-size:12px; color:#6d28d9; font-family:monospace; background:#f5f3ff; border:1px solid #ede9fe; padding:3px 9px; border-radius:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:340px; display:inline-block; }
+.url-fixed-slug { font-size:12px; font-family:monospace; background:#f3f4f6; border:1px solid var(--border); padding:3px 8px; border-radius:5px; color:var(--gray); }
+.url-fixed-badge { font-size:10px; background:#f3f4f6; border:1px solid var(--border); padding:2px 6px; border-radius:3px; color:var(--gray); vertical-align:middle; }
+.url-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; margin-top:8px; }
+.url-act-btn { padding:5px 11px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:11px; color:var(--gray); white-space:nowrap; transition:all .15s; }
+.url-act-btn:hover { background:var(--light); color:var(--dark); border-color:#9ca3af; }
 </style>
 </head>
 <body>
@@ -118,28 +133,86 @@
             </div>
           </div>
         </div>
-        <div class="setting-row">
-          <div class="setting-info">
-            <label for="appUrl">Public App URL</label>
-            <p>Base URL of this platform (e.g. <code>https://alaric-exam.onrender.com</code>). Used in exam links, emails and candidate-facing pages.</p>
-          </div>
-          <div class="setting-ctrl" style="min-width:280px">
-            <input type="url" class="form-control" id="appUrl" placeholder="https://your-app.onrender.com">
-          </div>
-        </div>
         <div style="margin-top:16px">
           <button class="btn btn-primary" id="btnSaveBranding" onclick="saveBranding()">Save Branding</button>
         </div>
       </div>
 
-      <!-- Platform URLs quick-reference card -->
-      <div class="card" style="margin-top:16px;border-left:4px solid #16a34a">
-        <div class="card-header" style="background:linear-gradient(135deg,#f0fdf4,#fff)">
-          <span class="card-title" style="font-size:15px">🔗 Platform URLs</span>
-          <span style="font-size:12px;color:var(--gray)">Share these links with candidates and staff</span>
+      <!-- Platform URLs & Access card -->
+      <div class="card" style="margin-top:16px;border-left:4px solid #7c3aed">
+        <div class="card-header" style="background:linear-gradient(135deg,#f5f3ff,#fff)">
+          <span class="card-title" style="font-size:15px">🌐 Platform URLs &amp; Access</span>
+          <span style="font-size:12px;color:var(--gray)">Control how candidates and staff reach your platform — customise the URL paths</span>
         </div>
-        <div id="platform-urls-list" style="padding:12px 0 4px">
-          <p style="color:var(--gray);font-size:13px;padding:8px 20px">Set the App URL above and save to see your platform links.</p>
+
+        <!-- Base URL -->
+        <div style="padding:16px 20px;border-bottom:1px solid var(--border);background:#fafbff">
+          <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:240px">
+              <label style="font-weight:700;font-size:13px;display:block;margin-bottom:3px">🔗 Base Domain</label>
+              <p style="font-size:12px;color:var(--gray);margin:0 0 8px">Your platform's public root URL — used to build all links below and in emails</p>
+              <input type="url" class="form-control" id="urlAppUrl" placeholder="https://alaric-exam.onrender.com" oninput="refreshUrlPreviews()" style="max-width:380px">
+            </div>
+          </div>
+        </div>
+
+        <!-- Portal row -->
+        <div class="url-row">
+          <div class="url-row-icon">👤</div>
+          <div class="url-row-info">
+            <div class="url-row-label">Candidate Portal</div>
+            <div class="url-row-desc">Candidates log in, register, take exams, and view results</div>
+            <div class="url-slug-row">
+              <span class="url-slug-prefix">/</span>
+              <input type="text" id="urlPortalSlug" class="form-control url-slug-input" value="portal" placeholder="portal" maxlength="60" oninput="refreshUrlPreviews()">
+              <span id="url-portal-preview" class="url-preview"></span>
+            </div>
+          </div>
+          <div class="url-actions">
+            <button class="url-act-btn" onclick="copyUrlPreview('url-portal-preview')">📋 Copy</button>
+            <button class="url-act-btn" onclick="openUrlPreview('url-portal-preview')">↗ Open</button>
+          </div>
+        </div>
+
+        <!-- Catalog row -->
+        <div class="url-row">
+          <div class="url-row-icon">📚</div>
+          <div class="url-row-info">
+            <div class="url-row-label">Exam Catalog</div>
+            <div class="url-row-desc">Public browsing page — candidates explore and request exam access</div>
+            <div class="url-slug-row">
+              <span class="url-slug-prefix">/</span>
+              <input type="text" id="urlCatalogSlug" class="form-control url-slug-input" value="catalog" placeholder="catalog" maxlength="60" oninput="refreshUrlPreviews()">
+              <span id="url-catalog-preview" class="url-preview"></span>
+            </div>
+          </div>
+          <div class="url-actions">
+            <button class="url-act-btn" onclick="copyUrlPreview('url-catalog-preview')">📋 Copy</button>
+            <button class="url-act-btn" onclick="openUrlPreview('url-catalog-preview')">↗ Open</button>
+          </div>
+        </div>
+
+        <!-- Admin row (fixed) -->
+        <div class="url-row">
+          <div class="url-row-icon">🔧</div>
+          <div class="url-row-info">
+            <div class="url-row-label">Admin Panel</div>
+            <div class="url-row-desc">Staff and administrator console — this path cannot be changed</div>
+            <div class="url-slug-row">
+              <span class="url-fixed-slug">/admin</span>
+              <span class="url-fixed-badge">fixed path</span>
+              <span id="url-admin-preview" class="url-preview"></span>
+            </div>
+          </div>
+          <div class="url-actions">
+            <button class="url-act-btn" onclick="copyUrlPreview('url-admin-preview')">📋 Copy</button>
+            <button class="url-act-btn" onclick="openUrlPreview('url-admin-preview')">↗ Open</button>
+          </div>
+        </div>
+
+        <div style="padding:14px 20px;border-top:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:#fafbff">
+          <button class="btn btn-primary" id="btnSaveUrls" onclick="saveUrlSettings()">Save URL Settings</button>
+          <span style="font-size:12px;color:var(--gray)">💡 Slug changes take effect after the next server restart (Render auto-deploys on git push)</span>
         </div>
       </div>
 
@@ -600,14 +673,18 @@ async function loadSettings() {
   // Use branding endpoint for display name (returns plain strings)
   document.getElementById('appName').value = branding?.app_name || val('app_name','') || 'Alaric Exam';
   document.getElementById('appTagline').value = branding?.app_tagline || val('app_tagline','');
-  document.getElementById('appUrl').value = branding?.app_url || val('app_url','') || '';
   if (branding?.app_logo) {
     const img = document.getElementById('logoPreview');
     img.src = branding.app_logo; img.style.display = 'block';
     document.getElementById('btnRemoveLogo').style.display = '';
   }
   window._savedLogo = branding?.app_logo || null;
-  renderPlatformUrls(branding?.app_url || val('app_url','') || '');
+  // Populate URL settings card
+  const appUrl = branding?.app_url || val('app_url','') || '';
+  document.getElementById('urlAppUrl').value = appUrl;
+  document.getElementById('urlPortalSlug').value = branding?.portal_slug || 'portal';
+  document.getElementById('urlCatalogSlug').value = branding?.catalog_slug || 'catalog';
+  refreshUrlPreviews();
   document.getElementById('allowPublicCatalog').checked = val('allow_public_catalog','0') === '1';
   document.getElementById('webcamEnabled').checked = val('webcam_enabled','1') === '1';
   document.getElementById('webcamInterval').value = val('webcam_interval', 30);
@@ -641,27 +718,41 @@ async function saveBranding() {
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
     const appName = document.getElementById('appName').value.trim() || 'Alaric Exam';
-    const appUrl = document.getElementById('appUrl').value.trim().replace(/\/$/, '');
     const brandBody = {
       app_name: appName,
       app_tagline: document.getElementById('appTagline').value.trim(),
-      app_url: appUrl,
     };
     if (window._pendingLogo !== undefined) brandBody.app_logo = window._pendingLogo || null;
     const result = await api('PUT', '/api/settings/branding', brandBody);
     if (!result || result.error) { toast(result?.error || 'Save failed', 'error'); return; }
     window._pendingLogo = undefined;
-    renderPlatformUrls(appUrl);
-    // Update sidebar brand + page title immediately without requiring a page refresh
     const brandEl = document.querySelector('#sidebar .brand');
     if (brandEl) {
       const svg = brandEl.querySelector('svg');
       brandEl.innerHTML = (svg ? svg.outerHTML : '') + appName;
     }
     document.title = 'Settings — ' + appName;
-    toast('Branding saved — sidebar and page title updated');
+    toast('Branding saved');
   } finally {
     btn.disabled = false; btn.textContent = 'Save Branding';
+  }
+}
+
+async function saveUrlSettings() {
+  const btn = document.getElementById('btnSaveUrls');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const appUrl = document.getElementById('urlAppUrl').value.trim().replace(/\/$/, '');
+    const portalSlug = document.getElementById('urlPortalSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || 'portal';
+    const catalogSlug = document.getElementById('urlCatalogSlug').value.trim().toLowerCase().replace(/[^a-z0-9-]/g, '') || 'catalog';
+    document.getElementById('urlPortalSlug').value = portalSlug;
+    document.getElementById('urlCatalogSlug').value = catalogSlug;
+    const result = await api('PUT', '/api/settings/branding', { app_url: appUrl, portal_slug: portalSlug, catalog_slug: catalogSlug });
+    if (!result || result.error) { toast(result?.error || 'Save failed', 'error'); return; }
+    refreshUrlPreviews();
+    toast('URL settings saved — push to GitHub to deploy slug changes');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save URL Settings';
   }
 }
 
@@ -1065,39 +1156,27 @@ async function geoSave() {
 // ── END GEO MANAGEMENT ──
 
 // ── PLATFORM URLS ─────────────────────────────────────────────────────────────
-function renderPlatformUrls(base) {
-  const el = document.getElementById('platform-urls-list');
-  if (!base) {
-    el.innerHTML = '<p style="color:var(--gray);font-size:13px;padding:8px 20px">Set the App URL above and save to see your platform links.</p>';
-    return;
-  }
-  const links = [
-    { label: 'Candidate Portal', url: base + '/portal', icon: '👤', desc: 'Login, register, browse exams, track progress' },
-    { label: 'Exam Catalog', url: base + '/catalog', icon: '📚', desc: 'Public page — browse & request access without login' },
-    { label: 'Admin Panel', url: base + '/admin', icon: '🔧', desc: 'Admin login and management (staff only)' },
-  ];
-  el.innerHTML = links.map(l => `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;border-bottom:1px solid var(--border);flex-wrap:wrap">
-      <div style="display:flex;align-items:center;gap:10px;min-width:0">
-        <span style="font-size:1.1rem">${l.icon}</span>
-        <div style="min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${l.label}</div>
-          <div style="font-size:11px;color:var(--gray);margin-top:1px">${l.desc}</div>
-        </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-        <code style="font-size:11px;background:#f3f4f6;padding:3px 8px;border-radius:4px;color:#374151;word-break:break-all">${esc(l.url)}</code>
-        <button onclick="copyUrl('${esc(l.url)}')" title="Copy" style="padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--white);cursor:pointer;font-size:11px;color:var(--gray)">Copy</button>
-        <a href="${esc(l.url)}" target="_blank" style="padding:4px 8px;border:1px solid var(--border);border-radius:5px;background:var(--white);text-decoration:none;font-size:11px;color:var(--gray)">Open ↗</a>
-      </div>
-    </div>`).join('');
+function refreshUrlPreviews() {
+  const base = (document.getElementById('urlAppUrl')?.value || '').trim().replace(/\/$/, '');
+  const portal = (document.getElementById('urlPortalSlug')?.value || 'portal').trim().replace(/[^a-z0-9-]/gi, '') || 'portal';
+  const catalog = (document.getElementById('urlCatalogSlug')?.value || 'catalog').trim().replace(/[^a-z0-9-]/gi, '') || 'catalog';
+  const set = (id, url) => { const el = document.getElementById(id); if (el) el.textContent = url; };
+  set('url-portal-preview',  base ? `${base}/${portal}` : `/${portal}`);
+  set('url-catalog-preview', base ? `${base}/${catalog}` : `/${catalog}`);
+  set('url-admin-preview',   base ? `${base}/admin` : '/admin');
 }
-function copyUrl(url) {
+function copyUrlPreview(elId) {
+  const url = document.getElementById(elId)?.textContent || '';
+  if (!url) return;
   navigator.clipboard.writeText(url).then(() => toast('URL copied!'), () => {
     const inp = document.createElement('input'); inp.value = url;
     document.body.appendChild(inp); inp.select(); document.execCommand('copy');
     document.body.removeChild(inp); toast('URL copied!');
   });
+}
+function openUrlPreview(elId) {
+  const url = document.getElementById(elId)?.textContent || '';
+  if (url) window.open(url.startsWith('http') ? url : 'https://' + url, '_blank');
 }
 
 // ── SMS CONFIG ────────────────────────────────────────────────────────────────
