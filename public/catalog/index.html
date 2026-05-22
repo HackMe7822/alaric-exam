@@ -186,7 +186,8 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:-ap
       </div>
     </div>
     <div class="header-actions" id="header-actions">
-      <!-- injected by JS -->
+      <a href="/portal" class="btn-login">Sign In</a>
+      <a href="/portal?tab=register" class="btn-dashboard">Register Free</a>
     </div>
   </div>
 </header>
@@ -269,42 +270,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:-ap
 
 <script>
 // ── STATE ──────────────────────────────────────────────────────────────
-let allExams = [], filtered = [], activeFilter = 'all', loggedIn = false, currentUser = null;
-
-// ── AUTH CHECK ─────────────────────────────────────────────────────────
-function getPortalToken() {
-  const c = document.cookie.split(';').map(s => s.trim()).find(s => s.startsWith('portal_token='));
-  return c ? c.split('=').slice(1).join('=') : localStorage.getItem('portal_token');
-}
-
-async function checkAuth() {
-  const token = getPortalToken();
-  if (!token) return;
-  try {
-    const r = await fetch('/api/portal/profile', { headers: { Authorization: 'Bearer ' + token } });
-    if (r.ok) {
-      currentUser = await r.json();
-      loggedIn = true;
-    }
-  } catch(e) {}
-}
-
-function renderHeader() {
-  const el = document.getElementById('header-actions');
-  if (loggedIn && currentUser) {
-    const initials = (currentUser.name || '?').trim().split(/\s+/).map(w => w[0]).join('').slice(0,2).toUpperCase();
-    el.innerHTML = `
-      <div class="user-chip">
-        <div class="user-avatar">${esc(initials)}</div>
-        <span style="color:rgba(255,255,255,.75);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(currentUser.name)}</span>
-      </div>
-      <a href="/portal" class="btn-dashboard">My Dashboard →</a>`;
-  } else {
-    el.innerHTML = `
-      <a href="/portal" class="btn-login">Sign In</a>
-      <a href="/portal?tab=register" class="btn-dashboard">Register Free</a>`;
-  }
-}
+let allExams = [], filtered = [], activeFilter = 'all';
 
 // ── BRANDING ───────────────────────────────────────────────────────────
 async function loadBranding() {
@@ -395,8 +361,6 @@ function buildCard(exam) {
   let footerBtn;
   if (isOpen) {
     footerBtn = `<button class="btn-start open" data-exam-id="${exam.id}">▶ Start Now — Free</button>`;
-  } else if (loggedIn) {
-    footerBtn = `<button class="btn-start dashboard" data-exam-id="${exam.id}">Request Access →</button>`;
   } else {
     footerBtn = `<button class="btn-start request" data-exam-id="${exam.id}">Sign In to Request Access</button>`;
   }
@@ -425,16 +389,9 @@ function onCardAction(examId) {
   const exam = allExams.find(e => e.id === examId);
   if (!exam) return;
   if (exam.is_open_test) {
-    // Open test — redirect to registration/request flow
     window.location.href = `/register?exam_id=${exam.id}`;
     return;
   }
-  if (loggedIn) {
-    // Logged in → go to portal, they can request access there
-    window.location.href = `/portal?exam_id=${exam.id}`;
-    return;
-  }
-  // Not logged in → show auth gate
   showAuthModal(exam);
 }
 
@@ -479,8 +436,6 @@ function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTi
 // ── INIT ───────────────────────────────────────────────────────────────
 async function init() {
   loadBranding();
-  await checkAuth();
-  renderHeader();
   await loadCatalog();
 
   document.getElementById('search-input').addEventListener('input', debounce(applyFilter, 220));
