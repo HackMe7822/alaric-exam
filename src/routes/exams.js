@@ -6,6 +6,7 @@ const { requireRole } = require('../middleware/roles');
 const { audit } = require('../utils/audit');
 const { generateToken, buildExamUrl } = require('../utils/linkgen');
 const { sendEmail, logEmailEvent } = require('../utils/email');
+const { softDelete } = require('../utils/recycle');
 
 // Fire-and-forget email — browser gets its response immediately, SMTP runs after.
 // sendEmail() now writes a 'pending' log row before SMTP, so every attempt is logged.
@@ -457,6 +458,17 @@ router.post('/:id/access-requests/:reqId/reject', auth, requireRole('exam_manage
       return { subject: tmpl.subject.replace(/\{\{exam_title\}\}/g, exam?.title || ''), html };
     },
   });
+});
+
+// DELETE /api/exams/access-requests/:reqId — soft delete an access request
+router.delete('/access-requests/:reqId', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const reqId = parseInt(req.params.reqId);
+  const req_ = db.prepare(`SELECT r.*, e.title as exam_title FROM exam_access_requests r LEFT JOIN exams e ON e.id=r.exam_id WHERE r.id=?`).get(reqId);
+  if (!req_) return res.status(404).json({ error: 'Not found' });
+  softDelete(db, req.user.id, req.user.full_name || req.user.username, 'access_request', reqId, req_);
+  db.prepare('DELETE FROM exam_access_requests WHERE id=?').run(reqId);
+  res.json({ ok: true });
 });
 
 module.exports = router;

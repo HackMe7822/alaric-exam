@@ -79,6 +79,32 @@ function initDb() {
   } catch(e) {}
   // JS migration: is_abandoned flag on submissions
   try { d.exec(`ALTER TABLE submissions ADD COLUMN is_abandoned INTEGER DEFAULT 0`); } catch(e) {}
+  // JS migration: recycle bin tables
+  try { d.exec(`CREATE TABLE IF NOT EXISTS deleted_records (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_type TEXT NOT NULL,
+    record_id INTEGER,
+    record_data TEXT NOT NULL,
+    deleted_by INTEGER,
+    deleted_by_name TEXT,
+    deleted_at TEXT DEFAULT (datetime('now')),
+    scheduled_purge_at TEXT
+  )`); } catch(e) {}
+  try { d.exec(`CREATE INDEX IF NOT EXISTS idx_deleted_records_type ON deleted_records(record_type)`); } catch(e) {}
+  try { d.exec(`CREATE TABLE IF NOT EXISTS deletion_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_type TEXT NOT NULL,
+    record_id INTEGER,
+    summary TEXT,
+    deleted_by_id INTEGER,
+    deleted_by_name TEXT,
+    originally_deleted_at TEXT,
+    purged_by_id INTEGER,
+    purged_by_name TEXT,
+    purged_at TEXT DEFAULT (datetime('now')),
+    purge_reason TEXT DEFAULT 'manual'
+  )`); } catch(e) {}
+  try { d.exec(`INSERT OR IGNORE INTO settings(key, value, description) VALUES('recycle_bin_days','30','Days before auto-permanent-delete (0 = never)')`); } catch(e) {}
   // Seed default URL slugs for portal and catalog
   try { d.exec(`INSERT OR IGNORE INTO settings(key, value, description) VALUES('portal_slug','portal','URL path slug for the candidate portal')`); } catch(e) {}
   try { d.exec(`INSERT OR IGNORE INTO settings(key, value, description) VALUES('catalog_slug','catalog','URL path slug for the exam catalog')`); } catch(e) {}

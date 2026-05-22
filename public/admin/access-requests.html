@@ -130,6 +130,7 @@
     <a href="/admin/users">👤 Users</a>
     <a href="/admin/email-config">📧 Email Config</a>
     <a href="/admin/settings">⚙️ Settings</a>
+    <a href="/admin/recycle-bin">🗑️ Recycle Bin</a>
   </nav>
   <div class="sidebar-user"><strong id="sb-name">Loading…</strong><span id="sb-role"></span></div>
 </div>
@@ -189,6 +190,7 @@
           </label>
           <button class="btn-reject-toggle" id="btn-reject-toggle" onclick="toggleRejectForm()">❌ Reject</button>
           <button class="btn-approve-ar" id="btn-approve" onclick="doApprove()">✅ Approve &amp; Send Link</button>
+          <button class="btn btn-danger btn-sm" id="btn-delete-ar" onclick="doDeleteRequest()" title="Move to recycle bin" style="margin-left:auto">🗑️ Delete</button>
         </div>
         <!-- Inline reject form -->
         <div class="ar-reject-form" id="ar-reject-form">
@@ -444,6 +446,18 @@ async function doApprove() {
     resetDetail();
     await loadArList();
   } catch(e) { toast('Network error', 'error'); btn.disabled=false; btn.textContent='✅ Approve & Send Link'; }
+}
+
+async function doDeleteRequest() {
+  if (!_selected) return;
+  if (!confirm(`Move this request from ${_selected.email} to the recycle bin?`)) return;
+  try {
+    const r = await api('DELETE', `/api/exams/access-requests/${_selected.id}`);
+    const d = await r.json();
+    if (!r.ok) { toast(d.error || 'Delete failed', 'error'); return; }
+    toast('Moved to recycle bin');
+    _selected = null; resetDetail(); await loadArList();
+  } catch(e) { toast('Network error', 'error'); }
 }
 
 async function doReject() {

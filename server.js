@@ -41,6 +41,7 @@ app.use('/api/geo', require('./src/routes/geo'));
 app.use('/api/question-bank', require('./src/routes/questionBank'));
 app.use('/api/portal', require('./src/routes/portal'));
 app.use('/api/catalog', require('./src/routes/catalog'));
+app.use('/api/recycle', require('./src/routes/recycle'));
 app.use('/exam', require('./src/routes/examPublic'));
 
 // Health endpoint — used by admin panel to detect Render deploys

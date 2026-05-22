@@ -6,6 +6,7 @@ const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
 const { audit } = require('../utils/audit');
 const { generateToken, buildExamUrl } = require('../utils/linkgen');
+const { softDelete } = require('../utils/recycle');
 
 // GET /api/candidates
 router.get('/', auth, (req, res) => {
@@ -55,10 +56,15 @@ router.put('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, res) 
   res.json({ ok: true });
 });
 
-// DELETE /api/candidates/:id
-router.delete('/:id', auth, requireRole('super_admin'), (req, res) => {
+// DELETE /api/candidates/:id — soft delete to recycle bin
+router.delete('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
   const db = getDb();
-  db.prepare('DELETE FROM candidates WHERE id=?').run(parseInt(req.params.id));
+  const id = parseInt(req.params.id);
+  const candidate = db.prepare('SELECT * FROM candidates WHERE id=?').get(id);
+  if (!candidate) return res.status(404).json({ error: 'Candidate not found' });
+  softDelete(db, req.user.id, req.user.full_name || req.user.username, 'candidate', id, candidate);
+  db.prepare('DELETE FROM candidates WHERE id=?').run(id);
+  audit(req.user.id, 'delete_candidate', 'candidate', id, { name: candidate.name, email: candidate.email }, req);
   res.json({ ok: true });
 });
 

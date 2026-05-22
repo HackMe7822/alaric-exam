@@ -5,6 +5,7 @@ const { getDb } = require('../../database/index');
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/roles');
 const { audit } = require('../utils/audit');
+const { softDelete } = require('../utils/recycle');
 
 // GET /api/users
 router.get('/', auth, requireRole('super_admin', 'exam_manager'), (req, res) => {
@@ -67,13 +68,16 @@ router.post('/:id/reset-password', auth, requireRole('super_admin'), (req, res) 
   res.json({ ok: true });
 });
 
-// DELETE /api/users/:id
+// DELETE /api/users/:id — soft delete to recycle bin
 router.delete('/:id', auth, requireRole('super_admin'), (req, res) => {
   const id = parseInt(req.params.id);
   if (id === req.user.id) return res.status(400).json({ error: 'Cannot delete own account' });
   const db = getDb();
-  db.prepare('UPDATE users SET is_active=0 WHERE id=?').run(id);
-  audit(req.user.id, 'deactivate_user', 'user', id, {}, req);
+  const user = db.prepare('SELECT id, username, email, full_name, role, is_active, created_at FROM users WHERE id=?').get(id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  softDelete(db, req.user.id, req.user.full_name || req.user.username, 'admin_user', id, user);
+  db.prepare('DELETE FROM users WHERE id=?').run(id);
+  audit(req.user.id, 'delete_admin_user', 'user', id, { username: user.username, email: user.email }, req);
   res.json({ ok: true });
 });
 

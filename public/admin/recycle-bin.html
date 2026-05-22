@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Recycle Bin — Alaric Exam</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+  /* ── Tabs ── */
+  .rb-tabs { display:flex; gap:4px; flex-wrap:wrap; margin-bottom:18px; }
+  .rb-tab { padding:6px 16px; border:1px solid var(--border); border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; background:#fff; color:var(--gray); transition:all .15s; }
+  .rb-tab.active { background:var(--mid); color:#fff; border-color:var(--mid); }
+
+  /* ── Record card ── */
+  .rb-card { background:#fff; border:1px solid var(--border); border-radius:8px; padding:14px 18px; margin-bottom:10px; display:flex; align-items:flex-start; gap:14px; }
+  .rb-card:hover { border-color:var(--mid); }
+  .rb-icon { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; background:#f1f3f5; }
+  .rb-icon.candidate   { background:#e8f0fe; }
+  .rb-icon.access_request { background:#fff3cd; }
+  .rb-icon.admin_user  { background:#fce7f3; }
+  .rb-icon.exam        { background:#d4edda; }
+  .rb-body { flex:1; min-width:0; }
+  .rb-title { font-size:14px; font-weight:700; color:var(--dark); margin-bottom:3px; }
+  .rb-meta  { font-size:12px; color:var(--gray); display:flex; gap:14px; flex-wrap:wrap; margin-top:4px; }
+  .rb-purge-soon { color:#dc2626; font-weight:600; }
+  .rb-actions { display:flex; gap:7px; flex-shrink:0; align-self:center; }
+
+  /* ── Purge bar ── */
+  .purge-bar { background:#fff3cd; border:1px solid #fde68a; border-radius:8px; padding:12px 18px; margin-bottom:16px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .purge-bar-text { flex:1; font-size:13px; color:#92400e; }
+
+  /* ── Settings panel ── */
+  .settings-panel { background:#fff; border:1px solid var(--border); border-radius:10px; padding:20px 22px; margin-bottom:20px; }
+  .settings-panel h3 { font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--gray); margin:0 0 14px; }
+  .purge-options { display:flex; gap:8px; flex-wrap:wrap; }
+  .purge-opt { padding:8px 18px; border:1.5px solid var(--border); border-radius:20px; font-size:13px; cursor:pointer; background:#fff; transition:all .15s; }
+  .purge-opt.active { background:var(--mid); color:#fff; border-color:var(--mid); }
+
+  /* ── Deletion Log ── */
+  .log-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .log-table th { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--gray); padding:8px 12px; border-bottom:2px solid var(--border); text-align:left; white-space:nowrap; }
+  .log-table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:top; }
+  .log-table tr:last-child td { border-bottom:none; }
+  .reason-chip { display:inline-block; padding:2px 8px; border-radius:10px; font-size:10px; font-weight:700; }
+  .reason-chip.manual        { background:#fee2e2; color:#991b1b; }
+  .reason-chip.auto_schedule { background:#e0edff; color:var(--mid); }
+  .reason-chip.admin_purge_all { background:#fef3c7; color:#92400e; }
+
+  /* ── Type badge ── */
+  .type-badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; background:#f1f3f5; color:var(--dark); }
+  .empty-rb { text-align:center; padding:60px 20px; color:var(--gray); }
+  .empty-rb .ei { font-size:40px; opacity:.3; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div class="brand"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="#00B4D8" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg><span>Alaric</span> Exam</div>
+  <nav>
+    <div class="nav-label">MAIN</div>
+    <a href="/admin/dashboard">📊 Dashboard</a>
+    <a href="/admin/exams">📋 Exams</a>
+    <a href="/admin/questions">❓ Question Bank</a>
+    <a href="/admin/candidates">👥 Candidates</a>
+    <div class="nav-label">REVIEW</div>
+    <a href="/admin/checker">✅ Review Queue</a>
+    <a href="/admin/results">🏆 Results</a>
+    <a href="/admin/analytics">📈 Analytics</a>
+    <a href="/admin/access-requests">📩 Access Requests <span id="sb-ar-badge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px"></span></a>
+    <div class="nav-label">ADMIN</div>
+    <a href="/admin/users">👤 Users</a>
+    <a href="/admin/email-config">📧 Email Config</a>
+    <a href="/admin/settings">⚙️ Settings</a>
+    <a href="/admin/recycle-bin" class="active">🗑️ Recycle Bin</a>
+  </nav>
+  <div class="sidebar-user"><strong id="sb-name">Loading…</strong><span id="sb-role"></span></div>
+</div>
+
+<div id="main">
+  <div id="topbar">
+    <h1>🗑️ Recycle Bin</h1>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="loadAll()">↺ Refresh</button>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Logout</button>
+    </div>
+  </div>
+
+  <div id="page">
+
+    <!-- ── Auto-purge settings ── -->
+    <div class="settings-panel">
+      <h3>⚙️ Auto-Permanent-Delete Schedule</h3>
+      <div class="purge-options" id="purge-options">
+        <button class="purge-opt" data-days="7"   onclick="setPurgeDays(7)">7 days</button>
+        <button class="purge-opt" data-days="30"  onclick="setPurgeDays(30)">30 days</button>
+        <button class="purge-opt" data-days="90"  onclick="setPurgeDays(90)">90 days</button>
+        <button class="purge-opt" data-days="365" onclick="setPurgeDays(365)">1 year</button>
+        <button class="purge-opt" data-days="0"   onclick="setPurgeDays(0)">Never</button>
+      </div>
+      <div style="font-size:12px;color:var(--gray);margin-top:10px" id="purge-hint"></div>
+    </div>
+
+    <!-- ── Expired purge alert ── -->
+    <div class="purge-bar" id="purge-bar" style="display:none">
+      <div class="purge-bar-text">
+        <strong id="purge-bar-count">0</strong> items have passed their scheduled deletion date.
+      </div>
+      <button class="btn btn-warning btn-sm" onclick="purgeExpired()">🗑️ Purge Expired Now</button>
+      <button class="btn btn-danger btn-sm" onclick="purgeAll()">💀 Purge Everything</button>
+    </div>
+
+    <!-- ── View toggle ── -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <div class="rb-tabs" id="rb-tabs">
+        <button class="rb-tab active" data-type="" onclick="setType('')">All <span id="badge-all" style="font-size:10px;margin-left:4px"></span></button>
+        <button class="rb-tab" data-type="candidate" onclick="setType('candidate')">👥 Candidates <span id="badge-candidate" style="font-size:10px;margin-left:4px"></span></button>
+        <button class="rb-tab" data-type="access_request" onclick="setType('access_request')">📩 Requests <span id="badge-access_request" style="font-size:10px;margin-left:4px"></span></button>
+        <button class="rb-tab" data-type="admin_user" onclick="setType('admin_user')">👤 Users <span id="badge-admin_user" style="font-size:10px;margin-left:4px"></span></button>
+      </div>
+      <div>
+        <button class="btn btn-ghost btn-sm" onclick="showLog()">📋 Deletion Log</button>
+      </div>
+    </div>
+
+    <!-- ── Records list ── -->
+    <div id="rb-list">
+      <div class="empty-rb"><div class="ei">⏳</div><p>Loading…</p></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── Deletion Log Modal ── -->
+<div class="modal-overlay hidden" id="log-modal">
+  <div class="modal" style="max-width:860px;width:95%">
+    <div class="modal-header">
+      <h3>📋 Permanent Deletion Log</h3>
+      <button class="btn-close" onclick="closeLog()">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:0;max-height:70vh;overflow-y:auto">
+      <div id="log-body" style="padding:16px"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm modal ── -->
+<div class="modal-overlay hidden" id="confirm-modal">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <h3 id="confirm-title">Confirm</h3>
+      <button class="btn-close" onclick="closeConfirm()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p id="confirm-msg" style="font-size:14px;line-height:1.6"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div id="tc"></div>
+
+<script>
+let _type = '';
+let _records = [];
+let _purgeDays = 30;
+
+function toast(msg, type='success') {
+  const t = document.createElement('div'); t.className='toast '+type; t.textContent=msg;
+  document.getElementById('tc').appendChild(t); setTimeout(()=>t.remove(),3500);
+}
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDt(str){if(!str)return'—';const d=new Date(str.includes('T')?str:str.replace(' ','T')+'Z');return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
+function daysUntil(str){if(!str)return null;const ms=new Date(str.includes('T')?str:str.replace(' ','T')+'Z').getTime()-Date.now();return Math.ceil(ms/86400000);}
+
+const TYPE_ICON = { candidate:'👥', access_request:'📩', admin_user:'👤', exam:'📋' };
+const TYPE_LABEL = { candidate:'Candidate', access_request:'Access Request', admin_user:'Admin User', exam:'Exam' };
+
+async function api(method, url, body) {
+  const r = await fetch(url, { method, credentials:'include', headers: body?{'Content-Type':'application/json'}:{}, body: body?JSON.stringify(body):undefined });
+  if (r.status===401) window.location.href='/admin';
+  return r;
+}
+
+async function init() {
+  const r = await fetch('/api/auth/me',{credentials:'include'});
+  if (!r.ok) return window.location.href='/admin';
+  const user = await r.json();
+  document.getElementById('sb-name').textContent = user.full_name;
+  document.getElementById('sb-role').textContent = user.role.replace(/_/g,' ');
+  await Promise.all([loadSettings(), loadAll()]);
+}
+document.getElementById('logoutBtn').onclick = async()=>{await fetch('/api/auth/logout',{method:'POST',credentials:'include'});window.location.href='/admin';};
+
+async function loadSettings() {
+  try {
+    const r = await api('GET', '/api/recycle/settings');
+    const d = await r.json();
+    _purgeDays = parseInt(d.recycle_bin_days ?? '30');
+    updatePurgeUI();
+  } catch(e) {}
+}
+
+async function loadAll() {
+  try {
+    const [statsR, recsR] = await Promise.all([
+      api('GET', '/api/recycle/stats'),
+      api('GET', `/api/recycle${_type?'?type='+_type:''}`)
+    ]);
+    const stats = await statsR.json();
+    _records = await recsR.json();
+    updateBadges(stats);
+    renderList();
+    checkExpired();
+  } catch(e) {
+    document.getElementById('rb-list').innerHTML = '<div class="empty-rb"><p style="color:var(--danger)">Failed to load recycle bin.</p></div>';
+  }
+}
+
+function updateBadges(stats) {
+  document.getElementById('badge-all').textContent = stats.total ? `(${stats.total})` : '';
+  for (const t of ['candidate','access_request','admin_user','exam']) {
+    const el = document.getElementById('badge-'+t);
+    if (el) el.textContent = stats.byType?.[t] ? `(${stats.byType[t]})` : '';
+  }
+}
+
+function checkExpired() {
+  const now = Date.now();
+  const expired = _records.filter(r => r.scheduled_purge_at && new Date(r.scheduled_purge_at.replace(' ','T')+'Z').getTime() <= now);
+  const bar = document.getElementById('purge-bar');
+  if (expired.length) {
+    document.getElementById('purge-bar-count').textContent = expired.length;
+    bar.style.display = '';
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function setType(t) {
+  _type = t;
+  document.querySelectorAll('.rb-tab').forEach(b => b.classList.toggle('active', b.dataset.type===t));
+  loadAll();
+}
+
+function renderList() {
+  const el = document.getElementById('rb-list');
+  if (!_records.length) {
+    el.innerHTML = `<div class="empty-rb"><div class="ei">🗑️</div><h3>Recycle bin is empty</h3><p>Deleted items appear here before permanent removal.</p></div>`;
+    return;
+  }
+  el.innerHTML = _records.map(r => {
+    const icon = TYPE_ICON[r.record_type] || '📄';
+    const label = TYPE_LABEL[r.record_type] || r.record_type;
+    const days = daysUntil(r.scheduled_purge_at);
+    let purgeInfo = '';
+    if (r.scheduled_purge_at) {
+      if (days <= 0) purgeInfo = `<span class="rb-purge-soon">⚠️ Overdue for purge</span>`;
+      else if (days <= 7) purgeInfo = `<span class="rb-purge-soon">⚠️ Purges in ${days} day${days!==1?'s':''}</span>`;
+      else purgeInfo = `<span>Purges ${fmtDt(r.scheduled_purge_at)}</span>`;
+    } else {
+      purgeInfo = `<span>Never auto-purge</span>`;
+    }
+    return `<div class="rb-card">
+      <div class="rb-icon ${r.record_type}">${icon}</div>
+      <div class="rb-body">
+        <div class="rb-title">${esc(r.summary)}</div>
+        <div class="rb-meta">
+          <span class="type-badge">${label}</span>
+          <span>Deleted by <strong>${esc(r.deleted_by_name||'System')}</strong></span>
+          <span>${fmtDt(r.deleted_at)}</span>
+          ${purgeInfo}
+        </div>
+      </div>
+      <div class="rb-actions">
+        <button class="btn btn-outline btn-sm" onclick="restore(${r.id},'${esc(r.summary)}')">↩ Restore</button>
+        <button class="btn btn-danger btn-sm" onclick="permDelete(${r.id},'${esc(r.summary)}')">💀 Delete Forever</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function updatePurgeUI() {
+  document.querySelectorAll('.purge-opt').forEach(b => b.classList.toggle('active', parseInt(b.dataset.days)===_purgeDays));
+  const hint = document.getElementById('purge-hint');
+  if (_purgeDays === 0) hint.textContent = 'Items in recycle bin will never be automatically deleted.';
+  else hint.textContent = `Items will be permanently deleted ${_purgeDays} days after being moved to the recycle bin.`;
+}
+
+async function setPurgeDays(days) {
+  _purgeDays = days;
+  updatePurgeUI();
+  try {
+    const r = await api('PUT', '/api/recycle/settings', { days });
+    if (!r.ok) { toast('Failed to save setting', 'error'); return; }
+    toast(`Auto-delete: ${days===0?'Never':`${days} days`}`);
+  } catch(e) { toast('Network error','error'); }
+}
+
+// ── Restore ───────────────────────────────────────────────────────────────────
+function restore(id, summary) {
+  openConfirm('Restore Record', `Restore "${summary}" back to its original location?`, async () => {
+    try {
+      const r = await api('POST', `/api/recycle/${id}/restore`);
+      const d = await r.json();
+      if (!r.ok) { toast(d.error||'Restore failed','error'); return; }
+      toast('↩ Restored successfully');
+      await loadAll();
+    } catch(e) { toast('Network error','error'); }
+  });
+}
+
+// ── Permanent delete ──────────────────────────────────────────────────────────
+function permDelete(id, summary) {
+  openConfirm('⚠️ Permanently Delete', `Permanently delete "${summary}"? This cannot be undone. A log entry will be saved.`, async () => {
+    try {
+      const r = await api('DELETE', `/api/recycle/${id}`);
+      if (!r.ok) { toast('Delete failed','error'); return; }
+      toast('Permanently deleted');
+      await loadAll();
+    } catch(e) { toast('Network error','error'); }
+  }, true);
+}
+
+async function purgeExpired() {
+  openConfirm('Purge Expired Items', 'Permanently delete all items that have passed their scheduled purge date?', async () => {
+    const r = await api('DELETE', '/api/recycle');
+    const d = await r.json();
+    toast(`Purged ${d.purged} item${d.purged!==1?'s':''}`);
+    await loadAll();
+  }, true);
+}
+
+async function purgeAll() {
+  openConfirm('💀 Purge Everything', 'Permanently delete ALL items in the recycle bin? This cannot be undone.', async () => {
+    const r = await api('DELETE', '/api/recycle?purge_all=1');
+    const d = await r.json();
+    toast(`Purged everything (${d.purged} items)`);
+    await loadAll();
+  }, true);
+}
+
+// ── Deletion log ──────────────────────────────────────────────────────────────
+const REASON_LABEL = { manual:'Manual', auto_schedule:'Auto-schedule', admin_purge_all:'Admin purge all' };
+async function showLog() {
+  const modal = document.getElementById('log-modal');
+  const body  = document.getElementById('log-body');
+  body.innerHTML = '<div style="text-align:center;padding:32px"><span class="spinner" style="width:28px;height:28px;border-width:3px"></span></div>';
+  modal.classList.remove('hidden');
+  try {
+    const r = await api('GET', '/api/recycle/log');
+    const rows = await r.json();
+    if (!rows.length) { body.innerHTML = '<p style="text-align:center;color:var(--gray);padding:32px">No permanent deletions recorded yet.</p>'; return; }
+    body.innerHTML = `<table class="log-table">
+      <thead><tr><th>Type</th><th>Summary</th><th>Deleted By</th><th>Moved to Bin</th><th>Purged By</th><th>Purged At</th><th>Reason</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr>
+        <td><span class="type-badge">${esc(TYPE_LABEL[r.record_type]||r.record_type)}</span></td>
+        <td style="max-width:220px">${esc(r.summary||'—')}</td>
+        <td>${esc(r.deleted_by_name||'—')}</td>
+        <td style="white-space:nowrap;color:var(--gray);font-size:12px">${fmtDt(r.originally_deleted_at)}</td>
+        <td>${esc(r.purged_by_name||'System')}</td>
+        <td style="white-space:nowrap;color:var(--gray);font-size:12px">${fmtDt(r.purged_at)}</td>
+        <td><span class="reason-chip ${r.purge_reason}">${esc(REASON_LABEL[r.purge_reason]||r.purge_reason)}</span></td>
+      </tr>`).join('')}</tbody>
+    </table>`;
+  } catch(e) { body.innerHTML = '<p style="color:var(--danger)">Failed to load log.</p>'; }
+}
+function closeLog() { document.getElementById('log-modal').classList.add('hidden'); }
+document.getElementById('log-modal').addEventListener('click', e=>{if(e.target===document.getElementById('log-modal'))closeLog();});
+
+// ── Confirm helper ────────────────────────────────────────────────────────────
+let _confirmCb = null;
+function openConfirm(title, msg, cb, danger=false) {
+  _confirmCb = cb;
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-msg').textContent = msg;
+  const btn = document.getElementById('confirm-ok');
+  btn.className = 'btn ' + (danger ? 'btn-danger' : 'btn-primary');
+  btn.textContent = 'Confirm';
+  btn.disabled = false;
+  document.getElementById('confirm-modal').classList.remove('hidden');
+}
+document.getElementById('confirm-ok').onclick = async () => {
+  if (_confirmCb) { document.getElementById('confirm-ok').disabled=true; await _confirmCb(); _confirmCb=null; }
+  closeConfirm();
+};
+function closeConfirm() { document.getElementById('confirm-modal').classList.add('hidden'); }
+document.getElementById('confirm-modal').addEventListener('click',e=>{if(e.target===document.getElementById('confirm-modal'))closeConfirm();});
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+<script src="/assets/js/admin-shared.js"></script>
+</body>
+</html>
