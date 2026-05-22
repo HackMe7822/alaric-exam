@@ -262,7 +262,8 @@ router.get('/my-exams', candidateAuth, (req, res) => {
 router.get('/history', candidateAuth, (req, res) => {
   const db = getDb();
   const rows = db.prepare(`
-    SELECT s.id, s.started_at, s.submitted_at, s.completed_at, s.score, s.passed,
+    SELECT s.id, s.started_at, s.submitted_at, s.submitted_at as completed_at,
+      s.final_score as score, s.pass_fail as passed,
       s.result_released, s.status,
       e.title as exam_title, e.code, e.total_marks, e.pass_marks, e.show_result_immediately
     FROM submissions s JOIN exams e ON e.id=s.exam_id
