@@ -157,10 +157,17 @@ function handleExamMsg(ws, msg) {
     );
   }
 
-  if (msg.type === 'exam_screenshot') {
-    // Route frame to subscribed admin only (not broadcast — could be large)
+  // WebRTC signaling — exam is the caller (creates offer, sends to admin)
+  if (msg.type === 'rtc_offer') {
     sendToAdmins(
-      { type: 'screenshot_frame', submissionId: msg.submissionId, imageData: msg.imageData },
+      { type: 'rtc_offer', submissionId: msg.submissionId, offer: msg.offer },
+      info => info.subscribedTo === msg.submissionId
+    );
+  }
+
+  if (msg.type === 'rtc_ice' && msg.dir === 'exam_to_admin') {
+    sendToAdmins(
+      { type: 'rtc_ice', candidate: msg.candidate, dir: 'exam_to_admin' },
       info => info.subscribedTo === msg.submissionId
     );
   }
@@ -202,6 +209,21 @@ function handleAdminMsg(ws, msg) {
   if (msg.type === 'stop_screen') {
     const s = info.subscribedTo && examSessions.get(info.subscribedTo);
     if (s && s.ws.readyState === WebSocket.OPEN) s.ws.send(JSON.stringify({ type: 'screen_stop' }));
+  }
+
+  // WebRTC signaling — admin is the answerer (receives offer, sends answer back)
+  if (msg.type === 'rtc_answer') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'rtc_answer', answer: msg.answer }));
+    }
+  }
+
+  if (msg.type === 'rtc_ice' && msg.dir === 'admin_to_exam') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'rtc_ice', candidate: msg.candidate, dir: 'admin_to_exam' }));
+    }
   }
 }
 

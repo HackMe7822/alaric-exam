@@ -67,13 +67,14 @@
 
 /* ── Screen view ── */
 #screen-card { display: none; }
-#screen-img { width: 100%; max-height: 500px; object-fit: contain; background: #111; border-radius: 6px; display: none; }
+#screen-video { width: 100%; max-height: 520px; object-fit: contain; background: #111; border-radius: 6px; display: none; }
 .screen-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 20px; color: #bbb; font-size: 13px; text-align: center; background: #f9f9f9; border-radius: 6px; }
 .screen-placeholder svg { width: 40px; height: 40px; color: #ddd; }
 #screen-ts { font-size: 11px; color: #888; text-align: right; margin-top: 4px; }
 .screen-actions { display: flex; gap: 8px; align-items: center; }
 #btn-req-screen { display: inline-flex; align-items: center; gap: 6px; }
 #btn-stop-screen { display: none; }
+#btn-fullscreen { display: none; }
 
 #empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; min-height: 300px; color: #bbb; font-size: 13px; text-align: center; }
 #empty-detail svg { width: 52px; height: 52px; color: #e0e0e0; }
@@ -178,6 +179,7 @@
                 Request Screen View
               </button>
               <button class="btn btn-sm btn-danger" id="btn-stop-screen" onclick="stopScreen()">Stop</button>
+              <button class="btn btn-sm btn-ghost" id="btn-fullscreen" onclick="goFullscreen()" title="Fullscreen">⛶</button>
             </div>
           </div>
           <div class="detail-card-body" style="padding:14px">
@@ -185,7 +187,7 @@
               <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
               <p>Click "Request Screen View" to ask the candidate to share their screen.<br>The candidate will see a prompt and must click "Share Screen" to begin.</p>
             </div>
-            <img id="screen-img" alt="Candidate screen" />
+            <video id="screen-video" autoplay playsinline muted></video>
             <div id="screen-ts"></div>
           </div>
         </div>
@@ -205,6 +207,16 @@ let _reconnectTimer = null;
 let _screenActive = false;
 let _timerInterval = null;
 let _detailTimeLeft = 0;
+let _adminPc = null;
+let _pendingAdminIce = [];
+
+const _RTC_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' },
+  ]
+};
 
 function toast(msg, type='success') {
   const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
@@ -268,8 +280,11 @@ function handleMsg(msg) {
     if (_sessions[msg.submissionId]) Object.assign(_sessions[msg.submissionId], msg);
     renderSessionCards();
   }
-  if (msg.type === 'screenshot_frame') {
-    if (msg.submissionId === _selectedId) showScreenFrame(msg.imageData);
+  if (msg.type === 'rtc_offer') {
+    if (msg.submissionId === _selectedId) handleRtcOffer(msg);
+  }
+  if (msg.type === 'rtc_ice' && msg.dir === 'exam_to_admin') {
+    handleAdminRtcIce(msg);
   }
 }
 
@@ -402,6 +417,7 @@ function eventHtml(e) {
 }
 
 function showEmptyDetail() {
+  if (_screenActive || _adminPc) stopScreen();
   document.getElementById('empty-detail').style.display = '';
   document.getElementById('cand-card').style.display = 'none';
   document.getElementById('events-card').style.display = 'none';
@@ -411,32 +427,89 @@ function showEmptyDetail() {
 function requestScreen() {
   if (!_selectedId) return;
   send({ type: 'request_screen' });
-  document.getElementById('btn-req-screen').disabled = true;
-  document.getElementById('btn-req-screen').textContent = 'Requesting…';
+  const btn = document.getElementById('btn-req-screen');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
   toast('Screen share request sent to candidate');
 }
 
 function stopScreen() {
   send({ type: 'stop_screen' });
+  if (_adminPc) { _adminPc.close(); _adminPc = null; }
+  _pendingAdminIce = [];
   _screenActive = false;
-  document.getElementById('screen-img').style.display = 'none';
+  const vid = document.getElementById('screen-video');
+  vid.srcObject = null;
+  vid.style.display = 'none';
   document.getElementById('screen-placeholder').style.display = '';
   document.getElementById('btn-req-screen').style.display = '';
   document.getElementById('btn-stop-screen').style.display = 'none';
-  document.getElementById('btn-req-screen').disabled = false;
-  document.getElementById('btn-req-screen').innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> Request Screen View';
+  document.getElementById('btn-fullscreen').style.display = 'none';
+  document.getElementById('screen-ts').textContent = '';
+  const btn = document.getElementById('btn-req-screen');
+  btn.disabled = false;
+  btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> Request Screen View';
 }
 
-function showScreenFrame(imageData) {
-  _screenActive = true;
-  const img = document.getElementById('screen-img');
-  img.src = imageData;
-  img.style.display = 'block';
-  document.getElementById('screen-placeholder').style.display = 'none';
-  document.getElementById('btn-req-screen').style.display = 'none';
-  document.getElementById('btn-stop-screen').style.display = '';
-  document.getElementById('screen-ts').textContent = 'Last frame: ' + new Date().toLocaleTimeString();
-  document.getElementById('btn-req-screen').disabled = false;
+async function handleRtcOffer(msg) {
+  if (_adminPc) { _adminPc.close(); _adminPc = null; }
+  _pendingAdminIce = [];
+
+  const pc = new RTCPeerConnection(_RTC_CONFIG);
+  _adminPc = pc;
+
+  pc.ontrack = e => {
+    const vid = document.getElementById('screen-video');
+    vid.srcObject = e.streams[0];
+    vid.style.display = 'block';
+    document.getElementById('screen-placeholder').style.display = 'none';
+    document.getElementById('btn-req-screen').style.display = 'none';
+    document.getElementById('btn-stop-screen').style.display = '';
+    document.getElementById('btn-fullscreen').style.display = '';
+    document.getElementById('screen-ts').textContent = 'Live — ' + new Date().toLocaleTimeString();
+    _screenActive = true;
+  };
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) send({ type: 'rtc_ice', candidate, dir: 'admin_to_exam' });
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'connected') {
+      document.getElementById('screen-ts').textContent = 'Live — ' + new Date().toLocaleTimeString();
+    }
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      stopScreen();
+    }
+  };
+
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+    for (const c of _pendingAdminIce) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+    }
+    _pendingAdminIce = [];
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    send({ type: 'rtc_answer', answer: pc.localDescription });
+  } catch(e) {
+    toast('Screen connection failed — try again', 'error');
+    stopScreen();
+  }
+}
+
+async function handleAdminRtcIce(msg) {
+  if (!_adminPc || !_adminPc.remoteDescription) {
+    _pendingAdminIce.push(msg.candidate);
+    return;
+  }
+  try { await _adminPc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch(e) {}
+}
+
+function goFullscreen() {
+  const vid = document.getElementById('screen-video');
+  if (vid.requestFullscreen) vid.requestFullscreen();
+  else if (vid.webkitRequestFullscreen) vid.webkitRequestFullscreen();
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
