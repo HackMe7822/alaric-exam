@@ -280,12 +280,13 @@ function toggleSelectAll(cb) {
 }
 
 async function releaseAllGraded() {
-  if (!confirm('Release all graded submissions? Candidates will be able to see their results.')) return;
-  const result = await api('POST', '/api/submissions/release-all-graded');
-  if (!result) return;
-  if (result.error) { toast(result.error,'error'); return; }
-  toast(`Released ${result.count || 'all'} results`);
-  loadResults();
+  showConfirm('Release all graded submissions? Candidates will be able to see their results.', async () => {
+    const result = await api('POST', '/api/submissions/release-all-graded');
+    if (!result) return;
+    if (result.error) { toast(result.error,'error'); return; }
+    toast(`Released ${result.count || 'all'} results`);
+    loadResults();
+  }, { confirmText: 'Release All', icon: '📤' });
 }
 
 async function openDetail(id) {
@@ -387,13 +388,14 @@ function closeDetailModal() {
 
 async function releaseResult() {
   if (!_currentSubmissionId) return;
-  if (!confirm('Release result to candidate?')) return;
-  const result = await api('POST', `/api/submissions/${_currentSubmissionId}/release-result`);
-  if (!result) return;
-  if (result.error) { toast(result.error,'error'); return; }
-  toast('Result released successfully');
-  document.getElementById('dm-release-btn').disabled = true;
-  loadResults();
+  showConfirm('Release result to candidate?', async () => {
+    const result = await api('POST', `/api/submissions/${_currentSubmissionId}/release-result`);
+    if (!result) return;
+    if (result.error) { toast(result.error,'error'); return; }
+    toast('Result released successfully');
+    document.getElementById('dm-release-btn').disabled = true;
+    loadResults();
+  }, { confirmText: 'Release', icon: '📤' });
 }
 
 async function triggerAutoScore() {

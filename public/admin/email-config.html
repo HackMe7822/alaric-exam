@@ -1181,16 +1181,17 @@ async function deleteProfile() {
   if (!_selectedProfileId) return;
   const p = _profiles.find(x => x.id === _selectedProfileId);
   const name = p ? (p.name || p.account_name || 'this account') : 'this account';
-  if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-  const result = await api('DELETE', `/api/settings/email-profiles/${_selectedProfileId}`, null);
-  if (!result && result !== null) return;
-  if (result && result.error) { toast(result.error, 'error'); return; }
-  toast('Account deleted');
-  _selectedProfileId = null;
-  _isNewProfile = false;
-  document.getElementById('profileEmptyState').style.display = '';
-  document.getElementById('profileFormInner').style.display = 'none';
-  await loadEmailAccounts();
+  showConfirm(`Delete "${name}"? This cannot be undone.`, async () => {
+    const result = await api('DELETE', `/api/settings/email-profiles/${_selectedProfileId}`, null);
+    if (!result && result !== null) return;
+    if (result && result.error) { toast(result.error, 'error'); return; }
+    toast('Account deleted');
+    _selectedProfileId = null;
+    _isNewProfile = false;
+    document.getElementById('profileEmptyState').style.display = '';
+    document.getElementById('profileFormInner').style.display = 'none';
+    await loadEmailAccounts();
+  }, { danger: true });
 }
 
 function renderRoutingTable(routing, profiles) {

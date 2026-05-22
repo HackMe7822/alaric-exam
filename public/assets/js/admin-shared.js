@@ -227,6 +227,68 @@
     } catch(e) {}
   }
 
+  /* ── CONFIRM MODAL ── */
+  function injectConfirmModal() {
+    if (document.getElementById('_sc-overlay')) return;
+    const s = document.createElement('style');
+    s.textContent = `
+#_sc-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:99100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .18s}
+#_sc-overlay.sc-show{opacity:1;pointer-events:auto}
+#_sc-box{background:#fff;border-radius:12px;width:92%;max-width:440px;box-shadow:0 12px 40px rgba(0,0,0,.22);transform:scale(.95) translateY(-8px);transition:transform .18s,opacity .18s;overflow:hidden}
+#_sc-overlay.sc-show #_sc-box{transform:scale(1) translateY(0)}
+#_sc-head{padding:18px 20px 0;display:flex;align-items:center;gap:10px}
+#_sc-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+#_sc-title{font-size:.9375rem;font-weight:700;color:#1b1a19;margin:0}
+#_sc-body{padding:10px 20px 20px 20px}
+#_sc-msg{font-size:.8375rem;color:#444;line-height:1.6;margin:0}
+#_sc-foot{padding:0 20px 18px;display:flex;justify-content:flex-end;gap:8px}
+#_sc-cancel{background:#f3f2f1;border:1px solid #e0e0e0;border-radius:7px;padding:7px 16px;font-size:.8125rem;font-weight:600;color:#444;cursor:pointer;transition:background .12s}
+#_sc-cancel:hover{background:#e8e6e4}
+#_sc-ok{border:none;border-radius:7px;padding:7px 18px;font-size:.8125rem;font-weight:700;cursor:pointer;transition:background .12s,opacity .12s;min-width:80px}
+#_sc-ok.sc-danger{background:#d13438;color:#fff}
+#_sc-ok.sc-danger:hover{background:#a4262c}
+#_sc-ok.sc-primary{background:#0078d4;color:#fff}
+#_sc-ok.sc-primary:hover{background:#005a9e}
+#_sc-ok:disabled{opacity:.5;cursor:not-allowed}
+    `;
+    document.head.appendChild(s);
+    const el = document.createElement('div');
+    el.id = '_sc-overlay';
+    el.innerHTML = `<div id="_sc-box"><div id="_sc-head"><div id="_sc-icon"></div><h3 id="_sc-title">Confirm</h3></div><div id="_sc-body"><p id="_sc-msg"></p></div><div id="_sc-foot"><button id="_sc-cancel">Cancel</button><button id="_sc-ok" class="sc-primary">Confirm</button></div></div>`;
+    document.body.appendChild(el);
+    el.addEventListener('click', e => { if (e.target === el) _scClose(false); });
+    document.getElementById('_sc-cancel').addEventListener('click', () => _scClose(false));
+    document.getElementById('_sc-ok').addEventListener('click', async () => {
+      const btn = document.getElementById('_sc-ok');
+      btn.disabled = true;
+      if (window._scCb) await window._scCb();
+      _scClose(null);
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.getElementById('_sc-overlay').classList.contains('sc-show')) _scClose(false);
+    });
+  }
+  function _scClose(run) {
+    const el = document.getElementById('_sc-overlay');
+    if (el) el.classList.remove('sc-show');
+    window._scCb = null;
+  }
+  window.showConfirm = function(message, onConfirm, { title = 'Confirm', danger = false, confirmText, icon } = {}) {
+    injectConfirmModal();
+    window._scCb = onConfirm;
+    const defIcon = danger ? '⚠️' : 'ℹ️';
+    const iconEl = document.getElementById('_sc-icon');
+    iconEl.textContent = icon || defIcon;
+    iconEl.style.background = danger ? '#fde7e9' : '#eff6ff';
+    document.getElementById('_sc-title').textContent = title;
+    document.getElementById('_sc-msg').textContent = message;
+    const btn = document.getElementById('_sc-ok');
+    btn.textContent = confirmText || (danger ? 'Delete' : 'Confirm');
+    btn.className = danger ? 'sc-danger' : 'sc-primary';
+    btn.disabled = false;
+    document.getElementById('_sc-overlay').classList.add('sc-show');
+  };
+
   /* ── INIT ── */
   function init() {
     injectBell();

@@ -814,12 +814,13 @@ async function loadSecurityInfo() {
 }
 
 async function revokeAllSessions() {
-  if (!confirm('Revoke all active sessions? Everyone will be logged out, including you.')) return;
-  const result = await api('POST', '/api/auth/revoke-all');
-  if (!result) return;
-  if (result.error) { toast(result.error,'error'); return; }
-  toast('All sessions revoked. Redirecting…','warning');
-  setTimeout(() => window.location.href = '/admin', 1500);
+  showConfirm('Revoke all active sessions? Everyone will be logged out, including you.', async () => {
+    const result = await api('POST', '/api/auth/revoke-all');
+    if (!result) return;
+    if (result.error) { toast(result.error,'error'); return; }
+    toast('All sessions revoked. Redirecting…','warning');
+    setTimeout(() => window.location.href = '/admin', 1500);
+  }, { danger: true, confirmText: 'Revoke All' });
 }
 
 // ── API Keys ──────────────────────────────────────────────────────────────
@@ -871,12 +872,13 @@ async function createApiKey() {
 }
 
 async function revokeApiKey(id) {
-  if (!confirm('Revoke this API key? It will stop working immediately.')) return;
-  const result = await api('DELETE', `/api/settings/api-keys/${id}`);
-  if (!result) return;
-  if (result.error) { toast(result.error,'error'); return; }
-  toast('API key revoked');
-  loadApiKeys();
+  showConfirm('Revoke this API key? It will stop working immediately.', async () => {
+    const result = await api('DELETE', `/api/settings/api-keys/${id}`);
+    if (!result) return;
+    if (result.error) { toast(result.error,'error'); return; }
+    toast('API key revoked');
+    loadApiKeys();
+  }, { danger: true, confirmText: 'Revoke' });
 }
 
 function copyApiKey() {
@@ -940,12 +942,13 @@ async function toggleWebhook(id, active) {
 }
 
 async function deleteWebhook(id) {
-  if (!confirm('Delete this webhook?')) return;
-  const result = await api('DELETE', `/api/settings/webhooks/${id}`);
-  if (!result) return;
-  if (result.error) { toast(result.error,'error'); return; }
-  toast('Webhook deleted');
-  loadWebhooks();
+  showConfirm('Delete this webhook?', async () => {
+    const result = await api('DELETE', `/api/settings/webhooks/${id}`);
+    if (!result) return;
+    if (result.error) { toast(result.error,'error'); return; }
+    toast('Webhook deleted');
+    loadWebhooks();
+  }, { danger: true });
 }
 
 // ── Audit Log ──────────────────────────────────────────────────────────────
@@ -1005,11 +1008,12 @@ async function downloadGdprExport() {
 async function requestErasure() {
   const id = document.getElementById('gdprDeleteId').value.trim();
   if (!id) { toast('Enter a candidate ID','error'); return; }
-  if (!confirm(`Permanently delete all data for candidate ID "${id}"? This cannot be undone.`)) return;
-  const result = await api('DELETE', `/api/settings/gdpr-erase/${encodeURIComponent(id)}`);
-  if (!result) return;
-  if (result.error) { toast(result.error,'error'); return; }
-  toast('All data for this candidate has been erased','warning');
+  showConfirm(`Permanently delete all data for candidate ID "${id}"? This cannot be undone.`, async () => {
+    const result = await api('DELETE', `/api/settings/gdpr-erase/${encodeURIComponent(id)}`);
+    if (!result) return;
+    if (result.error) { toast(result.error,'error'); return; }
+    toast('All data for this candidate has been erased','warning');
+  }, { danger: true, confirmText: 'Erase Data' });
 }
 
 // ── Utilities ──────────────────────────────────────────────────────────────
@@ -1112,8 +1116,9 @@ function geoEditCountry(id) {
   geoShowModal('Edit Country',`<label class="form-label">Name</label><input id="gf-name" class="form-control" value="${esc(c.name)}"><label class="form-label" style="margin-top:10px">ISO2 Code</label><input id="gf-iso2" class="form-control" value="${esc(c.iso2||'')}" maxlength="2"><label class="form-label" style="margin-top:10px">Phone Code</label><input id="gf-phone" class="form-control" value="${esc(c.phone_code||'')}">`);
 }
 async function geoDeleteCountry(id) {
-  if(!confirm('Delete this country and all its states/cities?')) return;
-  await api('DELETE',`/api/geo/countries/${id}`); geoLoadCountries();
+  showConfirm('Delete this country and all its states/cities?', async () => {
+    await api('DELETE',`/api/geo/countries/${id}`); geoLoadCountries();
+  }, { danger: true });
 }
 function geoAddState() {
   if(!_geoSelCountry) return;
@@ -1125,8 +1130,9 @@ function geoEditState(id, name, code) {
   geoShowModal('Edit State',`<label class="form-label">Name</label><input id="gf-name" class="form-control" value="${esc(name)}"><label class="form-label" style="margin-top:10px">Code (optional)</label><input id="gf-code" class="form-control" value="${esc(code)}">`);
 }
 async function geoDeleteState(id) {
-  if(!confirm('Delete this state and all its cities?')) return;
-  await api('DELETE',`/api/geo/states/${id}`); geoSelectCountry(_geoSelCountry.id);
+  showConfirm('Delete this state and all its cities?', async () => {
+    await api('DELETE',`/api/geo/states/${id}`); geoSelectCountry(_geoSelCountry.id);
+  }, { danger: true });
 }
 function geoAddCity() {
   if(!_geoSelState) return;
@@ -1138,8 +1144,9 @@ function geoEditCity(id, name) {
   geoShowModal('Edit City',`<label class="form-label">City Name</label><input id="gf-name" class="form-control" value="${esc(name)}">`);
 }
 async function geoDeleteCity(id) {
-  if(!confirm('Delete this city?')) return;
-  await api('DELETE',`/api/geo/cities/${id}`); geoSelectState(_geoSelState.id, _geoSelState.name);
+  showConfirm('Delete this city?', async () => {
+    await api('DELETE',`/api/geo/cities/${id}`); geoSelectState(_geoSelState.id, _geoSelState.name);
+  }, { danger: true });
 }
 async function geoSave() {
   const name = document.getElementById('gf-name')?.value.trim();

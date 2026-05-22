@@ -450,14 +450,15 @@ async function doApprove() {
 
 async function doDeleteRequest() {
   if (!_selected) return;
-  if (!confirm(`Move this request from ${_selected.email} to the recycle bin?`)) return;
-  try {
-    const r = await api('DELETE', `/api/exams/access-requests/${_selected.id}`);
-    const d = await r.json();
-    if (!r.ok) { toast(d.error || 'Delete failed', 'error'); return; }
-    toast('Moved to recycle bin');
-    _selected = null; resetDetail(); await loadArList();
-  } catch(e) { toast('Network error', 'error'); }
+  showConfirm(`Move this request from ${_selected.email} to the recycle bin?`, async () => {
+    try {
+      const r = await api('DELETE', `/api/exams/access-requests/${_selected.id}`);
+      const d = await r.json();
+      if (!r.ok) { toast(d.error || 'Delete failed', 'error'); return; }
+      toast('Moved to recycle bin');
+      _selected = null; resetDetail(); await loadArList();
+    } catch(e) { toast('Network error', 'error'); }
+  }, { title: 'Move to Recycle Bin', confirmText: 'Move to Bin' });
 }
 
 async function doReject() {

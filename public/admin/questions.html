@@ -636,10 +636,11 @@ document.getElementById('saveQBtn').onclick = async () => {
 
 // =================== DELETE ===================
 async function deleteQuestion(id) {
-  if (!confirm('Delete this question from the bank?')) return;
-  const r = await api('DELETE', `/api/question-bank/${id}`);
-  if (r&&!r.error) { toast('Deleted','warning'); loadQuestions(); }
-  else toast(r?.error||'Failed','error');
+  showConfirm('Delete this question from the bank?', async () => {
+    const r = await api('DELETE', `/api/question-bank/${id}`);
+    if (r&&!r.error) { toast('Deleted','warning'); loadQuestions(); }
+    else toast(r?.error||'Failed','error');
+  }, { danger: true });
 }
 
 // =================== ADD TO EXAM ===================
@@ -710,10 +711,11 @@ document.getElementById('addCatBtn').onclick = async () => {
 };
 
 async function deleteCat(id) {
-  if (!confirm('Delete this category?')) return;
-  const r = await api('DELETE', `/api/question-bank/categories/${id}`);
-  if (r&&!r.error) { toast('Category deleted','warning'); await loadCategories(); loadCatModal(); }
-  else toast(r?.error||'Failed','error');
+  showConfirm('Delete this category?', async () => {
+    const r = await api('DELETE', `/api/question-bank/categories/${id}`);
+    if (r&&!r.error) { toast('Category deleted','warning'); await loadCategories(); loadCatModal(); }
+    else toast(r?.error||'Failed','error');
+  }, { danger: true });
 }
 
 // =================== STATS ===================

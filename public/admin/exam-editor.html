@@ -946,17 +946,19 @@ document.getElementById('publishBtn').onclick = async () => {
   if (r && !r.error) { toast('Exam published!'); _exam.status = 'published'; renderExamHeader(); }
   else toast(r?.error || 'Failed', 'error');
 };
-document.getElementById('archiveBtn').onclick = async () => {
-  if (!confirm('Archive this exam? It will no longer be accessible to candidates.')) return;
-  const r = await api('POST', `/api/exams/${EXAM_ID}/archive`);
-  if (r && !r.error) { toast('Exam archived', 'warning'); _exam.status = 'archived'; renderExamHeader(); }
-  else toast(r?.error || 'Failed', 'error');
+document.getElementById('archiveBtn').onclick = () => {
+  showConfirm('Archive this exam? It will no longer be accessible to candidates.', async () => {
+    const r = await api('POST', `/api/exams/${EXAM_ID}/archive`);
+    if (r && !r.error) { toast('Exam archived', 'warning'); _exam.status = 'archived'; renderExamHeader(); }
+    else toast(r?.error || 'Failed', 'error');
+  }, { danger: true, confirmText: 'Archive' });
 };
-document.getElementById('unpublishBtn').onclick = async () => {
-  if (!confirm('Unpublish this exam?')) return;
-  const r = await api('POST', `/api/exams/${EXAM_ID}/unpublish`);
-  if (r && !r.error) { toast('Exam moved back to draft', 'warning'); _exam.status = 'draft'; renderExamHeader(); }
-  else toast(r?.error || 'Failed', 'error');
+document.getElementById('unpublishBtn').onclick = () => {
+  showConfirm('Unpublish this exam?', async () => {
+    const r = await api('POST', `/api/exams/${EXAM_ID}/unpublish`);
+    if (r && !r.error) { toast('Exam moved back to draft', 'warning'); _exam.status = 'draft'; renderExamHeader(); }
+    else toast(r?.error || 'Failed', 'error');
+  }, { confirmText: 'Unpublish' });
 };
 
 // ════════════════════════════════════════════════════════
@@ -1087,14 +1089,15 @@ function openEditSection(id) {
 }
 
 async function deleteSection(id) {
-  if (!confirm('Delete this section? Questions will be unassigned (not deleted).')) return;
-  const r = await api('DELETE', `/api/exams/${EXAM_ID}/sections/${id}`);
-  if (r && !r.error) {
-    toast('Section deleted', 'warning');
-    if (String(_activeSec) === String(id)) _activeSec = '';
-    await loadSections();
-    renderQuestions();
-  } else toast(r?.error || 'Failed', 'error');
+  showConfirm('Delete this section? Questions will be unassigned (not deleted).', async () => {
+    const r = await api('DELETE', `/api/exams/${EXAM_ID}/sections/${id}`);
+    if (r && !r.error) {
+      toast('Section deleted', 'warning');
+      if (String(_activeSec) === String(id)) _activeSec = '';
+      await loadSections();
+      renderQuestions();
+    } else toast(r?.error || 'Failed', 'error');
+  }, { danger: true });
 }
 
 // ════════════════════════════════════════════════════════
@@ -1164,10 +1167,11 @@ document.getElementById('q-filter-section').addEventListener('change', function 
 });
 
 async function deleteQuestion(id) {
-  if (!confirm('Delete this question? This cannot be undone.')) return;
-  const r = await api('DELETE', `/api/exams/${EXAM_ID}/questions/${id}`);
-  if (r && !r.error) { toast('Question deleted', 'warning'); await loadQuestions(); }
-  else toast(r?.error || 'Failed', 'error');
+  showConfirm('Delete this question? This cannot be undone.', async () => {
+    const r = await api('DELETE', `/api/exams/${EXAM_ID}/questions/${id}`);
+    if (r && !r.error) { toast('Question deleted', 'warning'); await loadQuestions(); }
+    else toast(r?.error || 'Failed', 'error');
+  }, { danger: true });
 }
 
 // ════════════════════════════════════════════════════════
