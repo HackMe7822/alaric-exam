@@ -106,6 +106,10 @@
 /* ── Quick-create modal ── */
 .form-hint { font-size: 11px; color: var(--gray); margin-top: 3px; }
 #confirm-overlay .modal { max-width: 420px; }
+/* ── Max Attempts quick-edit ── */
+.m-val-link { cursor:pointer; border-bottom:1px dashed var(--mid); color:var(--mid); }
+.m-val-link:hover { color:var(--dark); border-color:var(--dark); }
+#ma-modal .modal { max-width:340px; }
 </style>
 </head>
 <body>
@@ -242,6 +246,26 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeConfirm()">Cancel</button>
       <button class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Max Attempts quick-edit modal ── -->
+<div class="modal-overlay hidden" id="ma-modal">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <h3>Max Attempts</h3>
+      <button class="btn-close" onclick="closeMaModal()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--gray);margin-bottom:14px" id="ma-exam-title"></p>
+      <label style="font-size:12px;font-weight:600;color:var(--dark);display:block;margin-bottom:6px">How many times can a candidate take this exam?</label>
+      <input type="number" id="ma-input" min="1" max="99" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:6px;font-size:14px;font-weight:600">
+      <p style="font-size:11px;color:var(--gray);margin-top:6px">Set to 1 to allow only one attempt. Abandoned sessions (closed tab) do not count.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeMaModal()">Cancel</button>
+      <button class="btn btn-primary" id="ma-save-btn" onclick="saveMaModal()">Save</button>
     </div>
   </div>
 </div>
@@ -416,8 +440,8 @@ function renderGrid() {
             <span class="m-val">${totalM} / ${passM}</span>
           </div>
           <div class="exam-meta-item">
-            <span class="m-lbl">Submissions</span>
-            <span class="m-val">${subs}</span>
+            <span class="m-lbl">Max Attempts</span>
+            <span class="m-val m-val-link" onclick="openMaModal(${ex.id},'${title}',${ex.max_attempts??1})" title="Click to change">${ex.max_attempts ?? 1} ✎</span>
           </div>
         </div>
         <div class="exam-card-date">Created: ${created}</div>
@@ -583,6 +607,42 @@ document.getElementById('confirm-ok-btn').onclick = async () => {
 
 document.getElementById('confirmModal').addEventListener('click', e => {
   if (e.target === document.getElementById('confirmModal')) closeConfirm();
+});
+
+// ════════════════════════════════════════════════════════
+//  Max Attempts quick-edit
+// ════════════════════════════════════════════════════════
+let _maExamId = null;
+function openMaModal(id, title, current) {
+  _maExamId = id;
+  document.getElementById('ma-exam-title').textContent = title;
+  document.getElementById('ma-input').value = current;
+  document.getElementById('ma-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('ma-input').select(), 50);
+}
+function closeMaModal() {
+  _maExamId = null;
+  document.getElementById('ma-modal').classList.add('hidden');
+}
+async function saveMaModal() {
+  if (!_maExamId) return;
+  const val = parseInt(document.getElementById('ma-input').value);
+  if (!val || val < 1) { toast('Enter a number ≥ 1', 'error'); return; }
+  const btn = document.getElementById('ma-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch(`/api/exams/${_maExamId}`, { method:'PUT', credentials:'include', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ max_attempts: val }) });
+    if (!r.ok) { const d = await r.json(); toast(d.error||'Failed', 'error'); btn.disabled=false; btn.textContent='Save'; return; }
+    // Update local data so the card re-renders correctly
+    const ex = allExams.find(e => e.id === _maExamId);
+    if (ex) ex.max_attempts = val;
+    renderGrid();
+    toast(`Max attempts updated to ${val}`);
+    closeMaModal();
+  } catch(e) { toast('Network error', 'error'); btn.disabled=false; btn.textContent='Save'; }
+}
+document.getElementById('ma-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('ma-modal')) closeMaModal();
 });
 
 // ════════════════════════════════════════════════════════
