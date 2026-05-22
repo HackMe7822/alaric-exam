@@ -750,17 +750,25 @@ html,body { height:100%; background:var(--bg); color:var(--text); font-family:'S
                     <label class="form-label" for="edit-address">Street Address</label>
                     <input id="edit-address" type="text" class="form-input" placeholder="123 Main Street, Apt 4B">
                   </div>
-                  <div class="form-group">
-                    <label class="form-label" for="edit-city">City</label>
-                    <input id="edit-city" type="text" class="form-input" placeholder="New York">
+                  <div class="form-group" style="grid-column:1/-1">
+                    <label class="form-label">Country</label>
+                    <select id="edit-country" class="form-input" onchange="onAddressCountryChange()">
+                      <option value="">— Select Country —</option>
+                    </select>
                   </div>
                   <div class="form-group">
-                    <label class="form-label" for="edit-state">State / Province</label>
-                    <input id="edit-state" type="text" class="form-input" placeholder="NY">
+                    <label class="form-label">State / Province</label>
+                    <select id="edit-state-sel" class="form-input" style="display:none" onchange="onAddressStateChange()">
+                      <option value="">— Select State —</option>
+                    </select>
+                    <input id="edit-state" type="text" class="form-input" placeholder="State / Province">
                   </div>
                   <div class="form-group">
-                    <label class="form-label" for="edit-country">Country</label>
-                    <input id="edit-country" type="text" class="form-input" placeholder="United States">
+                    <label class="form-label">City</label>
+                    <select id="edit-city-sel" class="form-input" style="display:none">
+                      <option value="">— Select City —</option>
+                    </select>
+                    <input id="edit-city" type="text" class="form-input" placeholder="City">
                   </div>
                   <div class="form-group">
                     <label class="form-label" for="edit-postal">Postal / ZIP Code</label>
@@ -1017,10 +1025,18 @@ const PHONE_CODES_SORTED = [...PHONE_CODES].sort((a,b) => b[0].length - a[0].len
 function buildPhoneOptions() {
   return PHONE_CODES.map(([code, name]) => `<option value="${code}">${name} (${code})</option>`).join('');
 }
-function initPhoneSelects() {
-  document.querySelectorAll('select[id$="-phone-cc"]').forEach(sel => {
-    sel.innerHTML = buildPhoneOptions();
-  });
+async function initPhoneSelects() {
+  try {
+    const countries = await fetch('/api/geo/countries').then(r=>r.ok?r.json():[]);
+    const opts = countries.filter(c=>c.phone_code)
+      .map(c=>`<option value="${c.phone_code}">${c.name} (${c.phone_code})</option>`).join('');
+    if (opts) {
+      document.querySelectorAll('select[id$="-phone-cc"]').forEach(s=>{ s.innerHTML=opts; });
+      return;
+    }
+  } catch(e) {}
+  // Fallback to hardcoded PHONE_CODES
+  document.querySelectorAll('select[id$="-phone-cc"]').forEach(sel=>{ sel.innerHTML=buildPhoneOptions(); });
 }
 function parsePhone(full) {
   if (!full) return { cc: '+1', num: '' };
@@ -1433,6 +1449,107 @@ async function loadResultsTab(){
 }
 
 /* ── PROFILE TAB ── */
+/* ── GEO CASCADING ── */
+let _geoCountries = [];
+async function loadGeoCountries() {
+  try {
+    _geoCountries = await fetch('/api/geo/countries').then(r=>r.ok?r.json():[]);
+    const sel = document.getElementById('edit-country');
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Select Country —</option>' +
+      _geoCountries.map(c=>`<option value="${esc(c.name)}" data-id="${c.id}">${esc(c.name)}</option>`).join('');
+    if (current) sel.value = current;
+  } catch(e) {}
+}
+async function onAddressCountryChange() {
+  const sel = document.getElementById('edit-country');
+  const stateSel = document.getElementById('edit-state-sel');
+  const stateText = document.getElementById('edit-state');
+  const citySel = document.getElementById('edit-city-sel');
+  const cityText = document.getElementById('edit-city');
+  // Reset state/city
+  stateSel.innerHTML = '<option value="">— Select State —</option>';
+  stateText.value = '';
+  citySel.innerHTML = '<option value="">— Select City —</option>';
+  cityText.value = '';
+  stateSel.style.display = 'none'; stateText.style.display = '';
+  citySel.style.display = 'none'; cityText.style.display = '';
+  const opt = sel.options[sel.selectedIndex];
+  const countryId = opt?.dataset?.id;
+  if (!countryId) return;
+  try {
+    const states = await fetch(`/api/geo/states?country_id=${countryId}`).then(r=>r.ok?r.json():[]);
+    if (states.length) {
+      stateSel.innerHTML = '<option value="">— Select State —</option>' +
+        states.map(s=>`<option value="${esc(s.name)}" data-id="${s.id}">${esc(s.name)}</option>`).join('');
+      stateSel.style.display = ''; stateText.style.display = 'none';
+    }
+  } catch(e) {}
+}
+async function onAddressStateChange() {
+  const stateSel = document.getElementById('edit-state-sel');
+  const citySel = document.getElementById('edit-city-sel');
+  const cityText = document.getElementById('edit-city');
+  citySel.innerHTML = '<option value="">— Select City —</option>';
+  cityText.value = '';
+  citySel.style.display = 'none'; cityText.style.display = '';
+  const opt = stateSel.options[stateSel.selectedIndex];
+  const stateId = opt?.dataset?.id;
+  if (!stateId) return;
+  try {
+    const cities = await fetch(`/api/geo/cities?state_id=${stateId}`).then(r=>r.ok?r.json():[]);
+    if (cities.length) {
+      citySel.innerHTML = '<option value="">— Select City —</option>' +
+        cities.map(c=>`<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+      citySel.style.display = ''; cityText.style.display = 'none';
+    }
+  } catch(e) {}
+}
+function getAddressCity() {
+  const sel = document.getElementById('edit-city-sel');
+  const txt = document.getElementById('edit-city');
+  return sel.style.display !== 'none' ? sel.value : txt.value.trim();
+}
+function getAddressState() {
+  const sel = document.getElementById('edit-state-sel');
+  const txt = document.getElementById('edit-state');
+  return sel.style.display !== 'none' ? sel.value : txt.value.trim();
+}
+async function setAddressFields(country, state, city) {
+  await loadGeoCountries();
+  const countrySel = document.getElementById('edit-country');
+  if (country && countrySel) {
+    countrySel.value = country;
+    if (countrySel.value !== country) {
+      // Not in list, add as custom option
+      const opt = document.createElement('option');
+      opt.value = country; opt.textContent = country;
+      countrySel.appendChild(opt); countrySel.value = country;
+    }
+    await onAddressCountryChange();
+  }
+  if (state) {
+    const stateSel = document.getElementById('edit-state-sel');
+    const stateText = document.getElementById('edit-state');
+    if (stateSel.style.display !== 'none') {
+      stateSel.value = state;
+      if (!stateSel.value) { // not in list
+        stateText.value = state; stateSel.style.display = 'none'; stateText.style.display = '';
+      } else await onAddressStateChange();
+    } else stateText.value = state;
+  }
+  if (city) {
+    const citySel = document.getElementById('edit-city-sel');
+    const cityText = document.getElementById('edit-city');
+    if (citySel.style.display !== 'none') {
+      citySel.value = city;
+      if (!citySel.value) cityText.value = city;
+    } else cityText.value = city;
+  }
+}
+/* ── END GEO CASCADING ── */
+
 async function loadProfileTab(){
   try{
     const p=await apiCall('GET','/api/portal/profile');
@@ -1463,10 +1580,8 @@ async function loadProfileTab(){
     document.getElementById('phone-unverified-badge').style.display=p.phone&&!p.phone_verified?'':'none';
     document.getElementById('edit-org').value=p.organization||'';
     document.getElementById('edit-address').value=p.address||'';
-    document.getElementById('edit-city').value=p.city||'';
-    document.getElementById('edit-state').value=p.state||'';
-    document.getElementById('edit-country').value=p.country||'';
     document.getElementById('edit-postal').value=p.postal_code||'';
+    await setAddressFields(p.country||'', p.state||'', p.city||'');
     document.getElementById('nav-user-name').textContent=p.name||p.email;
   }catch(e){}
 }
@@ -1499,7 +1614,7 @@ async function saveAddress(){
   err.classList.remove('show');suc.classList.remove('show');
   btn.disabled=true;btn.textContent='Saving…';
   try{
-    await apiCall('PUT','/api/portal/profile',{address:document.getElementById('edit-address').value.trim()||null,city:document.getElementById('edit-city').value.trim()||null,state:document.getElementById('edit-state').value.trim()||null,country:document.getElementById('edit-country').value.trim()||null,postal_code:document.getElementById('edit-postal').value.trim()||null});
+    await apiCall('PUT','/api/portal/profile',{address:document.getElementById('edit-address').value.trim()||null,city:getAddressCity()||null,state:getAddressState()||null,country:document.getElementById('edit-country').value||null,postal_code:document.getElementById('edit-postal').value.trim()||null});
     suc.textContent='Address saved.';suc.classList.add('show');showToast('Address updated.','success');
   }catch(e){err.textContent=e.message;err.classList.add('show');}
   finally{btn.disabled=false;btn.textContent='Save Address';}

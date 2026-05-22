@@ -47,6 +47,12 @@ function initDb() {
   }
   // JS migration: phone_verified flag on candidates
   try { d.exec(`ALTER TABLE candidates ADD COLUMN phone_verified INTEGER DEFAULT 0`); } catch(e) {}
+  // Geo tables + seed
+  d.exec(`CREATE TABLE IF NOT EXISTS geo_countries (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, iso2 TEXT UNIQUE, phone_code TEXT, is_active INTEGER DEFAULT 1, sort_order INTEGER DEFAULT 0)`);
+  d.exec(`CREATE TABLE IF NOT EXISTS geo_states (id INTEGER PRIMARY KEY AUTOINCREMENT, country_id INTEGER NOT NULL REFERENCES geo_countries(id) ON DELETE CASCADE, name TEXT NOT NULL, code TEXT, is_active INTEGER DEFAULT 1)`);
+  d.exec(`CREATE TABLE IF NOT EXISTS geo_cities (id INTEGER PRIMARY KEY AUTOINCREMENT, country_id INTEGER NOT NULL, state_id INTEGER REFERENCES geo_states(id) ON DELETE SET NULL, name TEXT NOT NULL, is_active INTEGER DEFAULT 1)`);
+  const { seedGeo } = require('./geo-seed');
+  seedGeo(d);
   // JS migration: test candidate for portal demos
   try {
     const existing = d.prepare("SELECT id FROM candidates WHERE email='test@test.com'").get();

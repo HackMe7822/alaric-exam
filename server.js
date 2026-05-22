@@ -36,6 +36,7 @@ app.use('/api/submissions', require('./src/routes/submissions'));
 app.use('/api/checker', require('./src/routes/checker'));
 app.use('/api/analytics', require('./src/routes/analytics'));
 app.use('/api/settings', require('./src/routes/settings'));
+app.use('/api/geo', require('./src/routes/geo'));
 app.use('/api/question-bank', require('./src/routes/questionBank'));
 app.use('/api/portal', require('./src/routes/portal'));
 app.use('/api/catalog', require('./src/routes/catalog'));

@@ -71,6 +71,7 @@
       <button class="tab-btn" onclick="switchTab('webhooks',this)">Webhooks</button>
       <button class="tab-btn" onclick="switchTab('auditlog',this)">Audit Log</button>
       <button class="tab-btn" onclick="switchTab('gdpr',this)">GDPR</button>
+      <button class="tab-btn" onclick="switchTab('locations',this)">Locations</button>
     </div>
 
     <!-- General Tab -->
@@ -335,6 +336,60 @@
         </button>
       </div>
     </div>
+
+    <!-- Locations Tab -->
+    <div id="tab-locations" class="tab-pane">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px">
+
+        <!-- Countries panel -->
+        <div class="card">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <span class="card-title">Countries</span>
+            <button class="btn btn-sm btn-primary" onclick="geoAddCountry()">+ Add</button>
+          </div>
+          <div style="padding:8px">
+            <input type="text" id="geo-country-search" class="form-control" placeholder="Search…" oninput="geoFilterCountries()" style="margin-bottom:8px">
+            <div id="geo-country-list" style="max-height:420px;overflow-y:auto"></div>
+          </div>
+        </div>
+
+        <!-- States panel -->
+        <div class="card">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <span class="card-title">States / Provinces</span>
+            <button class="btn btn-sm btn-primary" id="geo-add-state-btn" onclick="geoAddState()" disabled>+ Add</button>
+          </div>
+          <div style="padding:8px">
+            <div id="geo-country-label" style="font-size:12px;color:var(--gray);margin-bottom:8px">Select a country</div>
+            <div id="geo-state-list" style="max-height:420px;overflow-y:auto"></div>
+          </div>
+        </div>
+
+        <!-- Cities panel -->
+        <div class="card">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+            <span class="card-title">Cities</span>
+            <button class="btn btn-sm btn-primary" id="geo-add-city-btn" onclick="geoAddCity()" disabled>+ Add</button>
+          </div>
+          <div style="padding:8px">
+            <div id="geo-state-label" style="font-size:12px;color:var(--gray);margin-bottom:8px">Select a state</div>
+            <div id="geo-city-list" style="max-height:420px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Geo Edit Modal -->
+      <div id="geo-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:10px;padding:24px;min-width:340px;max-width:440px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+          <h3 id="geo-modal-title" style="margin:0 0 16px;font-size:15px"></h3>
+          <div id="geo-modal-body"></div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('geo-modal').style.display='none'">Cancel</button>
+            <button class="btn btn-primary btn-sm" id="geo-modal-save" onclick="geoSave()">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -448,6 +503,7 @@ function switchTab(name, el) {
   if (name === 'webhooks') loadWebhooks();
   if (name === 'auditlog') loadAuditLog();
   if (name === 'security') loadSecurityInfo();
+  if (name === 'locations') geoLoadCountries();
 }
 
 // ── Page init ──────────────────────────────────────────────────────────────
@@ -780,6 +836,148 @@ function esc(s) {
 
 document.getElementById('createKeyModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreateKeyModal(); });
 document.getElementById('createWebhookModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeCreateWebhookModal(); });
+
+// ── GEO MANAGEMENT ──
+let _geoSelCountry = null, _geoSelState = null;
+let _geoAllCountries = [], _geoMode = null, _geoEditId = null;
+
+async function geoLoadCountries() {
+  const r = await api('GET', '/api/geo/countries');
+  _geoAllCountries = r || [];
+  geoRenderCountries();
+}
+function geoFilterCountries() {
+  const q = document.getElementById('geo-country-search').value.toLowerCase();
+  geoRenderCountries(q);
+}
+function geoRenderCountries(filter='') {
+  const list = document.getElementById('geo-country-list');
+  const items = filter ? _geoAllCountries.filter(c=>c.name.toLowerCase().includes(filter)) : _geoAllCountries;
+  list.innerHTML = items.length ? items.map(c=>`
+    <div onclick="geoSelectCountry(${c.id})" style="padding:7px 10px;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;${_geoSelCountry?.id===c.id?'background:var(--primary-light,#e8f0fe);':''}">
+      <span style="font-size:13px">${esc(c.name)} <span style="color:#aaa;font-size:11px">${c.phone_code||''}</span></span>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();geoEditCountry(${c.id})">Edit</button>
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px;color:#d13438;border-color:#d13438" onclick="event.stopPropagation();geoDeleteCountry(${c.id})">Del</button>
+      </div>
+    </div>`).join('') : '<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">No countries</div>';
+}
+async function geoSelectCountry(id) {
+  _geoSelCountry = _geoAllCountries.find(c=>c.id===id);
+  _geoSelState = null;
+  document.getElementById('geo-country-label').textContent = _geoSelCountry?.name || '';
+  document.getElementById('geo-add-state-btn').disabled = false;
+  geoRenderCountries();
+  document.getElementById('geo-state-list').innerHTML = '<div style="padding:16px;text-align:center"><div class="spinner" style="margin:0 auto;width:20px;height:20px;border-width:2px"></div></div>';
+  document.getElementById('geo-city-list').innerHTML = '';
+  document.getElementById('geo-state-label').textContent = 'Select a state';
+  document.getElementById('geo-add-city-btn').disabled = true;
+  const states = await api('GET', `/api/geo/countries/${id}/states`);
+  geoRenderStates(states||[]);
+}
+function geoRenderStates(states) {
+  const list = document.getElementById('geo-state-list');
+  list.innerHTML = states.length ? states.map(s=>`
+    <div onclick="geoSelectState(${s.id},'${esc(s.name)}')" style="padding:7px 10px;border-radius:5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;${_geoSelState?.id===s.id?'background:var(--primary-light,#e8f0fe);':''}">
+      <span style="font-size:13px">${esc(s.name)}${s.code?` <span style='color:#aaa;font-size:11px'>(${esc(s.code)})</span>`:''}</span>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" onclick="event.stopPropagation();geoEditState(${s.id},'${esc(s.name)}','${esc(s.code||'')}')">Edit</button>
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px;color:#d13438;border-color:#d13438" onclick="event.stopPropagation();geoDeleteState(${s.id})">Del</button>
+      </div>
+    </div>`).join('') : '<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">No states</div>';
+}
+async function geoSelectState(id, name) {
+  _geoSelState = { id, name };
+  document.getElementById('geo-state-label').textContent = name;
+  document.getElementById('geo-add-city-btn').disabled = false;
+  const cities = await api('GET', `/api/geo/states/${id}/cities`);
+  geoRenderCities(cities||[]);
+}
+function geoRenderCities(cities) {
+  const list = document.getElementById('geo-city-list');
+  list.innerHTML = cities.length ? cities.map(c=>`
+    <div style="padding:7px 10px;border-radius:5px;display:flex;justify-content:space-between;align-items:center">
+      <span style="font-size:13px">${esc(c.name)}</span>
+      <div style="display:flex;gap:4px">
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px" onclick="geoEditCity(${c.id},'${esc(c.name)}')">Edit</button>
+        <button class="btn btn-sm" style="padding:2px 7px;font-size:11px;color:#d13438;border-color:#d13438" onclick="geoDeleteCity(${c.id})">Del</button>
+      </div>
+    </div>`).join('') : '<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">No cities</div>';
+}
+
+function geoShowModal(title, bodyHtml) {
+  document.getElementById('geo-modal-title').textContent = title;
+  document.getElementById('geo-modal-body').innerHTML = bodyHtml;
+  document.getElementById('geo-modal').style.display = 'flex';
+}
+function geoAddCountry() {
+  _geoMode='add-country'; _geoEditId=null;
+  geoShowModal('Add Country',`<label class="form-label">Name</label><input id="gf-name" class="form-control" placeholder="e.g. France"><label class="form-label" style="margin-top:10px">ISO2 Code</label><input id="gf-iso2" class="form-control" placeholder="e.g. FR" maxlength="2"><label class="form-label" style="margin-top:10px">Phone Code</label><input id="gf-phone" class="form-control" placeholder="e.g. +33">`);
+}
+function geoEditCountry(id) {
+  const c = _geoAllCountries.find(x=>x.id===id); if(!c) return;
+  _geoMode='edit-country'; _geoEditId=id;
+  geoShowModal('Edit Country',`<label class="form-label">Name</label><input id="gf-name" class="form-control" value="${esc(c.name)}"><label class="form-label" style="margin-top:10px">ISO2 Code</label><input id="gf-iso2" class="form-control" value="${esc(c.iso2||'')}" maxlength="2"><label class="form-label" style="margin-top:10px">Phone Code</label><input id="gf-phone" class="form-control" value="${esc(c.phone_code||'')}">`);
+}
+async function geoDeleteCountry(id) {
+  if(!confirm('Delete this country and all its states/cities?')) return;
+  await api('DELETE',`/api/geo/countries/${id}`); geoLoadCountries();
+}
+function geoAddState() {
+  if(!_geoSelCountry) return;
+  _geoMode='add-state'; _geoEditId=null;
+  geoShowModal(`Add State — ${_geoSelCountry.name}`,`<label class="form-label">Name</label><input id="gf-name" class="form-control" placeholder="State / Province name"><label class="form-label" style="margin-top:10px">Code (optional)</label><input id="gf-code" class="form-control" placeholder="e.g. CA, NY">`);
+}
+function geoEditState(id, name, code) {
+  _geoMode='edit-state'; _geoEditId=id;
+  geoShowModal('Edit State',`<label class="form-label">Name</label><input id="gf-name" class="form-control" value="${esc(name)}"><label class="form-label" style="margin-top:10px">Code (optional)</label><input id="gf-code" class="form-control" value="${esc(code)}">`);
+}
+async function geoDeleteState(id) {
+  if(!confirm('Delete this state and all its cities?')) return;
+  await api('DELETE',`/api/geo/states/${id}`); geoSelectCountry(_geoSelCountry.id);
+}
+function geoAddCity() {
+  if(!_geoSelState) return;
+  _geoMode='add-city'; _geoEditId=null;
+  geoShowModal(`Add City — ${_geoSelState.name}`,`<label class="form-label">City Name</label><input id="gf-name" class="form-control" placeholder="City name">`);
+}
+function geoEditCity(id, name) {
+  _geoMode='edit-city'; _geoEditId=id;
+  geoShowModal('Edit City',`<label class="form-label">City Name</label><input id="gf-name" class="form-control" value="${esc(name)}">`);
+}
+async function geoDeleteCity(id) {
+  if(!confirm('Delete this city?')) return;
+  await api('DELETE',`/api/geo/cities/${id}`); geoSelectState(_geoSelState.id, _geoSelState.name);
+}
+async function geoSave() {
+  const name = document.getElementById('gf-name')?.value.trim();
+  if(!name){ alert('Name is required'); return; }
+  try {
+    if(_geoMode==='add-country') {
+      await api('POST','/api/geo/countries',{name,iso2:document.getElementById('gf-iso2')?.value.trim()||null,phone_code:document.getElementById('gf-phone')?.value.trim()||null});
+      geoLoadCountries();
+    } else if(_geoMode==='edit-country') {
+      const c=_geoAllCountries.find(x=>x.id===_geoEditId);
+      await api('PUT',`/api/geo/countries/${_geoEditId}`,{name,iso2:document.getElementById('gf-iso2')?.value.trim()||null,phone_code:document.getElementById('gf-phone')?.value.trim()||null,is_active:c?.is_active!==0});
+      geoLoadCountries();
+    } else if(_geoMode==='add-state') {
+      await api('POST','/api/geo/states',{country_id:_geoSelCountry.id,name,code:document.getElementById('gf-code')?.value.trim()||null});
+      geoSelectCountry(_geoSelCountry.id);
+    } else if(_geoMode==='edit-state') {
+      await api('PUT',`/api/geo/states/${_geoEditId}`,{name,code:document.getElementById('gf-code')?.value.trim()||null,is_active:1});
+      geoSelectCountry(_geoSelCountry.id);
+    } else if(_geoMode==='add-city') {
+      await api('POST','/api/geo/cities',{state_id:_geoSelState.id,country_id:_geoSelCountry?.id,name});
+      geoSelectState(_geoSelState.id, _geoSelState.name);
+    } else if(_geoMode==='edit-city') {
+      await api('PUT',`/api/geo/cities/${_geoEditId}`,{name,is_active:1});
+      geoSelectState(_geoSelState.id, _geoSelState.name);
+    }
+    document.getElementById('geo-modal').style.display='none';
+    toast('Saved');
+  } catch(e){ alert(e.message); }
+}
+// ── END GEO MANAGEMENT ──
 
 init();
 </script>
