@@ -337,6 +337,24 @@ router.get('/access-requests/history', auth, requireRole('exam_manager', 'super_
   res.json(rows);
 });
 
+// GET /api/exams/access-requests/submissions?email=X — exam attempt history for admin view
+router.get('/access-requests/submissions', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const { email } = req.query;
+  if (!email) return res.status(400).json({ error: 'email required' });
+  const rows = db.prepare(`
+    SELECT s.id, s.status, s.started_at, s.submitted_at, s.final_score, s.auto_score,
+      s.pass_fail, COALESCE(s.is_abandoned,0) as is_abandoned, s.time_taken_seconds,
+      s.risk_level, s.result_released,
+      e.title as exam_title, e.code as exam_code, e.total_marks
+    FROM submissions s JOIN exams e ON e.id=s.exam_id
+    WHERE LOWER(s.candidate_email)=?
+    ORDER BY s.started_at DESC
+    LIMIT 50
+  `).all(email.toLowerCase());
+  res.json(rows);
+});
+
 // GET /api/exams/:id/access-requests
 router.get('/:id/access-requests', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
   const db = getDb();

@@ -210,6 +210,7 @@ let _filter = 'pending';
 let _requests = [];
 let _selected = null;
 let _history  = [];
+let _submissions = [];
 let _searchTimer = null;
 
 // ── Auth / Boot ────────────────────────────────────────────────────────────────
@@ -286,11 +287,15 @@ async function selectRequest(reqId) {
   if (!_selected) return;
   renderList(); // re-render to update selected highlight
 
-  // Load history
+  // Load request history + exam submissions in parallel
   try {
-    const hr = await api('GET', `/api/exams/access-requests/history?email=${encodeURIComponent(_selected.email)}`);
+    const [hr, sr] = await Promise.all([
+      api('GET', `/api/exams/access-requests/history?email=${encodeURIComponent(_selected.email)}`),
+      api('GET', `/api/exams/access-requests/submissions?email=${encodeURIComponent(_selected.email)}`)
+    ]);
     _history = await hr.json();
-  } catch(e) { _history = []; }
+    _submissions = await sr.json();
+  } catch(e) { _history = []; _submissions = []; }
 
   renderDetail();
 }
@@ -367,7 +372,46 @@ function renderDetail() {
     </div>
   </div>`;
 
-  document.getElementById('ar-detail-content').innerHTML = examHtml + reqHtml + histHtml;
+  // ── Exam attempts section ──────────────────────────────────────────────────
+  let subRows = '';
+  if (_submissions.length) {
+    subRows = _submissions.map(s => {
+      const isAbandoned = !!s.is_abandoned;
+      const statusLabel = isAbandoned ? '⏹ Abandoned'
+        : s.status === 'submitted'     ? '⏳ Submitted'
+        : s.status === 'grading'       ? '⏳ Under Review'
+        : s.status === 'graded'        ? (s.pass_fail === 'pass' ? '✅ Passed' : '❌ Failed')
+        : s.status === 'auto_submitted' ? (s.pass_fail === 'pass' ? '✅ Passed' : '❌ Failed')
+        : s.status;
+      const statusColor = isAbandoned ? '#9ca3af'
+        : s.pass_fail === 'pass' ? '#16a34a'
+        : s.pass_fail === 'fail' ? '#dc2626'
+        : '#f59e0b';
+      const scoreStr = !isAbandoned && s.final_score != null ? `${s.final_score} / ${s.total_marks||'?'}` : '—';
+      const risk = s.risk_level ? `<span style="font-size:10px;padding:1px 6px;border-radius:10px;font-weight:600;background:${s.risk_level==='high'?'#fee2e2':s.risk_level==='medium'?'#fff3cd':'#d1fae5'};color:${s.risk_level==='high'?'#991b1b':s.risk_level==='medium'?'#856404':'#065f46'}">${s.risk_level}</span>` : '';
+      return `<div class="ar-tl-item">
+        <div class="ar-tl-dot" style="background:${isAbandoned?'#f3f4f6':'#eff6ff'};font-size:13px">${isAbandoned?'⏹':s.pass_fail==='pass'?'✅':'❌'}</div>
+        <div class="ar-tl-body">
+          <div class="ar-tl-row1">
+            <span class="ar-tl-exam">${esc(s.exam_title||'—')}</span>
+            <span class="ar-tl-small">[${esc(s.exam_code||'')}]</span>
+            <span style="font-size:10px;font-weight:700;color:${statusColor}">${statusLabel}</span>
+            ${risk}
+          </div>
+          <div class="ar-tl-small">Started ${fmtDt(s.started_at)}${s.submitted_at&&!isAbandoned?` · Submitted ${fmtDt(s.submitted_at)}`:''}</div>
+          <div class="ar-tl-small" style="margin-top:2px">Score: <strong>${scoreStr}</strong>${s.result_released?'':' <span style="color:#9ca3af">(result not released)</span>'}</div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  const attemptsHtml = `<div class="ar-section">
+    <div class="ar-section-head">📊 Exam Attempts by ${esc(req.email)} <span style="font-weight:400;text-transform:none;letter-spacing:0">(${_submissions.length} attempt${_submissions.length!==1?'s':''})</span></div>
+    <div class="ar-section-body" style="padding:8px 16px">
+      <div class="ar-tl">${subRows||'<div class="ar-tl-small" style="padding:10px 0">No exam attempts found.</div>'}</div>
+    </div>
+  </div>`;
+
+  document.getElementById('ar-detail-content').innerHTML = examHtml + reqHtml + histHtml + attemptsHtml;
 }
 
 // ── Actions ────────────────────────────────────────────────────────────────────
@@ -417,6 +461,7 @@ async function doReject() {
 }
 
 function resetDetail() {
+  _submissions = [];
   document.getElementById('ar-right').classList.add('empty-state');
   document.getElementById('ar-placeholder').style.display = '';
   document.getElementById('ar-detail-content').style.display = 'none';

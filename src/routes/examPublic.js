@@ -82,7 +82,8 @@ router.post('/:token/start', (req, res) => {
 
   const exam = db.prepare('SELECT * FROM exams WHERE id=?').get(link.exam_id);
   if (link.candidate_id) {
-    const attempts = db.prepare('SELECT COUNT(*) as c FROM submissions WHERE exam_id=? AND candidate_id=?').get(link.exam_id, link.candidate_id);
+    // Abandoned sessions (closed tab, no real submission) don't count toward attempt limit
+    const attempts = db.prepare('SELECT COUNT(*) as c FROM submissions WHERE exam_id=? AND candidate_id=? AND COALESCE(is_abandoned,0)=0').get(link.exam_id, link.candidate_id);
     if (exam.max_attempts > 0 && attempts.c >= exam.max_attempts) return res.status(409).json({ error: 'Maximum attempts reached' });
   }
 

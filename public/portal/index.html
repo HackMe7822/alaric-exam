@@ -1435,46 +1435,71 @@ async function loadExamsTab(){
 }
 
 /* ── RESULTS TAB ── */
+function _resultItemHtml(h){
+  const isAbandoned=!!h.is_abandoned;
+  const showScore=!isAbandoned&&(h.result_released||h.show_result_immediately);
+  const score=showScore&&h.score!=null?h.score:null;
+  const pct=score!=null&&h.total_marks?Math.round(score/h.total_marks*100):null;
+  const barClass=h.passed==='pass'?'pass':'fail';
+  const timeTxt=h.time_taken_seconds?`${Math.floor(h.time_taken_seconds/60)}m ${h.time_taken_seconds%60}s`:'—';
+  const scoreBlock=showScore
+    ?`<div class="score-bar-wrap" style="flex:1;min-width:120px"><div class="score-bar"><div class="score-bar-fill ${barClass}" style="width:${pct||0}%"></div></div><span style="font-size:.8rem;font-weight:700;color:var(--text);min-width:50px;white-space:nowrap">${score!=null?score+' / '+h.total_marks:'—'} ${pct!=null?'('+pct+'%)':''}</span></div>`
+    :isAbandoned
+      ?`<span style="color:var(--text-muted);font-size:.82rem">Not scored</span>`
+      :`<span style="color:var(--text-muted);font-size:.82rem;font-style:italic">Awaiting result</span>`;
+  const opacity=isAbandoned?'opacity:.72;':'';
+  return `<div class="pending-item" style="${opacity}padding:14px 16px">
+    <div style="flex:1;min-width:0">
+      <div class="pending-item-title">${esc(h.exam_title)}${h.code?` <span style="font-size:.75rem;font-weight:400;color:var(--text-muted)">[${esc(h.code)}]</span>`:''}</div>
+      <div class="pending-item-sub" style="margin-top:4px;display:flex;gap:14px;flex-wrap:wrap">
+        <span>📅 ${fmtDateTime(h.started_at)}</span>
+        ${!isAbandoned?`<span>⏱ ${timeTxt}</span>`:''}
+      </div>
+      <div style="margin-top:8px">${scoreBlock}</div>
+    </div>
+  </div>`;
+}
 async function loadResultsTab(){
   const el=document.getElementById('results-content');
   el.innerHTML='<div style="text-align:center;padding:48px"><div class="spinner" style="margin:0 auto"></div></div>';
   try{
     const history=await apiCall('GET','/api/portal/history');
     if(!history.length){el.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h3>No results yet</h3><p>Your completed exam results will appear here.</p></div>`;return;}
-    // Summary stats bar
-    const totalAttempts=history.length;
-    const passed=history.filter(h=>!!h.is_abandoned===false&&h.passed==='pass'&&(h.result_released||h.show_result_immediately)).length;
-    const failed=history.filter(h=>!!h.is_abandoned===false&&h.passed==='fail'&&(h.result_released||h.show_result_immediately)).length;
-    const abandoned=history.filter(h=>!!h.is_abandoned).length;
-    const pending=history.filter(h=>!h.is_abandoned&&!h.result_released&&!h.show_result_immediately&&h.status!=='in_progress').length;
-    const statBar=`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
-      <div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#16a34a;display:inline-block"></span><strong>${passed}</strong> Passed</div>
-      <div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#dc2626;display:inline-block"></span><strong>${failed}</strong> Failed</div>
-      ${abandoned?`<div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#9ca3af;display:inline-block"></span><strong>${abandoned}</strong> Did Not Complete</div>`:''}
-      ${pending?`<div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span><strong>${pending}</strong> Pending Review</div>`:''}
-      <div style="margin-left:auto;font-size:.82rem;color:var(--text-muted)">${totalAttempts} total attempt${totalAttempts!==1?'s':''}</div>
+
+    const passedItems=history.filter(h=>!h.is_abandoned&&h.passed==='pass'&&(h.result_released||h.show_result_immediately));
+    const failedItems=history.filter(h=>!h.is_abandoned&&h.passed==='fail'&&(h.result_released||h.show_result_immediately));
+    const pendingItems=history.filter(h=>!h.is_abandoned&&!h.result_released&&!h.show_result_immediately);
+    const abandonedItems=history.filter(h=>!!h.is_abandoned);
+
+    const total=history.length;
+    const statBar=`<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:20px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;align-items:center">
+      <div style="display:flex;align-items:center;gap:7px;font-size:.85rem"><span style="width:11px;height:11px;border-radius:50%;background:#16a34a;display:inline-block;flex-shrink:0"></span><strong>${passedItems.length}</strong> Passed</div>
+      <div style="display:flex;align-items:center;gap:7px;font-size:.85rem"><span style="width:11px;height:11px;border-radius:50%;background:#dc2626;display:inline-block;flex-shrink:0"></span><strong>${failedItems.length}</strong> Failed</div>
+      ${pendingItems.length?`<div style="display:flex;align-items:center;gap:7px;font-size:.85rem"><span style="width:11px;height:11px;border-radius:50%;background:#f59e0b;display:inline-block;flex-shrink:0"></span><strong>${pendingItems.length}</strong> Pending Review</div>`:''}
+      ${abandonedItems.length?`<div style="display:flex;align-items:center;gap:7px;font-size:.85rem"><span style="width:11px;height:11px;border-radius:50%;background:#9ca3af;display:inline-block;flex-shrink:0"></span><strong>${abandonedItems.length}</strong> Did Not Complete</div>`:''}
+      <div style="margin-left:auto;font-size:.8rem;color:var(--text-muted)">${total} total attempt${total!==1?'s':''}</div>
     </div>`;
-    el.innerHTML=statBar+`<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Date</th><th>Score</th><th>Result</th></tr></thead><tbody>${history.map(h=>{
-      const isAbandoned=!!h.is_abandoned;
-      const isInProgress=h.status==='in_progress';
-      const showScore=!isAbandoned&&!isInProgress&&(h.result_released||h.show_result_immediately);
-      const pct=showScore&&h.score!=null&&h.total_marks?Math.round(h.score/h.total_marks*100):null;
-      const barClass=pct!=null?(h.passed==='pass'?'pass':'fail'):'';
-      let chip='';
-      if(isAbandoned) chip='<span class="chip" style="background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb">⏹ Did Not Complete</span>';
-      else if(isInProgress)chip='<span class="chip" style="background:#fff4ce;color:#ca5010">⏸ In Progress</span>';
-      else if(!h.result_released&&!h.show_result_immediately)chip='<span class="chip chip-neutral">⏳ Pending Review</span>';
-      else if(h.passed==='pass')chip='<span class="chip chip-success">✓ Pass</span>';
-      else chip='<span class="chip chip-danger">✗ Fail</span>';
-      const scoreHtml=showScore
-        ?`<div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill ${barClass}" style="width:${pct||0}%"></div></div><span style="font-size:.8rem;font-weight:700;color:var(--text);min-width:36px">${pct!=null?pct+'%':'—'}</span></div>`
-        :isAbandoned
-          ?`<span style="color:var(--text-muted);font-size:.8rem">0 / ${h.total_marks||'—'}</span>`
-          :isInProgress?'<span style="color:var(--text-muted);font-size:.8rem">—</span>'
-          :'<span style="color:var(--text-muted);font-style:italic;font-size:.8rem">Hidden</span>';
-      const rowStyle=isAbandoned?'opacity:.75;':'';
-      return `<tr style="${rowStyle}"><td><strong>${esc(h.exam_title)}</strong>${h.code?`<br><span style="font-size:.75rem;color:var(--text-muted)">${esc(h.code)}</span>`:''}</td><td style="color:var(--text-muted);font-size:.875rem;white-space:nowrap">${fmtDateTime(h.started_at)}</td><td>${scoreHtml}</td><td>${chip}</td></tr>`;
-    }).join('')}</tbody></table></div>`;
+
+    let sectionsHtml='';
+
+    if(pendingItems.length){
+      sectionsHtml+=`<div class="section-row"><div class="section-title" style="color:var(--warning)">⏳ Pending Review</div><div class="section-sub">Your assessor is reviewing these submissions — results will appear once released</div></div>
+      <div class="pending-list" style="margin-bottom:24px">${pendingItems.map(_resultItemHtml).join('')}</div>`;
+    }
+    if(passedItems.length){
+      sectionsHtml+=`<div class="section-row"${pendingItems.length?'style="margin-top:4px"':''}><div class="section-title" style="color:#16a34a">✅ Passed</div><div class="section-sub">Congratulations on these results</div></div>
+      <div class="pending-list" style="margin-bottom:24px">${passedItems.map(_resultItemHtml).join('')}</div>`;
+    }
+    if(failedItems.length){
+      sectionsHtml+=`<div class="section-row" style="margin-top:4px"><div class="section-title" style="color:var(--danger)">❌ Failed</div><div class="section-sub">You did not reach the pass mark on these exams</div></div>
+      <div class="pending-list" style="margin-bottom:24px">${failedItems.map(_resultItemHtml).join('')}</div>`;
+    }
+    if(abandonedItems.length){
+      sectionsHtml+=`<div class="section-row" style="margin-top:4px"><div class="section-title" style="color:var(--text-muted)">⏹ Did Not Complete</div><div class="section-sub">These sessions were closed or timed out before submission</div></div>
+      <div class="pending-list" style="margin-bottom:8px">${abandonedItems.map(_resultItemHtml).join('')}</div>`;
+    }
+
+    el.innerHTML=statBar+sectionsHtml;
   }catch(e){el.innerHTML=`<div class="empty-state"><p style="color:var(--danger)">${esc(e.message)}</p></div>`;}
 }
 
