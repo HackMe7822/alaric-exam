@@ -46,7 +46,7 @@ router.post('/set-password', candidateAuth, (req, res) => {
 });
 
 // POST /api/portal/request-otp
-router.post('/request-otp', (req, res) => {
+router.post('/request-otp', async (req, res) => {
   const db = getDb();
   const { email } = req.body;
   if (!email) return res.status(400).json({ error: 'Email required' });
@@ -69,25 +69,24 @@ router.post('/request-otp', (req, res) => {
   db.prepare(`INSERT INTO email_otps(email, otp_code, expires_at, purpose, payload) VALUES(?,?,?,?,?)`)
     .run(cleanEmail, otp, expires_at, 'portal_login', payload);
 
+  const loginHtml = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:20px">
+    <h2 style="color:#4f46e5;margin-bottom:4px">Sign in to Alaric Exam</h2>
+    <p>Hi ${candidate.name},</p>
+    <p>Your sign-in code is:</p>
+    <div style="background:#f3f4f6;border-radius:12px;padding:28px;text-align:center;margin:24px 0">
+      <span style="font-size:40px;font-weight:800;letter-spacing:10px;color:#111827;font-family:monospace">${otp}</span>
+    </div>
+    <p style="color:#6b7280;font-size:14px">This code expires in <strong>10 minutes</strong>.</p>
+    <p style="color:#6b7280;font-size:14px">If you did not request this, please ignore this email.</p>
+  </div>`;
+  try {
+    await sendEmail({ to: cleanEmail, subject: `${otp} — your Alaric Exam sign-in code`, html: loginHtml, templateCode: 'portal_otp', purpose: 'system' });
+  } catch (e) {
+    console.error('[portal] OTP email error:', e.message);
+    db.prepare(`DELETE FROM email_otps WHERE email=? AND purpose='portal_login'`).run(cleanEmail);
+    return res.status(503).json({ error: 'Failed to send login code. Please check your email settings or try again.' });
+  }
   res.json({ ok: true });
-
-  setImmediate(async () => {
-    try {
-      const html = `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:20px">
-        <h2 style="color:#4f46e5;margin-bottom:4px">Sign in to Alaric Exam</h2>
-        <p>Hi ${candidate.name},</p>
-        <p>Your sign-in code is:</p>
-        <div style="background:#f3f4f6;border-radius:12px;padding:28px;text-align:center;margin:24px 0">
-          <span style="font-size:40px;font-weight:800;letter-spacing:10px;color:#111827;font-family:monospace">${otp}</span>
-        </div>
-        <p style="color:#6b7280;font-size:14px">This code expires in <strong>10 minutes</strong>.</p>
-        <p style="color:#6b7280;font-size:14px">If you did not request this, please ignore this email.</p>
-      </div>`;
-      await sendEmail({ to: cleanEmail, subject: `${otp} — your Alaric Exam sign-in code`, html, templateCode: 'portal_otp', purpose: 'system' });
-    } catch (e) {
-      console.error('[portal] OTP email error:', e.message);
-    }
-  });
 });
 
 // POST /api/portal/verify-otp
@@ -148,7 +147,7 @@ router.put('/profile', candidateAuth, (req, res) => {
 });
 
 // POST /api/portal/phone/send-otp — send OTP to email to verify a phone number
-router.post('/phone/send-otp', candidateAuth, (req, res) => {
+router.post('/phone/send-otp', candidateAuth, async (req, res) => {
   const db = getDb();
   const { phone } = req.body;
   if (!phone || phone.trim().length < 5) return res.status(400).json({ error: 'Valid phone number required' });
@@ -162,19 +161,21 @@ router.post('/phone/send-otp', candidateAuth, (req, res) => {
   db.prepare(`DELETE FROM email_otps WHERE email=? AND purpose='phone_verify'`).run(candidate.email);
   db.prepare(`INSERT INTO email_otps(email, otp_code, expires_at, purpose, payload) VALUES(?,?,?,?,?)`)
     .run(candidate.email, otp, expires_at, 'phone_verify', JSON.stringify({ phone: phone.trim() }));
-  setImmediate(async () => {
-    try {
-      const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:10px">
-        <h2 style="color:#0078d4;margin:0 0 8px">Verify Your Phone Number</h2>
-        <p style="color:#555;margin:0 0 24px">Hi ${candidate.name || 'there'}, use this code to verify <strong>${phone.trim()}</strong> as your phone number.</p>
-        <div style="background:#f0f7ff;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px">
-          <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#111827;font-family:monospace">${otp}</span>
-        </div>
-        <p style="color:#888;font-size:13px;margin:0">This code expires in 15 minutes. If you did not request this, please ignore this email.</p>
-      </div>`;
-      await sendEmail({ to: candidate.email, subject: `${otp} — verify your phone number`, html, templateCode: 'phone_verify', purpose: 'system' });
-    } catch(e) { console.error('[portal] phone OTP email error:', e.message); }
-  });
+  const html = `<div style="font-family:'Segoe UI',Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;border:1px solid #e2e8f0;border-radius:10px">
+    <h2 style="color:#0078d4;margin:0 0 8px">Verify Your Phone Number</h2>
+    <p style="color:#555;margin:0 0 24px">Hi ${candidate.name || 'there'}, use this code to verify <strong>${phone.trim()}</strong> as your phone number.</p>
+    <div style="background:#f0f7ff;border-radius:8px;padding:20px;text-align:center;margin-bottom:24px">
+      <span style="font-size:36px;font-weight:800;letter-spacing:10px;color:#111827;font-family:monospace">${otp}</span>
+    </div>
+    <p style="color:#888;font-size:13px;margin:0">This code expires in 15 minutes. If you did not request this, please ignore this email.</p>
+  </div>`;
+  try {
+    await sendEmail({ to: candidate.email, subject: `${otp} — verify your phone number`, html, templateCode: 'phone_verify', purpose: 'system' });
+  } catch(e) {
+    console.error('[portal] phone OTP email error:', e.message);
+    db.prepare(`DELETE FROM email_otps WHERE email=? AND purpose='phone_verify'`).run(candidate.email);
+    return res.status(503).json({ error: 'Failed to send verification email. Please check your email settings or try again.' });
+  }
   res.json({ ok: true });
 });
 
