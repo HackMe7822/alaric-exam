@@ -519,7 +519,7 @@ router.put('/email-routing', auth, requireSuperAdmin, (req, res) => {
 // GET /api/settings/sms-config
 router.get('/sms-config', auth, requireSuperAdmin, (req, res) => {
   const db = getDb();
-  const keys = ['sms_provider', 'sms_account_sid', 'sms_auth_token', 'sms_from', 'sms_enabled'];
+  const keys = ['sms_provider', 'sms_account_sid', 'sms_auth_token', 'sms_from', 'sms_api_key', 'sms_enabled'];
   const rows = db.prepare(
     `SELECT key, value FROM settings WHERE key IN (${keys.map(() => '?').join(',')})`
   ).all(...keys);
@@ -531,12 +531,13 @@ router.get('/sms-config', auth, requireSuperAdmin, (req, res) => {
 // PUT /api/settings/sms-config
 router.put('/sms-config', auth, requireSuperAdmin, (req, res) => {
   const db = getDb();
-  const { sms_provider, sms_account_sid, sms_auth_token, sms_from, sms_enabled } = req.body;
+  const { sms_provider, sms_account_sid, sms_auth_token, sms_from, sms_api_key, sms_enabled } = req.body;
   const updates = {
     sms_provider: sms_provider || 'twilio',
     sms_account_sid: sms_account_sid?.trim() || '',
     sms_auth_token: sms_auth_token?.trim() || '',
     sms_from: sms_from?.trim() || '',
+    sms_api_key: sms_api_key?.trim() || '',
     sms_enabled: sms_enabled === false || sms_enabled === '0' ? '0' : '1',
   };
   const upd = db.prepare(
@@ -550,13 +551,12 @@ router.put('/sms-config', auth, requireSuperAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/settings/sms-config/test — verify Twilio credentials
+// POST /api/settings/sms-config/test — verify provider credentials
 router.post('/sms-config/test', auth, requireSuperAdmin, async (req, res) => {
   try {
     const { testSmsConnection } = require('../utils/sms');
-    const cfg = req.body;
-    await testSmsConnection(cfg);
-    res.json({ ok: true, message: 'Credentials are valid.' });
+    const result = await testSmsConnection(req.body);
+    res.json({ ok: true, message: result?.message || 'Credentials are valid.' });
   } catch (e) {
     res.status(400).json({ error: e.message });
   }

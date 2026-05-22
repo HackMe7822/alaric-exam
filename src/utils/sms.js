@@ -3,7 +3,7 @@ const { getDb } = require('../../database/index');
 
 function getSmsConfig() {
   const db = getDb();
-  const keys = ['sms_provider', 'sms_account_sid', 'sms_auth_token', 'sms_from', 'sms_enabled'];
+  const keys = ['sms_provider', 'sms_account_sid', 'sms_auth_token', 'sms_from', 'sms_api_key', 'sms_enabled'];
   const rows = db.prepare(
     `SELECT key, value FROM settings WHERE key IN (${keys.map(() => '?').join(',')})`
   ).all(...keys);
@@ -33,6 +33,33 @@ async function sendViaTwilio(cfg, { to, body }) {
   return resp.data;
 }
 
+// Fast2SMS — works for Indian numbers (+91). Strips country code, uses 10-digit number.
+async function sendViaFast2SMS(cfg, { to, body }) {
+  const apiKey = cfg.sms_api_key;
+  if (!apiKey) {
+    throw new Error('Fast2SMS API key not configured. Add it in Admin → Settings → SMS Config.');
+  }
+  // Extract 10-digit Indian number from formats like "+91 9876543210" or "9876543210"
+  const digits = to.replace(/\D/g, '');
+  const number = digits.length === 12 && digits.startsWith('91') ? digits.slice(2) : digits.slice(-10);
+  if (number.length !== 10) {
+    throw new Error(`Fast2SMS requires a 10-digit Indian mobile number. Got: ${to}`);
+  }
+  const resp = await axios.post(
+    'https://www.fast2sms.com/dev/bulkV2',
+    { route: 'q', message: body, language: 'english', flash: 0, numbers: number },
+    {
+      headers: { authorization: apiKey, 'Content-Type': 'application/json' },
+      validateStatus: () => true,
+    }
+  );
+  if (resp.status >= 400 || resp.data?.return === false) {
+    const msg = resp.data?.message?.[0] || resp.data?.message || `HTTP ${resp.status}`;
+    throw new Error(`Fast2SMS: ${msg}`);
+  }
+  return resp.data;
+}
+
 async function sendSms({ to, body }) {
   const cfg = getSmsConfig();
   if (cfg.sms_enabled === '0') {
@@ -40,22 +67,38 @@ async function sendSms({ to, body }) {
   }
   const provider = cfg.sms_provider || 'twilio';
   if (provider === 'twilio') return sendViaTwilio(cfg, { to, body });
+  if (provider === 'fast2sms') return sendViaFast2SMS(cfg, { to, body });
   throw new Error(`Unknown SMS provider: ${provider}`);
 }
 
 async function testSmsConnection(cfg) {
-  if (!cfg.sms_account_sid || !cfg.sms_auth_token) {
-    throw new Error('Account SID and Auth Token are required');
-  }
-  const resp = await axios.get(
-    `https://api.twilio.com/2010-04-01/Accounts/${cfg.sms_account_sid}.json`,
-    {
-      auth: { username: cfg.sms_account_sid, password: cfg.sms_auth_token },
-      validateStatus: () => true,
+  const provider = cfg.sms_provider || 'twilio';
+  if (provider === 'twilio') {
+    if (!cfg.sms_account_sid || !cfg.sms_auth_token) {
+      throw new Error('Account SID and Auth Token are required');
     }
-  );
-  if (resp.status === 401) throw new Error('Invalid credentials — check Account SID and Auth Token');
-  if (resp.status >= 400) throw new Error(`Twilio API error: HTTP ${resp.status}`);
+    const resp = await axios.get(
+      `https://api.twilio.com/2010-04-01/Accounts/${cfg.sms_account_sid}.json`,
+      {
+        auth: { username: cfg.sms_account_sid, password: cfg.sms_auth_token },
+        validateStatus: () => true,
+      }
+    );
+    if (resp.status === 401) throw new Error('Invalid credentials — check Account SID and Auth Token');
+    if (resp.status >= 400) throw new Error(`Twilio API error: HTTP ${resp.status}`);
+  } else if (provider === 'fast2sms') {
+    if (!cfg.sms_api_key) throw new Error('API key is required');
+    const resp = await axios.get('https://www.fast2sms.com/dev/wallet', {
+      headers: { authorization: cfg.sms_api_key },
+      validateStatus: () => true,
+    });
+    if (resp.status === 401 || resp.data?.return === false) {
+      throw new Error('Invalid API key — check your Fast2SMS API key');
+    }
+    if (resp.status >= 400) throw new Error(`Fast2SMS API error: HTTP ${resp.status}`);
+    const balance = resp.data?.wallet || 'unknown';
+    return { message: `Credentials valid. Wallet balance: ₹${balance}` };
+  }
 }
 
 module.exports = { sendSms, getSmsConfig, testSmsConnection };

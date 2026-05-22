@@ -394,9 +394,9 @@
 
     <!-- SMS Config Tab -->
     <div id="tab-smsconfig" class="tab-pane">
-      <div class="card" style="max-width:560px">
+      <div class="card" style="max-width:580px">
         <h3 style="margin:0 0 4px;font-size:16px">📱 SMS Configuration</h3>
-        <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px">Used to send OTP codes to candidates' mobile phones for phone number verification.</p>
+        <p style="color:var(--text-muted);font-size:13px;margin:0 0 20px">Sends OTP codes via SMS to candidates' mobile phones for phone number verification.</p>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
           <label style="font-size:13px;font-weight:600">Enable SMS</label>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -404,27 +404,41 @@
             <span style="font-size:13px;color:var(--text-muted)">Active</span>
           </label>
         </div>
-        <div class="form-group" style="margin-bottom:14px">
+        <div class="form-group" style="margin-bottom:18px">
           <label class="form-label">Provider</label>
-          <select id="sms-provider" class="form-control" style="max-width:220px">
-            <option value="twilio">Twilio</option>
+          <select id="sms-provider" class="form-control" style="max-width:240px" onchange="onSmsProviderChange()">
+            <option value="twilio">Twilio (international)</option>
+            <option value="fast2sms">Fast2SMS (India — free credits)</option>
           </select>
         </div>
-        <div class="form-group" style="margin-bottom:14px">
-          <label class="form-label">Account SID</label>
-          <input id="sms-account-sid" class="form-control" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+
+        <!-- Twilio fields -->
+        <div id="sms-twilio-fields">
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">Account SID</label>
+            <input id="sms-account-sid" class="form-control" placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
+          </div>
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">Auth Token</label>
+            <input id="sms-auth-token" class="form-control" type="password" placeholder="Your Twilio auth token" autocomplete="new-password">
+          </div>
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">From Number</label>
+            <input id="sms-from" class="form-control" placeholder="+15017122661" style="max-width:220px">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">E.164 format Twilio number. Get all 3 from <a href="https://console.twilio.com" target="_blank" style="color:var(--primary)">console.twilio.com</a> → Account Info</div>
+          </div>
         </div>
-        <div class="form-group" style="margin-bottom:14px">
-          <label class="form-label">Auth Token</label>
-          <input id="sms-auth-token" class="form-control" type="password" placeholder="Your Twilio auth token" autocomplete="new-password">
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Get these from <a href="https://console.twilio.com" target="_blank" style="color:var(--primary)">console.twilio.com</a> → Account Info</div>
+
+        <!-- Fast2SMS fields -->
+        <div id="sms-fast2sms-fields" style="display:none">
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">API Key</label>
+            <input id="sms-api-key" class="form-control" type="password" placeholder="Your Fast2SMS API key" autocomplete="new-password">
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Get it from <a href="https://www.fast2sms.com/dashboard/developer" target="_blank" style="color:var(--primary)">fast2sms.com → Dashboard → Dev API</a> · Free credits on signup · Works for Indian (+91) numbers only</div>
+          </div>
         </div>
-        <div class="form-group" style="margin-bottom:20px">
-          <label class="form-label">From Number</label>
-          <input id="sms-from" class="form-control" placeholder="+15017122661" style="max-width:220px">
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Must be a Twilio number in E.164 format (e.g. +15017122661)</div>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:6px">
           <button class="btn btn-primary" onclick="saveSmsConfig()">Save SMS Config</button>
           <button class="btn btn-secondary" onclick="testSmsCredentials()">Test Credentials</button>
           <div style="display:flex;gap:6px;align-items:center;flex:1;min-width:200px">
@@ -1026,6 +1040,12 @@ async function geoSave() {
 // ── END GEO MANAGEMENT ──
 
 // ── SMS CONFIG ────────────────────────────────────────────────────────────────
+function onSmsProviderChange() {
+  const p = document.getElementById('sms-provider').value;
+  document.getElementById('sms-twilio-fields').style.display = p === 'twilio' ? '' : 'none';
+  document.getElementById('sms-fast2sms-fields').style.display = p === 'fast2sms' ? '' : 'none';
+}
+
 async function loadSmsConfig() {
   try {
     const cfg = await api('GET', '/api/settings/sms-config');
@@ -1034,6 +1054,8 @@ async function loadSmsConfig() {
     document.getElementById('sms-account-sid').value = cfg.sms_account_sid || '';
     document.getElementById('sms-auth-token').value = cfg.sms_auth_token || '';
     document.getElementById('sms-from').value = cfg.sms_from || '';
+    document.getElementById('sms-api-key').value = cfg.sms_api_key || '';
+    onSmsProviderChange();
   } catch(e) { showSmsMsg('Failed to load SMS config: ' + e.message, 'error'); }
 }
 
@@ -1044,6 +1066,7 @@ async function saveSmsConfig() {
     sms_account_sid: document.getElementById('sms-account-sid').value.trim(),
     sms_auth_token: document.getElementById('sms-auth-token').value.trim(),
     sms_from: document.getElementById('sms-from').value.trim(),
+    sms_api_key: document.getElementById('sms-api-key').value.trim(),
   };
   try {
     await api('PUT', '/api/settings/sms-config', body);
@@ -1057,6 +1080,7 @@ async function testSmsCredentials() {
     sms_account_sid: document.getElementById('sms-account-sid').value.trim(),
     sms_auth_token: document.getElementById('sms-auth-token').value.trim(),
     sms_from: document.getElementById('sms-from').value.trim(),
+    sms_api_key: document.getElementById('sms-api-key').value.trim(),
   };
   showSmsMsg('Testing credentials...', 'info');
   try {
