@@ -776,17 +776,32 @@ document.getElementById('btn-go-fullscreen').addEventListener('click', () => {
 // MULTI-MONITOR
 // ============================================================
 function startMultiMonitorCheck() {
-  const check = () => {
-    if (window.screen && window.screen.isExtended) {
-      document.getElementById('overlay-multimonitor').classList.add('active');
-      postEvent('multi_monitor');
+  const overlay = document.getElementById('overlay-multimonitor');
+
+  const checkNow = (logEvent) => {
+    if (!window.screen) return false;
+    const extended = window.screen.isExtended;
+    if (extended) {
+      overlay.classList.add('active');
+      if (logEvent) postEvent('multi_monitor');
+    } else {
+      // Only remove overlay via the Check Again button, not automatically
     }
+    return extended;
   };
-  check();
+
+  // Initial check before exam starts
+  checkNow(false);
+
+  // Continuous poll every 3 seconds during exam — catches reconnected monitors
+  setInterval(() => {
+    if (!state.examStarted || state.submitted) return;
+    checkNow(true);
+  }, 3000);
+
+  // Also re-check on window focus (tab return)
   window.addEventListener('focus', () => {
-    if (window.screen && window.screen.isExtended && state.examStarted && !state.submitted) {
-      postEvent('multi_monitor');
-    }
+    if (state.examStarted && !state.submitted) checkNow(true);
   });
 }
 
