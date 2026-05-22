@@ -220,8 +220,13 @@ router.post('/:token/abandon', (req, res) => {
       .get(parseInt(submission_id), req.params.token);
     if (sub && sub.status === 'in_progress') {
       const cancelReason = (reason || 'abandoned').replace(/[^a-z_]/gi, '_').slice(0, 30);
-      db.prepare(`UPDATE submissions SET status='cancelled', submitted_at=datetime('now'), updated_at=datetime('now') WHERE id=?`).run(sub.id);
-      db.prepare("INSERT INTO exam_events(submission_id, event_type) VALUES(?,?)").run(sub.id, `cancelled_${cancelReason}`);
+      db.prepare(`UPDATE submissions SET
+        status='auto_submitted', is_abandoned=1,
+        submitted_at=datetime('now'), updated_at=datetime('now'),
+        final_score=0, auto_score=0, pass_fail='fail',
+        review_notes='Abandoned — candidate left exam without submitting'
+        WHERE id=?`).run(sub.id);
+      db.prepare("INSERT INTO exam_events(submission_id, event_type) VALUES(?,?)").run(sub.id, `abandoned_${cancelReason}`);
     }
   } catch(e) {}
   res.json({ ok: true });

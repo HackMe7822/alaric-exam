@@ -1341,7 +1341,7 @@ function examCardHtml(e,idx=0){
   if(inProgress && !e.one_time_link){
     footerBtn=`<a href="${esc(e.exam_url)}" class="btn-start-exam" target="_blank" style="background:#ca5010;border-color:#ca5010"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Resume Exam</a>`;
   } else if(inProgress && e.one_time_link){
-    footerBtn=`<span style="font-size:.8rem;color:var(--warning);font-weight:600">⚠ Exam in progress — contact support</span>`;
+    footerBtn=`<button onclick="refreshStaleExam('${ea(e.token)}',${e.sub_id||0})" class="btn-start-exam" style="background:#6b7280;border-color:#6b7280;font-size:.8rem">🔄 Session Ended — Click to Refresh</button>`;
   } else if(isCancelled){
     footerBtn=`<span style="font-size:.8rem;color:var(--text-muted)">Exam was cancelled</span>`;
   } else if(e.exam_url&&!expired){
@@ -1368,6 +1368,17 @@ function examCardHtml(e,idx=0){
 }
 
 /* ── DASHBOARD ── */
+async function refreshStaleExam(token, subId) {
+  try {
+    await fetch(`/exam/${token}/abandon`, {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ submission_id: subId, reason: 'stale_session' })
+    });
+  } catch(e) {}
+  await loadDashboard();
+}
+
 async function loadDashboard(){
   const cand=appState.candidate;
   if(cand){
@@ -1384,10 +1395,10 @@ async function loadDashboard(){
   let exams=[],requests=[],history=[];
   try{[exams,requests,history]=await Promise.all([apiCall('GET','/api/portal/my-exams').catch(()=>[]),apiCall('GET','/api/portal/requests').catch(()=>[]),apiCall('GET','/api/portal/history').catch(()=>[])]);}catch(e){}
   const pending=requests.filter(r=>r.status==='pending');
-  const passed=history.filter(h=>(h.result_released||h.show_result_immediately)&&h.passed).length;
+  const passed=history.filter(h=>!h.is_abandoned&&(h.result_released||h.show_result_immediately)&&h.passed==='pass').length;
   const notStarted=exams.filter(e=>!e.sub_status||e.sub_status==='cancelled');
   const inProgress=exams.filter(e=>e.sub_status==='in_progress');
-  const completedCount=history.filter(h=>['submitted','grading','graded','auto_submitted'].includes(h.status)).length;
+  const completedCount=history.filter(h=>!h.is_abandoned&&['submitted','grading','graded','auto_submitted'].includes(h.status)).length;
   document.getElementById('stat-pending').textContent=pending.length;
   document.getElementById('stat-active').textContent=notStarted.length+inProgress.length;
   document.getElementById('stat-completed').textContent=completedCount;
@@ -1430,20 +1441,39 @@ async function loadResultsTab(){
   try{
     const history=await apiCall('GET','/api/portal/history');
     if(!history.length){el.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h3>No results yet</h3><p>Your completed exam results will appear here.</p></div>`;return;}
-    el.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Date</th><th>Score</th><th>Result</th></tr></thead><tbody>${history.map(h=>{
-      const isCancelled=h.status==='cancelled';
+    // Summary stats bar
+    const totalAttempts=history.length;
+    const passed=history.filter(h=>!!h.is_abandoned===false&&h.passed==='pass'&&(h.result_released||h.show_result_immediately)).length;
+    const failed=history.filter(h=>!!h.is_abandoned===false&&h.passed==='fail'&&(h.result_released||h.show_result_immediately)).length;
+    const abandoned=history.filter(h=>!!h.is_abandoned).length;
+    const pending=history.filter(h=>!h.is_abandoned&&!h.result_released&&!h.show_result_immediately&&h.status!=='in_progress').length;
+    const statBar=`<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px">
+      <div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#16a34a;display:inline-block"></span><strong>${passed}</strong> Passed</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#dc2626;display:inline-block"></span><strong>${failed}</strong> Failed</div>
+      ${abandoned?`<div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#9ca3af;display:inline-block"></span><strong>${abandoned}</strong> Did Not Complete</div>`:''}
+      ${pending?`<div style="display:flex;align-items:center;gap:6px;font-size:.82rem"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block"></span><strong>${pending}</strong> Pending Review</div>`:''}
+      <div style="margin-left:auto;font-size:.82rem;color:var(--text-muted)">${totalAttempts} total attempt${totalAttempts!==1?'s':''}</div>
+    </div>`;
+    el.innerHTML=statBar+`<div class="table-wrap"><table><thead><tr><th>Exam</th><th>Date</th><th>Score</th><th>Result</th></tr></thead><tbody>${history.map(h=>{
+      const isAbandoned=!!h.is_abandoned;
       const isInProgress=h.status==='in_progress';
-      const showScore=!isCancelled&&!isInProgress&&(h.result_released||h.show_result_immediately);
+      const showScore=!isAbandoned&&!isInProgress&&(h.result_released||h.show_result_immediately);
       const pct=showScore&&h.score!=null&&h.total_marks?Math.round(h.score/h.total_marks*100):null;
-      const barClass=pct!=null?(h.passed?'pass':'fail'):'';
+      const barClass=pct!=null?(h.passed==='pass'?'pass':'fail'):'';
       let chip='';
-      if(isCancelled)chip='<span class="chip chip-neutral" style="background:#fde7e9;color:#d13438">Cancelled</span>';
-      else if(isInProgress)chip='<span class="chip" style="background:#fff4ce;color:#ca5010">In Progress</span>';
-      else if(!h.result_released&&!h.show_result_immediately)chip='<span class="chip chip-neutral">Pending Review</span>';
-      else if(h.passed)chip='<span class="chip chip-success">✓ Pass</span>';
+      if(isAbandoned) chip='<span class="chip" style="background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb">⏹ Did Not Complete</span>';
+      else if(isInProgress)chip='<span class="chip" style="background:#fff4ce;color:#ca5010">⏸ In Progress</span>';
+      else if(!h.result_released&&!h.show_result_immediately)chip='<span class="chip chip-neutral">⏳ Pending Review</span>';
+      else if(h.passed==='pass')chip='<span class="chip chip-success">✓ Pass</span>';
       else chip='<span class="chip chip-danger">✗ Fail</span>';
-      const scoreHtml=showScore?`<div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill ${barClass}" style="width:${pct||0}%"></div></div><span style="font-size:.8rem;font-weight:700;color:var(--text);min-width:36px">${pct!=null?pct+'%':'—'}</span></div>`:isCancelled||isInProgress?'<span style="color:var(--text-muted);font-size:.8rem">—</span>':'<span style="color:var(--text-muted);font-style:italic;font-size:.8rem">Hidden</span>';
-      return `<tr><td><strong>${esc(h.exam_title)}</strong>${h.code?`<br><span style="font-size:.75rem;color:var(--text-muted)">${esc(h.code)}</span>`:''}</td><td style="color:var(--text-muted);font-size:.875rem;white-space:nowrap">${fmtDateTime(h.submitted_at||h.completed_at||h.started_at)}</td><td>${scoreHtml}</td><td>${chip}</td></tr>`;
+      const scoreHtml=showScore
+        ?`<div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill ${barClass}" style="width:${pct||0}%"></div></div><span style="font-size:.8rem;font-weight:700;color:var(--text);min-width:36px">${pct!=null?pct+'%':'—'}</span></div>`
+        :isAbandoned
+          ?`<span style="color:var(--text-muted);font-size:.8rem">0 / ${h.total_marks||'—'}</span>`
+          :isInProgress?'<span style="color:var(--text-muted);font-size:.8rem">—</span>'
+          :'<span style="color:var(--text-muted);font-style:italic;font-size:.8rem">Hidden</span>';
+      const rowStyle=isAbandoned?'opacity:.75;':'';
+      return `<tr style="${rowStyle}"><td><strong>${esc(h.exam_title)}</strong>${h.code?`<br><span style="font-size:.75rem;color:var(--text-muted)">${esc(h.code)}</span>`:''}</td><td style="color:var(--text-muted);font-size:.875rem;white-space:nowrap">${fmtDateTime(h.started_at)}</td><td>${scoreHtml}</td><td>${chip}</td></tr>`;
     }).join('')}</tbody></table></div>`;
   }catch(e){el.innerHTML=`<div class="empty-state"><p style="color:var(--danger)">${esc(e.message)}</p></div>`;}
 }

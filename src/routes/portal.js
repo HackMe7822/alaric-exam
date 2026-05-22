@@ -234,9 +234,32 @@ router.get('/requests', candidateAuth, (req, res) => {
   })));
 });
 
+// Auto-mark stale in_progress submissions as abandoned
+function cleanupAbandonedSubmissions(db, candidateId) {
+  try {
+    const stale = db.prepare(`
+      SELECT s.id, s.started_at, e.duration_minutes
+      FROM submissions s JOIN exams e ON e.id=s.exam_id
+      WHERE s.candidate_id=? AND s.status='in_progress'
+    `).all(candidateId);
+    const upd = db.prepare(`UPDATE submissions SET
+      status='auto_submitted', is_abandoned=1,
+      submitted_at=datetime('now'), updated_at=datetime('now'),
+      final_score=0, auto_score=0, pass_fail='fail',
+      review_notes='Abandoned — exam session ended without submission'
+      WHERE id=?`);
+    for (const s of stale) {
+      const graceMs = ((s.duration_minutes || 1440) + 5) * 60000;
+      const startedMs = new Date(s.started_at.replace(' ', 'T') + 'Z').getTime();
+      if (Date.now() - startedMs > graceMs) upd.run(s.id);
+    }
+  } catch(e) {}
+}
+
 // GET /api/portal/my-exams — exam links for this candidate (active + in-progress)
 router.get('/my-exams', candidateAuth, (req, res) => {
   const db = getDb();
+  cleanupAbandonedSubmissions(db, req.candidateId);
   const c = db.prepare('SELECT email FROM candidates WHERE id=?').get(req.candidateId);
   if (!c) return res.json([]);
   const links = db.prepare(`
@@ -252,8 +275,8 @@ router.get('/my-exams', candidateAuth, (req, res) => {
       AND (el.expires_at IS NULL OR datetime(el.expires_at) > datetime('now'))
     ORDER BY el.created_at DESC
   `).all(c.email);
-  // Filter out links where the exam is fully done (submitted/graded — they live in history)
-  const completedStatuses = new Set(['submitted', 'grading', 'graded', 'auto_submitted']);
+  // Filter out links where the exam is fully done (they live in history)
+  const completedStatuses = new Set(['submitted', 'grading', 'graded', 'auto_submitted', 'cancelled']);
   const active = links.filter(l => !completedStatuses.has(l.sub_status));
   res.json(active.map(l => ({ ...l, exam_url: buildExamUrl(l.token) })));
 });
@@ -261,10 +284,11 @@ router.get('/my-exams', candidateAuth, (req, res) => {
 // GET /api/portal/history — all submissions for this candidate
 router.get('/history', candidateAuth, (req, res) => {
   const db = getDb();
+  cleanupAbandonedSubmissions(db, req.candidateId);
   const rows = db.prepare(`
     SELECT s.id, s.started_at, s.submitted_at, s.submitted_at as completed_at,
       s.final_score as score, s.pass_fail as passed,
-      s.result_released, s.status,
+      s.result_released, s.status, COALESCE(s.is_abandoned, 0) as is_abandoned,
       e.title as exam_title, e.code, e.total_marks, e.pass_marks, e.show_result_immediately
     FROM submissions s JOIN exams e ON e.id=s.exam_id
     WHERE s.candidate_id=? ORDER BY s.started_at DESC

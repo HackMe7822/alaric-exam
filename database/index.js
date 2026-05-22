@@ -77,6 +77,8 @@ function initDb() {
     if (appUrl) d.prepare("INSERT OR IGNORE INTO settings(key, value, description) VALUES('app_url',?,'Public base URL of the platform (e.g. https://alaric-exam.onrender.com)')").run(appUrl);
     else d.prepare("INSERT OR IGNORE INTO settings(key, value, description) VALUES('app_url','','Public base URL of the platform (e.g. https://alaric-exam.onrender.com)')").run();
   } catch(e) {}
+  // JS migration: is_abandoned flag on submissions
+  try { d.exec(`ALTER TABLE submissions ADD COLUMN is_abandoned INTEGER DEFAULT 0`); } catch(e) {}
   // Seed default URL slugs for portal and catalog
   try { d.exec(`INSERT OR IGNORE INTO settings(key, value, description) VALUES('portal_slug','portal','URL path slug for the candidate portal')`); } catch(e) {}
   try { d.exec(`INSERT OR IGNORE INTO settings(key, value, description) VALUES('catalog_slug','catalog','URL path slug for the exam catalog')`); } catch(e) {}
