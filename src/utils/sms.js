@@ -9,6 +9,15 @@ function getSmsConfig() {
   ).all(...keys);
   const cfg = {};
   for (const r of rows) cfg[r.key] = r.value;
+  // Fall back to environment variables if not set in DB
+  if (!cfg.sms_provider)     cfg.sms_provider     = process.env.SMS_PROVIDER || 'twilio';
+  if (!cfg.sms_account_sid)  cfg.sms_account_sid  = process.env.SMS_ACCOUNT_SID || '';
+  if (!cfg.sms_auth_token)   cfg.sms_auth_token   = process.env.SMS_AUTH_TOKEN || '';
+  if (!cfg.sms_from)         cfg.sms_from         = process.env.SMS_FROM || '';
+  if (!cfg.sms_api_key)      cfg.sms_api_key      = process.env.SMS_API_KEY || '';
+  if (cfg.sms_enabled === undefined || cfg.sms_enabled === '') {
+    cfg.sms_enabled = process.env.SMS_ENABLED !== '0' ? '1' : '0';
+  }
   return cfg;
 }
 
