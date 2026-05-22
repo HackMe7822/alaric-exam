@@ -75,30 +75,35 @@
 
     <!-- General Tab -->
     <div id="tab-general" class="tab-pane active">
-      <div class="card">
-        <div class="card-header"><span class="card-title">General Settings</span></div>
+
+      <!-- Branding card — clearly separated -->
+      <div class="card" style="border-left:4px solid var(--primary)">
+        <div class="card-header" style="background:linear-gradient(135deg,#f0f7ff,#fff)">
+          <span class="card-title" style="font-size:15px">🎨 Branding &amp; Identity</span>
+          <span style="font-size:12px;color:var(--gray)">Controls how the platform looks in the admin panel, portal and emails</span>
+        </div>
         <div class="setting-row">
           <div class="setting-info">
             <label for="appName">Application Name</label>
-            <p>Displayed in emails, candidate portal, and browser tab title</p>
+            <p>Shown in the admin sidebar, browser tab, emails, and candidate portal</p>
           </div>
-          <div class="setting-ctrl" style="min-width:200px">
+          <div class="setting-ctrl" style="min-width:240px">
             <input type="text" class="form-control" id="appName" placeholder="Alaric Exam">
           </div>
         </div>
         <div class="setting-row">
           <div class="setting-info">
             <label for="appTagline">Portal Tagline</label>
-            <p>Short subtitle shown on the candidate portal login page</p>
+            <p>Short subtitle on the candidate portal login page</p>
           </div>
-          <div class="setting-ctrl" style="min-width:200px">
+          <div class="setting-ctrl" style="min-width:240px">
             <input type="text" class="form-control" id="appTagline" placeholder="Candidate Portal">
           </div>
         </div>
         <div class="setting-row">
           <div class="setting-info">
             <label>Platform Logo</label>
-            <p>Shown in the candidate portal header (PNG/JPG, max 500KB). Stored in database.</p>
+            <p>Shown in the candidate portal header (PNG/JPG, max 500KB)</p>
           </div>
           <div class="setting-ctrl" style="min-width:220px">
             <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -111,6 +116,14 @@
             </div>
           </div>
         </div>
+        <div style="margin-top:16px">
+          <button class="btn btn-primary" id="btnSaveBranding" onclick="saveBranding()">Save Branding</button>
+        </div>
+      </div>
+
+      <!-- General preferences card -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-header"><span class="card-title">General Preferences</span></div>
         <div class="setting-row">
           <div class="setting-info">
             <label>Public Exam Catalog</label>
@@ -124,7 +137,7 @@
           </div>
         </div>
         <div style="margin-top:16px">
-          <button class="btn btn-primary" onclick="saveGeneralSettings()">Save General Settings</button>
+          <button class="btn btn-primary" onclick="saveGeneralSettings()">Save Preferences</button>
         </div>
       </div>
     </div>
@@ -485,23 +498,40 @@ function removeLogo() {
   document.getElementById('btnRemoveLogo').style.display = 'none';
 }
 
+async function saveBranding() {
+  const btn = document.getElementById('btnSaveBranding');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const appName = document.getElementById('appName').value.trim() || 'Alaric Exam';
+    const brandBody = {
+      app_name: appName,
+      app_tagline: document.getElementById('appTagline').value.trim()
+    };
+    if (window._pendingLogo !== undefined) brandBody.app_logo = window._pendingLogo || null;
+    const result = await api('PUT', '/api/settings/branding', brandBody);
+    if (!result || result.error) { toast(result?.error || 'Save failed', 'error'); return; }
+    window._pendingLogo = undefined;
+    // Update sidebar brand + page title immediately without requiring a page refresh
+    const brandEl = document.querySelector('#sidebar .brand');
+    if (brandEl) {
+      const svg = brandEl.querySelector('svg');
+      brandEl.innerHTML = (svg ? svg.outerHTML : '') + appName;
+    }
+    document.title = 'Settings — ' + appName;
+    toast('Branding saved — sidebar and page title updated');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save Branding';
+  }
+}
+
 async function saveGeneralSettings() {
   const body = {
-    app_name: document.getElementById('appName').value.trim(),
     allow_public_catalog: document.getElementById('allowPublicCatalog').checked
   };
   const result = await api('PUT', '/api/settings', body);
   if (!result) return;
   if (result.error) { toast(result.error,'error'); return; }
-  // Save branding (name + tagline + logo)
-  const brandBody = {
-    app_name: document.getElementById('appName').value.trim(),
-    app_tagline: document.getElementById('appTagline').value.trim()
-  };
-  if (window._pendingLogo !== undefined) brandBody.app_logo = window._pendingLogo || null;
-  await api('PUT', '/api/settings/branding', brandBody);
-  window._pendingLogo = undefined;
-  toast('General settings saved');
+  toast('Preferences saved');
 }
 
 async function saveAntiCheat() {
