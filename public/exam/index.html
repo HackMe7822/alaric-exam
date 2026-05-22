@@ -735,6 +735,9 @@ async function startExam() {
 
   // Heartbeat — keeps submission alive; also used to detect tab-close abandonment
   startHeartbeat();
+
+  // Live monitor WebSocket
+  startMonitorWs();
 }
 
 // ── HEARTBEAT ──────────────────────────────────────────────────
@@ -1106,6 +1109,7 @@ function renderQuestion(idx) {
   state.currentQuestion = idx;
   const q = questions[idx];
   state.questionStartTime[q.id] = Date.now();
+  sendMonitorState();
 
   const area = document.getElementById('question-area');
   area.innerHTML = '';
@@ -1956,6 +1960,162 @@ function sanitizeHTML(html) {
     .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
     .replace(/\s*on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
 }
+
+// ============================================================
+// LIVE MONITOR — WebSocket connection for admin screen monitoring
+// ============================================================
+let _monitorWs = null;
+let _monitorReconnect = null;
+let _monitorStateInterval = null;
+let _screenStream = null;
+let _screenInterval = null;
+
+function startMonitorWs() {
+  if (_monitorWs && _monitorWs.readyState < 2) return;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  _monitorWs = ws;
+
+  ws.onopen = () => {
+    clearTimeout(_monitorReconnect);
+    const qs = state.examData?.questions || [];
+    ws.send(JSON.stringify({
+      type: 'exam_register',
+      token: state.token,
+      submissionId: state.submissionId,
+      candidateName: state.examData?.candidate?.full_name || state.examData?.candidate?.name || '',
+      candidateEmail: state.examData?.candidate?.email || '',
+      examTitle: state.examData?.exam?.title || '',
+      questionIndex: state.currentQuestion,
+      totalQuestions: qs.length,
+      timeLeft: state.timeLeft,
+      answeredCount: Object.keys(state.answers).length,
+    }));
+    // Send state every 10 seconds
+    clearInterval(_monitorStateInterval);
+    _monitorStateInterval = setInterval(sendMonitorState, 10000);
+  };
+
+  ws.onmessage = e => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    if (msg.type === 'screen_request') handleScreenRequest();
+    if (msg.type === 'screen_stop') stopScreenShare();
+  };
+
+  ws.onclose = () => {
+    clearInterval(_monitorStateInterval);
+    // Reconnect after 5s if exam still in progress
+    if (state.examStarted && !state.submitted) {
+      _monitorReconnect = setTimeout(startMonitorWs, 5000);
+    }
+  };
+
+  ws.onerror = () => {};
+}
+
+function sendMonitorState(event) {
+  if (!_monitorWs || _monitorWs.readyState !== 1) return;
+  const qs = state.examData?.questions || [];
+  _monitorWs.send(JSON.stringify({
+    type: 'exam_state',
+    submissionId: state.submissionId,
+    questionIndex: state.currentQuestion,
+    totalQuestions: qs.length,
+    timeLeft: state.timeLeft,
+    answeredCount: Object.keys(state.answers).length,
+    tabSwitches: state.tabSwitchCount,
+    event: event || null,
+  }));
+}
+
+function handleScreenRequest() {
+  // Show a dismissible notification asking the candidate to share their screen
+  let banner = document.getElementById('_monitor-screen-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = '_monitor-screen-banner';
+    banner.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#fff;border:1px solid #e0e0e0;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.18);padding:16px 18px;max-width:320px;font-size:13px;line-height:1.5';
+    document.body.appendChild(banner);
+  }
+  banner.innerHTML = `
+    <div style="font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:7px">
+      <span style="font-size:1.2rem">🔍</span> Proctor Request
+    </div>
+    <p style="margin:0 0 12px;color:#444">Your proctor would like to view your screen. Click <strong>Share Screen</strong> to continue your exam.</p>
+    <div style="display:flex;gap:8px">
+      <button onclick="startScreenShare()" style="flex:1;background:#0078d4;color:#fff;border:none;border-radius:7px;padding:8px;font-size:13px;font-weight:700;cursor:pointer">Share Screen</button>
+      <button onclick="document.getElementById('_monitor-screen-banner').remove()" style="background:#f3f2f1;border:1px solid #e0e0e0;border-radius:7px;padding:8px 12px;font-size:13px;cursor:pointer">Decline</button>
+    </div>
+  `;
+}
+
+async function startScreenShare() {
+  const banner = document.getElementById('_monitor-screen-banner');
+  if (banner) banner.remove();
+  try {
+    const stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 1, max: 2 }, width: { ideal: 1280 } },
+      audio: false,
+      preferCurrentTab: true,
+      selfBrowserSurface: 'include',
+    });
+    _screenStream = stream;
+    const video = document.createElement('video');
+    video.srcObject = stream;
+    video.muted = true;
+    await video.play();
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280;
+    canvas.height = Math.round(1280 * (screen.height / screen.width));
+    const ctx = canvas.getContext('2d');
+
+    // Show "Sharing" indicator
+    let indicator = document.getElementById('_monitor-indicator');
+    if (!indicator) {
+      indicator = document.createElement('div');
+      indicator.id = '_monitor-indicator';
+      indicator.style.cssText = 'position:fixed;top:8px;right:8px;z-index:99999;background:rgba(0,0,0,.65);color:#fff;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px';
+      indicator.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;animation:_blink 1s infinite"></span> Proctor Monitoring';
+      document.body.appendChild(indicator);
+      if (!document.getElementById('_blink-style')) {
+        const s = document.createElement('style');
+        s.id = '_blink-style';
+        s.textContent = '@keyframes _blink{0%,100%{opacity:1}50%{opacity:.3}}';
+        document.head.appendChild(s);
+      }
+    }
+
+    clearInterval(_screenInterval);
+    _screenInterval = setInterval(() => {
+      if (!_monitorWs || _monitorWs.readyState !== 1) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL('image/jpeg', 0.45);
+      _monitorWs.send(JSON.stringify({ type: 'exam_screenshot', submissionId: state.submissionId, imageData }));
+    }, 2500);
+
+    stream.getVideoTracks()[0].addEventListener('ended', stopScreenShare);
+  } catch(e) {
+    // User denied or error — notify admin quietly
+    if (_monitorWs && _monitorWs.readyState === 1) {
+      _monitorWs.send(JSON.stringify({ type: 'exam_state', submissionId: state.submissionId, event: 'screen_share_declined', timeLeft: state.timeLeft }));
+    }
+  }
+}
+
+function stopScreenShare() {
+  clearInterval(_screenInterval); _screenInterval = null;
+  if (_screenStream) { _screenStream.getTracks().forEach(t => t.stop()); _screenStream = null; }
+  const ind = document.getElementById('_monitor-indicator');
+  if (ind) ind.remove();
+}
+
+// Hook into tab-switch event to also send WS state update with event
+const _origPostEvent = postEvent;
+// eslint-disable-next-line no-global-assign
+postEvent = async (eventType) => {
+  sendMonitorState(eventType);
+  return _origPostEvent(eventType);
+};
 
 // ============================================================
 // START

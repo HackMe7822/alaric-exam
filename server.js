@@ -1,9 +1,12 @@
 require('dotenv').config();
+const http = require('http');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const path = require('path');
+const { WebSocketServer } = require('ws');
 const { initDb, getDb } = require('./database/index');
+const { setupMonitor } = require('./src/ws/monitor');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -93,7 +96,11 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server, path: '/ws' });
+setupMonitor(wss);
+
+server.listen(PORT, () => {
   console.log(`\nAlaric Exam running at http://localhost:${PORT}`);
   console.log(`  Admin panel: http://localhost:${PORT}/admin`);
   console.log(`  Candidate portal: http://localhost:${PORT}/portal`);

@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Live Monitor — Alaric Exam Admin</title>
+<link rel="stylesheet" href="/assets/css/admin.css">
+<style>
+/* ── Layout ── */
+#monitor-wrap { display: flex; gap: 18px; height: calc(100vh - 130px); min-height: 400px; }
+#session-list-col { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0; }
+#detail-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+
+/* ── Connection status ── */
+#conn-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+#conn-status.connected { background: #d4edda; color: #155724; }
+#conn-status.disconnected { background: #f8d7da; color: #721c24; }
+#conn-status.connecting { background: #fff3cd; color: #856404; }
+.conn-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+/* ── Session cards ── */
+#session-list-header { padding: 10px 14px 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+#session-list-header h3 { font-size: 13px; font-weight: 700; margin: 0; }
+#sessions-scroll { flex: 1; overflow-y: auto; }
+.session-card { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
+.session-card:hover { background: #f0f7ff; }
+.session-card.active { background: #e8f4fd; border-left: 3px solid var(--primary); }
+.sc-name { font-size: 13px; font-weight: 700; color: #1b1a19; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-exam { font-size: 11px; color: #888; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sc-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+.sc-badge.q { background: #e8f4fd; color: #0078d4; }
+.sc-badge.time { background: #e8ffe8; color: #107c10; }
+.sc-badge.time.low { background: #fff3cd; color: #856404; }
+.sc-badge.time.urgent { background: #fde7e9; color: #a4262c; }
+.sc-badge.flag { background: #fde7e9; color: #a4262c; }
+.sc-empty { padding: 40px 20px; text-align: center; color: #bbb; font-size: 13px; }
+
+/* ── Detail panel ── */
+.detail-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.detail-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.detail-card-header h3 { margin: 0; font-size: 14px; font-weight: 700; }
+.detail-card-body { padding: 18px; }
+
+.cand-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+.cand-avatar { width: 44px; height: 44px; border-radius: 50%; background: #e8f4fd; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
+.cand-info h2 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
+.cand-info p { font-size: 12px; color: #666; margin: 0; }
+
+.progress-bar-wrap { margin-bottom: 16px; }
+.progress-bar-wrap label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; margin-bottom: 5px; }
+.progress-bar-track { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width .5s; }
+
+.stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.stat-chip { flex: 1; min-width: 90px; background: #f7f7f7; border-radius: 8px; padding: 10px 12px; }
+.stat-chip .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #888; font-weight: 700; margin-bottom: 3px; }
+.stat-chip .val { font-size: 20px; font-weight: 800; color: #1b1a19; }
+
+.events-list { max-height: 160px; overflow-y: auto; }
+.event-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
+.event-item:last-child { border-bottom: none; }
+.event-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+.event-dot.flag { background: #e3503e; }
+.event-dot.normal { background: #bbb; }
+.event-time { color: #999; white-space: nowrap; font-size: 11px; margin-top: 1px; }
+.event-label { color: #333; flex: 1; }
+
+/* ── Screen view ── */
+#screen-card { display: none; }
+#screen-img { width: 100%; max-height: 500px; object-fit: contain; background: #111; border-radius: 6px; display: none; }
+.screen-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 20px; color: #bbb; font-size: 13px; text-align: center; background: #f9f9f9; border-radius: 6px; }
+.screen-placeholder svg { width: 40px; height: 40px; color: #ddd; }
+#screen-ts { font-size: 11px; color: #888; text-align: right; margin-top: 4px; }
+.screen-actions { display: flex; gap: 8px; align-items: center; }
+#btn-req-screen { display: inline-flex; align-items: center; gap: 6px; }
+#btn-stop-screen { display: none; }
+
+#empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; min-height: 300px; color: #bbb; font-size: 13px; text-align: center; }
+#empty-detail svg { width: 52px; height: 52px; color: #e0e0e0; }
+</style>
+</head>
+<body>
+<!-- Sidebar -->
+<div id="sidebar">
+  <div class="brand"><svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="#00B4D8" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg><span>Alaric</span> Exam</div>
+  <nav>
+    <div class="nav-label">MAIN</div>
+    <a href="/admin/dashboard">📊 Dashboard</a>
+    <a href="/admin/exams">📋 Exams</a>
+    <a href="/admin/questions">❓ Question Bank</a>
+    <a href="/admin/candidates">👥 Candidates</a>
+    <div class="nav-label">REVIEW</div>
+    <a href="/admin/checker">✅ Review Queue</a>
+    <a href="/admin/monitor" class="active">🖥️ Live Monitor</a>
+    <a href="/admin/results">🏆 Results</a>
+    <a href="/admin/analytics">📈 Analytics</a>
+    <a href="/admin/access-requests">📩 Access Requests <span id="sb-ar-badge" style="display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px"></span></a>
+    <div class="nav-label">ADMIN</div>
+    <a href="/admin/users">👤 Users</a>
+    <a href="/admin/email-config">📧 Email Config</a>
+    <a href="/admin/settings">⚙️ Settings</a>
+    <a href="/admin/recycle-bin">🗑️ Recycle Bin</a>
+  </nav>
+  <div class="sidebar-user"><strong id="sb-name">Loading…</strong><span id="sb-role"></span></div>
+</div>
+
+<!-- Main -->
+<div id="main">
+  <div id="topbar">
+    <h1>Live Monitor</h1>
+    <div class="topbar-actions">
+      <span id="conn-status" class="connecting"><span class="conn-dot"></span><span id="conn-label">Connecting…</span></span>
+      <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign Out</button>
+    </div>
+  </div>
+
+  <div id="page" style="padding-bottom:0">
+    <div id="monitor-wrap">
+      <!-- Session list -->
+      <div id="session-list-col" class="card" style="padding:0;overflow:hidden">
+        <div id="session-list-header">
+          <h3>Active Sessions <span id="session-count" style="color:#888;font-weight:400">(0)</span></h3>
+          <span style="font-size:11px;color:#bbb" id="last-update">—</span>
+        </div>
+        <div id="sessions-scroll">
+          <div class="sc-empty" id="sc-empty">No active exam sessions</div>
+        </div>
+      </div>
+
+      <!-- Detail panel -->
+      <div id="detail-col">
+        <div id="empty-detail">
+          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
+          <p>Select a session from the left to start monitoring</p>
+        </div>
+
+        <!-- Candidate info card (shown when session selected) -->
+        <div class="detail-card" id="cand-card" style="display:none">
+          <div class="detail-card-body">
+            <div class="cand-header">
+              <div class="cand-avatar">👤</div>
+              <div class="cand-info">
+                <h2 id="det-name">—</h2>
+                <p id="det-email">—</p>
+                <p id="det-exam" style="margin-top:2px;font-weight:600;color:#333"></p>
+              </div>
+            </div>
+            <div class="progress-bar-wrap">
+              <label><span>Progress</span><span id="det-qprog">—</span></label>
+              <div class="progress-bar-track"><div class="progress-bar-fill" id="prog-fill" style="width:0%"></div></div>
+            </div>
+            <div class="stat-row">
+              <div class="stat-chip"><div class="lbl">Time Left</div><div class="val" id="det-time">—</div></div>
+              <div class="stat-chip"><div class="lbl">Answered</div><div class="val" id="det-answered">—</div></div>
+              <div class="stat-chip"><div class="lbl">Tab Switches</div><div class="val" id="det-tabs">—</div></div>
+              <div class="stat-chip"><div class="lbl">Flag Events</div><div class="val" id="det-flags" style="color:#d13438">—</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Events card -->
+        <div class="detail-card" id="events-card" style="display:none">
+          <div class="detail-card-header"><h3>Activity Log</h3></div>
+          <div class="detail-card-body" style="padding:10px 18px">
+            <div class="events-list" id="events-list">
+              <div style="color:#bbb;font-size:13px;padding:10px 0;text-align:center">No events yet</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Screen view card -->
+        <div class="detail-card" id="screen-card">
+          <div class="detail-card-header">
+            <h3>Screen View</h3>
+            <div class="screen-actions">
+              <button class="btn btn-sm btn-primary" id="btn-req-screen" onclick="requestScreen()">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                Request Screen View
+              </button>
+              <button class="btn btn-sm btn-danger" id="btn-stop-screen" onclick="stopScreen()">Stop</button>
+            </div>
+          </div>
+          <div class="detail-card-body" style="padding:14px">
+            <div class="screen-placeholder" id="screen-placeholder">
+              <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <p>Click "Request Screen View" to ask the candidate to share their screen.<br>The candidate will see a prompt and must click "Share Screen" to begin.</p>
+            </div>
+            <img id="screen-img" alt="Candidate screen" />
+            <div id="screen-ts"></div>
+          </div>
+        </div>
+
+      </div><!-- /detail-col -->
+    </div><!-- /monitor-wrap -->
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+let _ws = null;
+let _selectedId = null;
+let _sessions = {};
+let _reconnectTimer = null;
+let _screenActive = false;
+let _timerInterval = null;
+let _detailTimeLeft = 0;
+
+function toast(msg, type='success') {
+  const t = document.createElement('div'); t.className = `toast ${type}`; t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t); setTimeout(() => t.remove(), 3500);
+}
+
+function setConnStatus(state) {
+  const el = document.getElementById('conn-status');
+  const lbl = document.getElementById('conn-label');
+  el.className = 'connecting'; lbl.textContent = 'Connecting…';
+  if (state === 'connected') { el.className = 'connected'; lbl.textContent = 'Live'; }
+  if (state === 'disconnected') { el.className = 'disconnected'; lbl.textContent = 'Disconnected'; }
+}
+
+function connect() {
+  if (_ws && _ws.readyState < 2) return;
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  const ws = new WebSocket(`${proto}://${location.host}/ws`);
+  _ws = ws;
+  setConnStatus('connecting');
+
+  ws.onopen = () => {
+    setConnStatus('connected');
+    clearTimeout(_reconnectTimer);
+  };
+
+  ws.onmessage = e => {
+    let msg; try { msg = JSON.parse(e.data); } catch { return; }
+    handleMsg(msg);
+  };
+
+  ws.onclose = () => {
+    setConnStatus('disconnected');
+    _reconnectTimer = setTimeout(connect, 3000);
+  };
+
+  ws.onerror = () => {};
+}
+
+function handleMsg(msg) {
+  if (msg.type === 'auth_ok') {
+    renderSessions(msg.sessions);
+  }
+  if (msg.type === 'sessions_list') {
+    renderSessions(msg.sessions);
+  }
+  if (msg.type === 'session_ended') {
+    delete _sessions[msg.submissionId];
+    if (_selectedId === msg.submissionId) {
+      _selectedId = null;
+      showEmptyDetail();
+      toast('Session ended — candidate finished or disconnected', 'warning');
+    }
+    renderSessionCards();
+  }
+  if (msg.type === 'session_detail') {
+    showDetail(msg);
+  }
+  if (msg.type === 'detail_update') {
+    if (msg.submissionId === _selectedId) applyDetailUpdate(msg);
+    if (_sessions[msg.submissionId]) Object.assign(_sessions[msg.submissionId], msg);
+    renderSessionCards();
+  }
+  if (msg.type === 'screenshot_frame') {
+    if (msg.submissionId === _selectedId) showScreenFrame(msg.imageData);
+  }
+}
+
+function send(data) {
+  if (_ws && _ws.readyState === 1) _ws.send(JSON.stringify(data));
+}
+
+function renderSessions(sessions) {
+  _sessions = {};
+  (sessions || []).forEach(s => { _sessions[s.submissionId] = s; });
+  renderSessionCards();
+  document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+}
+
+function renderSessionCards() {
+  const list = Object.values(_sessions);
+  document.getElementById('session-count').textContent = `(${list.length})`;
+  const scroll = document.getElementById('sessions-scroll');
+  const empty = document.getElementById('sc-empty');
+
+  if (!list.length) {
+    empty.style.display = '';
+    // Remove all cards
+    scroll.querySelectorAll('.session-card').forEach(c => c.remove());
+    return;
+  }
+  empty.style.display = 'none';
+
+  const existing = new Set(scroll.querySelectorAll('.session-card').values());
+  list.forEach(s => {
+    let card = scroll.querySelector(`[data-id="${s.submissionId}"]`);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'session-card';
+      card.dataset.id = s.submissionId;
+      card.onclick = () => selectSession(s.submissionId);
+      scroll.appendChild(card);
+    }
+    if (_selectedId === s.submissionId) card.classList.add('active'); else card.classList.remove('active');
+    const t = s.timeLeft || 0;
+    const tm = `${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;
+    const timeCls = t < 300 ? 'urgent' : t < 600 ? 'low' : '';
+    card.innerHTML = `
+      <div class="sc-name">${esc(s.candidateName)}</div>
+      <div class="sc-exam">${esc(s.examTitle)}</div>
+      <div class="sc-meta">
+        <span class="sc-badge q">Q ${(s.questionIndex||0)+1}/${s.totalQuestions||'?'}</span>
+        <span class="sc-badge time ${timeCls}">⏱ ${tm}</span>
+        ${s.flaggedCount > 0 ? `<span class="sc-badge flag">⚠ ${s.flaggedCount} flag${s.flaggedCount>1?'s':''}</span>` : ''}
+      </div>
+    `;
+  });
+
+  // Remove cards for sessions that no longer exist
+  scroll.querySelectorAll('.session-card').forEach(card => {
+    if (!_sessions[card.dataset.id]) card.remove();
+  });
+}
+
+function selectSession(submissionId) {
+  _selectedId = submissionId;
+  document.querySelectorAll('.session-card').forEach(c => c.classList.toggle('active', c.dataset.id === String(submissionId)));
+  send({ type: 'subscribe', submissionId });
+}
+
+function showDetail(d) {
+  document.getElementById('empty-detail').style.display = 'none';
+  document.getElementById('cand-card').style.display = '';
+  document.getElementById('events-card').style.display = '';
+  document.getElementById('screen-card').style.display = '';
+
+  document.getElementById('det-name').textContent = d.candidateName || '—';
+  document.getElementById('det-email').textContent = d.candidateEmail || '—';
+  document.getElementById('det-exam').textContent = d.examTitle || '';
+
+  applyDetailUpdate(d);
+
+  // Events
+  renderEvents(d.events || []);
+}
+
+function applyDetailUpdate(d) {
+  const qi = (d.questionIndex || 0) + 1;
+  const qt = d.totalQuestions || 1;
+  const pct = Math.round((qi / qt) * 100);
+  document.getElementById('det-qprog').textContent = `Q ${qi} of ${qt}`;
+  document.getElementById('prog-fill').style.width = pct + '%';
+
+  _detailTimeLeft = d.timeLeft || 0;
+  renderDetailTime();
+
+  document.getElementById('det-answered').textContent = d.answeredCount != null ? d.answeredCount : '—';
+  document.getElementById('det-tabs').textContent = d.tabSwitches != null ? d.tabSwitches : '—';
+  document.getElementById('det-flags').textContent = d.flaggedCount != null ? d.flaggedCount : '—';
+
+  if (d.event) {
+    appendEvent({ event: d.event, at: new Date().toISOString() });
+  }
+}
+
+function renderDetailTime() {
+  const t = Math.max(0, _detailTimeLeft);
+  const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), s = t % 60;
+  const str = h > 0
+    ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+    : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const el = document.getElementById('det-time');
+  if (el) el.textContent = str;
+}
+
+function renderEvents(events) {
+  const list = document.getElementById('events-list');
+  if (!events.length) { list.innerHTML = '<div style="color:#bbb;font-size:13px;padding:10px 0;text-align:center">No events yet</div>'; return; }
+  list.innerHTML = events.slice().reverse().map(e => eventHtml(e)).join('');
+}
+
+function appendEvent(ev) {
+  const list = document.getElementById('events-list');
+  const empty = list.querySelector('[style*="color:#bbb"]');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.innerHTML = eventHtml(ev);
+  list.insertBefore(div.firstChild, list.firstChild);
+}
+
+function eventHtml(e) {
+  const isFlag = /tab_switch|paste|fullscreen|copy|flag/i.test(e.event);
+  const t = e.at ? new Date(e.at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
+  return `<div class="event-item"><span class="event-dot ${isFlag?'flag':'normal'}"></span><span class="event-label">${esc(e.event.replace(/_/g,' '))}</span><span class="event-time">${t}</span></div>`;
+}
+
+function showEmptyDetail() {
+  document.getElementById('empty-detail').style.display = '';
+  document.getElementById('cand-card').style.display = 'none';
+  document.getElementById('events-card').style.display = 'none';
+  document.getElementById('screen-card').style.display = 'none';
+}
+
+function requestScreen() {
+  if (!_selectedId) return;
+  send({ type: 'request_screen' });
+  document.getElementById('btn-req-screen').disabled = true;
+  document.getElementById('btn-req-screen').textContent = 'Requesting…';
+  toast('Screen share request sent to candidate');
+}
+
+function stopScreen() {
+  send({ type: 'stop_screen' });
+  _screenActive = false;
+  document.getElementById('screen-img').style.display = 'none';
+  document.getElementById('screen-placeholder').style.display = '';
+  document.getElementById('btn-req-screen').style.display = '';
+  document.getElementById('btn-stop-screen').style.display = 'none';
+  document.getElementById('btn-req-screen').disabled = false;
+  document.getElementById('btn-req-screen').innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> Request Screen View';
+}
+
+function showScreenFrame(imageData) {
+  _screenActive = true;
+  const img = document.getElementById('screen-img');
+  img.src = imageData;
+  img.style.display = 'block';
+  document.getElementById('screen-placeholder').style.display = 'none';
+  document.getElementById('btn-req-screen').style.display = 'none';
+  document.getElementById('btn-stop-screen').style.display = '';
+  document.getElementById('screen-ts').textContent = 'Last frame: ' + new Date().toLocaleTimeString();
+  document.getElementById('btn-req-screen').disabled = false;
+}
+
+function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// Admin auth
+async function loadMe() {
+  const r = await fetch('/api/auth/me', { credentials: 'include' });
+  if (!r.ok) { window.location.href = '/admin'; return; }
+  const u = await r.json();
+  document.getElementById('sb-name').textContent = u.full_name || u.username;
+  document.getElementById('sb-role').textContent = u.role?.replace('_',' ') || '';
+}
+
+document.getElementById('logoutBtn').onclick = async () => {
+  await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });
+  window.location.href = '/admin';
+};
+
+// Local timer tick (between WS updates)
+setInterval(() => {
+  if (_selectedId && _detailTimeLeft > 0) {
+    _detailTimeLeft--;
+    renderDetailTime();
+  }
+}, 1000);
+
+// Boot
+loadMe();
+connect();
+</script>
+<script src="/assets/js/admin-shared.js"></script>
+</body>
+</html>
