@@ -2017,7 +2017,8 @@ let _monitorWs = null;
 let _monitorReconnect = null;
 let _monitorStateInterval = null;
 let _screenStream = null;
-let _screenPc = null;   // RTCPeerConnection (caller side)
+let _screenPc = null;          // RTCPeerConnection (caller side)
+let _pendingExamIce = [];      // ICE candidates buffered before remoteDescription is set
 
 function startMonitorWs() {
   if (_monitorWs && _monitorWs.readyState < 2) return;
@@ -2147,17 +2148,29 @@ async function startScreenShare() {
 
 async function handleRtcAnswer(answer) {
   if (!_screenPc) return;
-  try { await _screenPc.setRemoteDescription(new RTCSessionDescription(answer)); } catch(e) {}
+  try {
+    await _screenPc.setRemoteDescription(new RTCSessionDescription(answer));
+    // Flush any ICE candidates that arrived before we had a remote description
+    for (const c of _pendingExamIce) {
+      try { await _screenPc.addIceCandidate(new RTCIceCandidate(c)); } catch(e) {}
+    }
+    _pendingExamIce = [];
+  } catch(e) {}
 }
 
 async function handleRtcIce(candidate) {
-  if (!_screenPc || !_screenPc.remoteDescription) return;
+  if (!_screenPc || !_screenPc.remoteDescription) {
+    // Buffer — admin ICE candidates often arrive before rtc_answer is processed
+    _pendingExamIce.push(candidate);
+    return;
+  }
   try { await _screenPc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
 }
 
 function stopScreenShare() {
   if (_screenPc) { try { _screenPc.close(); } catch(e) {} _screenPc = null; }
   if (_screenStream) { _screenStream.getTracks().forEach(t => t.stop()); _screenStream = null; }
+  _pendingExamIce = [];
   document.getElementById('_monitor-indicator')?.remove();
   wsSend({ type: 'exam_state', submissionId: state.submissionId, event: 'screen_share_ended', timeLeft: state.timeLeft });
 }

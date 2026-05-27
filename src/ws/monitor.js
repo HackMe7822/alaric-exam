@@ -152,7 +152,8 @@ function handleExamMsg(ws, msg) {
       { type: 'detail_update', submissionId: msg.submissionId,
         questionIndex: session.questionIndex, totalQuestions: session.totalQuestions,
         timeLeft: session.timeLeft, answeredCount: session.answeredCount,
-        tabSwitches: session.tabSwitches, event: msg.event || null },
+        tabSwitches: session.tabSwitches, flaggedCount: session.flaggedCount,
+        event: msg.event || null },
       info => info.subscribedTo === msg.submissionId
     );
   }
