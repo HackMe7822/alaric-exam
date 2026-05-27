@@ -2199,6 +2199,26 @@ postEvent = async (eventType) => {
   return _origPostEvent(eventType);
 };
 
+// ── Alaric Secure Browser — security violation relay ─────────────────────────
+// When running inside the Electron kiosk, main process sends security events
+// (process_violation, usb_device_added, network_violation, etc.) via IPC.
+// We forward them to the proctor via the monitor WS and record them server-side.
+if (window.AlaricProctor && typeof window.AlaricProctor.onSecurityEvent === 'function') {
+  window.AlaricProctor.onSecurityEvent((ev) => {
+    if (!state.examStarted || state.submitted) return;
+    const eventType = ev.type || 'security_event';
+    const label     = ev.message || eventType;
+    // Show a brief on-screen toast for critical events
+    if (ev.severity === 'critical') {
+      showToast(`⚠ Security alert: ${label}`, 'danger', 5000);
+    }
+    // Forward to proctor via WS (increments flaggedCount server-side)
+    sendMonitorState(eventType);
+    // Record on server (stores in events table, may trigger auto-submit)
+    _origPostEvent(eventType);
+  });
+}
+
 // ============================================================
 // START
 // ============================================================
