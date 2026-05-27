@@ -64,7 +64,9 @@ app.get('/portal/oauth-callback', (req, res) => res.sendFile(path.join(__dirname
 app.get('/portal/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'portal', 'index.html')));
 app.get('/catalog', (req, res) => res.sendFile(path.join(__dirname, 'public', 'catalog', 'index.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register', 'index.html')));
-app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
+// /e/:token — Secure Browser launch/download page (detects app, offers download)
+// /exam/index.html — actual exam, only loads meaningfully inside Secure Browser
+app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'secure-launch', 'index.html')));
 
 // Dynamic custom slug middleware — reads from DB with 10s cache, no restart needed
 let _slugCache = null, _slugCacheAt = 0;
