@@ -78,6 +78,25 @@
 
 #empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; min-height: 300px; color: #bbb; font-size: 13px; text-align: center; }
 #empty-detail svg { width: 52px; height: 52px; color: #e0e0e0; }
+
+/* ── Waiting room ── */
+.waiting-card { display: flex; align-items: center; gap: 14px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+.waiting-avatar { width: 36px; height: 36px; border-radius: 50%; background: #fff3cd; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.waiting-info { flex: 1; min-width: 0; }
+.waiting-name { font-size: 13px; font-weight: 700; color: #1b1a19; }
+.waiting-sub { font-size: 11px; color: #888; }
+.waiting-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.waiting-camera-wrap { width: 200px; background: #111; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.waiting-camera-wrap video { width: 100%; height: 120px; object-fit: cover; display: block; transform: scaleX(-1); }
+.waiting-detail { display: none; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.waiting-detail.open { display: flex; }
+.proctor-chat-area { background: #f0f4f8; border-radius: 6px; padding: 8px; max-height: 100px; overflow-y: auto; font-size: 12px; margin-bottom: 6px; }
+.pcm { padding: 3px 0; }
+.pcm.candidate { color: #333; }
+.pcm.proctor { color: #0078d4; font-weight: 600; }
+.pcm.system { color: #888; font-style: italic; }
+.proctor-chat-input-row { display: flex; gap: 6px; }
+.proctor-chat-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -116,6 +135,19 @@
   </div>
 
   <div id="page" style="padding-bottom:0">
+
+    <!-- ── Waiting Room banner (Secure Browser candidates) ── -->
+    <div id="waiting-room-panel" class="card" style="margin-bottom:16px;display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px">
+          🔐 Secure Browser — Waiting Room
+          <span id="waiting-count" style="background:#f59e0b;color:#000;font-size:11px;font-weight:800;border-radius:10px;padding:1px 7px">0</span>
+        </h3>
+        <span style="font-size:11px;color:#bbb">Candidates waiting for proctor verification</span>
+      </div>
+      <div id="waiting-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
     <div id="monitor-wrap">
       <!-- Session list -->
       <div id="session-list-col" class="card" style="padding:0;overflow:hidden">
@@ -209,6 +241,10 @@ let _timerInterval = null;
 let _detailTimeLeft = 0;
 let _adminPc = null;
 let _pendingAdminIce = [];
+let _waitingCandidates = {};      // token -> info
+let _camPcs = {};                 // token -> RTCPeerConnection (camera answerer)
+let _camIce = {};                 // token -> pending ICE[]
+let _watchingToken = null;        // Token of candidate proctor has joined
 
 const _RTC_CONFIG = {
   iceServers: [
@@ -259,6 +295,7 @@ function connect() {
 function handleMsg(msg) {
   if (msg.type === 'auth_ok') {
     renderSessions(msg.sessions);
+    renderWaitingList(msg.waitingCandidates || []);
   }
   if (msg.type === 'sessions_list') {
     renderSessions(msg.sessions);
@@ -285,6 +322,23 @@ function handleMsg(msg) {
   }
   if (msg.type === 'rtc_ice' && msg.dir === 'exam_to_admin') {
     handleAdminRtcIce(msg);
+  }
+  // ── Waiting room ──
+  if (msg.type === 'waiting_list') {
+    renderWaitingList(msg.candidates || []);
+  }
+  if (msg.type === 'proctor_join_ok') {
+    const c = _waitingCandidates[msg.token];
+    if (c) { c._joined = true; renderWaitingList(Object.values(_waitingCandidates)); }
+  }
+  if (msg.type === 'candidate_chat') {
+    appendWaitingChat(msg.token, 'candidate', msg.candidateName + ': ' + msg.message);
+  }
+  if (msg.type === 'camera_offer') {
+    handleCameraOffer(msg);
+  }
+  if (msg.type === 'camera_ice' && msg.dir === 'candidate_to_admin') {
+    handleCameraIce(msg);
   }
 }
 
@@ -510,6 +564,147 @@ function goFullscreen() {
   const vid = document.getElementById('screen-video');
   if (vid.requestFullscreen) vid.requestFullscreen();
   else if (vid.webkitRequestFullscreen) vid.webkitRequestFullscreen();
+}
+
+// ── Waiting Room ──────────────────────────────────────────────────────────────
+function renderWaitingList(candidates) {
+  _waitingCandidates = {};
+  (candidates || []).forEach(c => { _waitingCandidates[c.token] = c; });
+
+  const panel = document.getElementById('waiting-room-panel');
+  const list  = document.getElementById('waiting-list');
+  const count = document.getElementById('waiting-count');
+
+  if (!candidates.length) { panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  count.textContent = candidates.length;
+
+  list.innerHTML = '';
+  candidates.forEach(c => {
+    const joined = c._joined || (_waitingCandidates[c.token] || {})._joined;
+    const waitSec = Math.round((Date.now() - c.waitingSince) / 1000);
+    const waitStr = waitSec < 60 ? `${waitSec}s` : `${Math.floor(waitSec/60)}m ${waitSec%60}s`;
+
+    const div = document.createElement('div');
+    div.id = `wcard-${c.token}`;
+    div.innerHTML = `
+      <div class="waiting-card">
+        <div class="waiting-avatar">👤</div>
+        <div class="waiting-info">
+          <div class="waiting-name">${esc(c.candidateName)}</div>
+          <div class="waiting-sub">${esc(c.examTitle || 'Exam')} · waiting ${waitStr}</div>
+        </div>
+        ${joined
+          ? `<div class="waiting-camera-wrap"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>`
+          : ''}
+        <div class="waiting-actions">
+          ${!joined
+            ? `<button class="btn btn-sm btn-primary" onclick="joinCandidate('${c.token}')">👁 Join & Verify</button>`
+            : `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="sendWaitingChat('${c.token}')">💬 Chat</button>
+               <button class="btn btn-sm btn-primary" onclick="startExam('${c.token}')">▶ Start Exam</button>
+               <button class="btn btn-sm btn-danger" onclick="rejectCandidate('${c.token}')">✕ Reject</button>`}
+        </div>
+      </div>
+      <div class="waiting-detail ${joined ? 'open' : ''}" id="wdetail-${c.token}">
+        <div class="proctor-chat-area" id="wchat-${c.token}">
+          <div class="pcm system">Chat with candidate</div>
+        </div>
+        <div class="proctor-chat-input-row">
+          <input class="proctor-chat-input" id="wchat-input-${c.token}" placeholder="Type a message to candidate…" maxlength="200"
+            onkeydown="if(event.key==='Enter')sendWaitingChatMsg('${c.token}')">
+          <button class="btn btn-sm btn-primary" onclick="sendWaitingChatMsg('${c.token}')">Send</button>
+        </div>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+function joinCandidate(token) {
+  _watchingToken = token;
+  send({ type: 'proctor_join', token });
+  if (!_waitingCandidates[token]) _waitingCandidates[token] = {};
+  _waitingCandidates[token]._joined = true;
+  renderWaitingList(Object.values(_waitingCandidates));
+  toast(`Joined candidate — waiting for camera feed`);
+}
+
+function startExam(token) {
+  send({ type: 'proctor_start', token });
+  toast(`Exam started for ${(_waitingCandidates[token] || {}).candidateName || 'candidate'}`);
+  // Remove from waiting list after short delay
+  setTimeout(() => {
+    delete _waitingCandidates[token];
+    renderWaitingList(Object.values(_waitingCandidates));
+  }, 2000);
+}
+
+function rejectCandidate(token) {
+  send({ type: 'proctor_chat', token, message: 'Your exam session was rejected by the proctor. Please contact support.' });
+  delete _waitingCandidates[token];
+  renderWaitingList(Object.values(_waitingCandidates));
+}
+
+function sendWaitingChatMsg(token) {
+  const inp = document.getElementById(`wchat-input-${token}`);
+  if (!inp || !inp.value.trim()) return;
+  const msg = inp.value.trim();
+  send({ type: 'proctor_chat', token, message: msg });
+  appendWaitingChat(token, 'proctor', 'You: ' + msg);
+  inp.value = '';
+}
+
+function appendWaitingChat(token, who, text) {
+  const box = document.getElementById(`wchat-${token}`);
+  if (!box) return;
+  const el = document.createElement('div');
+  el.className = 'pcm ' + who;
+  el.textContent = text;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+// Camera WebRTC (admin = answerer for candidate camera stream)
+async function handleCameraOffer(msg) {
+  const token = msg.token;
+  if (_camPcs[token]) { _camPcs[token].close(); delete _camPcs[token]; }
+  _camIce[token] = [];
+
+  const pc = new RTCPeerConnection(_RTC_CONFIG);
+  _camPcs[token] = pc;
+
+  pc.ontrack = e => {
+    const vid = document.getElementById(`wcam-${token}`);
+    if (vid) { vid.srcObject = e.streams[0]; }
+  };
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) send({ type: 'camera_ice', token, candidate, dir: 'admin_to_candidate' });
+  };
+
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+    for (const c of (_camIce[token] || [])) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+    }
+    _camIce[token] = [];
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    send({ type: 'camera_answer', token, answer: pc.localDescription });
+  } catch(e) {
+    console.error('[camRTC] answer failed', e);
+  }
+}
+
+async function handleCameraIce(msg) {
+  const token = msg.token;
+  const pc = _camPcs[token];
+  if (!pc || !pc.remoteDescription) {
+    if (!_camIce[token]) _camIce[token] = [];
+    _camIce[token].push(msg.candidate);
+    return;
+  }
+  try { await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }

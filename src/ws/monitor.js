@@ -3,8 +3,9 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('../../database/index');
 
 // In-memory state — resets on server restart (acceptable; sessions are live only)
-const examSessions = new Map();  // submissionId -> SessionInfo
-const adminClients = new Map();  // ws -> AdminInfo
+const examSessions     = new Map();  // submissionId -> SessionInfo
+const adminClients     = new Map();  // ws -> AdminInfo
+const waitingCandidates = new Map(); // token -> WaitingInfo  (Secure Browser waiting room)
 
 function parseCookies(header) {
   const out = {};
@@ -44,6 +45,22 @@ function broadcastSessions() {
   sendToAdmins({ type: 'sessions_list', sessions: sessionSnapshot() });
 }
 
+// ── Waiting room helpers ──────────────────────────────────────────────────────
+function waitingSnapshot() {
+  return Array.from(waitingCandidates.entries()).map(([token, c]) => ({
+    token,
+    candidateName: c.candidateName,
+    candidateEmail: c.candidateEmail,
+    examTitle:     c.examTitle,
+    machineId:     c.machineId,
+    waitingSince:  c.waitingSince,
+  }));
+}
+
+function broadcastWaitingList() {
+  sendToAdmins({ type: 'waiting_list', candidates: waitingSnapshot() });
+}
+
 function setupMonitor(wss) {
   // Ping keepalive — Render drops idle WS after ~60s of silence
   const pingTimer = setInterval(() => {
@@ -73,7 +90,7 @@ function setupMonitor(wss) {
         if (user && ['exam_manager', 'super_admin'].includes(user.role)) {
           ws._role = 'admin';
           adminClients.set(ws, { userId: user.id, userName: user.full_name || user.username, subscribedTo: null });
-          ws.send(JSON.stringify({ type: 'auth_ok', sessions: sessionSnapshot() }));
+          ws.send(JSON.stringify({ type: 'auth_ok', sessions: sessionSnapshot(), waitingCandidates: waitingSnapshot() }));
         }
       } catch(e) {}
     }
@@ -114,8 +131,34 @@ function setupMonitor(wss) {
         return;
       }
 
-      if (ws._role === 'exam') handleExamMsg(ws, msg);
-      else if (ws._role === 'admin') handleAdminMsg(ws, msg);
+      // Secure Browser — waiting room registration
+      if (!ws._role && msg.type === 'proctor_wait') {
+        const db = getDb();
+        const link = db.prepare(
+          'SELECT el.*, e.title as exam_title, c.full_name as cname, c.email as cemail FROM exam_links el JOIN exams e ON e.id=el.exam_id LEFT JOIN candidates c ON c.id=el.candidate_id WHERE el.token=?'
+        ).get(msg.token);
+        if (!link) { ws.send(JSON.stringify({ type: 'error', message: 'Invalid exam token' })); return; }
+
+        ws._role      = 'waiting';
+        ws._waitToken = msg.token;
+
+        waitingCandidates.set(msg.token, {
+          ws,
+          candidateName:  link.cname  || msg.candidateName || 'Unknown',
+          candidateEmail: link.cemail || '',
+          examTitle:      link.exam_title || '',
+          machineId:      msg.machineId || '',
+          waitingSince:   Date.now(),
+        });
+
+        ws.send(JSON.stringify({ type: 'proctor_wait_ok' }));
+        broadcastWaitingList();
+        return;
+      }
+
+      if (ws._role === 'exam')    handleExamMsg(ws, msg);
+      else if (ws._role === 'admin')   handleAdminMsg(ws, msg);
+      else if (ws._role === 'waiting') handleWaitingMsg(ws, msg);
     });
 
     ws.on('close', () => {
@@ -125,6 +168,9 @@ function setupMonitor(wss) {
         broadcastSessions();
       } else if (ws._role === 'admin') {
         adminClients.delete(ws);
+      } else if (ws._role === 'waiting' && ws._waitToken) {
+        waitingCandidates.delete(ws._waitToken);
+        broadcastWaitingList();
       }
     });
   });
@@ -225,6 +271,78 @@ function handleAdminMsg(ws, msg) {
     if (s && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'rtc_ice', candidate: msg.candidate, dir: 'admin_to_exam' }));
     }
+  }
+
+  // ── Waiting room: proctor joins a candidate ──
+  if (msg.type === 'proctor_join') {
+    info.watchingToken = msg.token || null;
+    const c = msg.token && waitingCandidates.get(msg.token);
+    if (c && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'proctor_joined', proctorName: info.userName }));
+    }
+    ws.send(JSON.stringify({ type: 'proctor_join_ok', token: msg.token,
+      candidateName: c ? c.candidateName : '' }));
+  }
+
+  // ── Waiting room: proctor starts the exam ──
+  if (msg.type === 'proctor_start') {
+    const c = msg.token && waitingCandidates.get(msg.token);
+    if (c && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'start_exam' }));
+    }
+  }
+
+  // ── Waiting room: proctor chat to candidate ──
+  if (msg.type === 'proctor_chat') {
+    const c = msg.token && waitingCandidates.get(msg.token);
+    if (c && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'proctor_chat', message: msg.message }));
+    }
+  }
+
+  // ── Camera WebRTC answer (admin is answerer for candidate camera) ──
+  if (msg.type === 'camera_answer') {
+    const c = info.watchingToken && waitingCandidates.get(info.watchingToken);
+    if (c && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'camera_answer', answer: msg.answer }));
+    }
+  }
+
+  if (msg.type === 'camera_ice' && msg.dir === 'admin_to_candidate') {
+    const c = info.watchingToken && waitingCandidates.get(info.watchingToken);
+    if (c && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'camera_ice', candidate: msg.candidate, dir: 'admin_to_candidate' }));
+    }
+  }
+}
+
+// ── Waiting room message handler (Secure Browser candidate) ──────────────────
+function handleWaitingMsg(ws, msg) {
+  const c = waitingCandidates.get(ws._waitToken);
+  if (!c || c.ws !== ws) return;
+
+  // Camera WebRTC — candidate is caller
+  if (msg.type === 'camera_offer') {
+    sendToAdmins(
+      { type: 'camera_offer', token: ws._waitToken, offer: msg.offer,
+        candidateName: c.candidateName, candidateEmail: c.candidateEmail },
+      info => info.watchingToken === ws._waitToken
+    );
+  }
+
+  if (msg.type === 'camera_ice' && msg.dir === 'candidate_to_admin') {
+    sendToAdmins(
+      { type: 'camera_ice', token: ws._waitToken, candidate: msg.candidate, dir: 'candidate_to_admin' },
+      info => info.watchingToken === ws._waitToken
+    );
+  }
+
+  // Candidate chat message → forward to watching admin
+  if (msg.type === 'candidate_chat') {
+    sendToAdmins(
+      { type: 'candidate_chat', token: ws._waitToken, message: msg.message, candidateName: c.candidateName },
+      info => info.watchingToken === ws._waitToken
+    );
   }
 }
 
