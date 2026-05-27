@@ -150,7 +150,7 @@ h1{font-size:24px;font-weight:800;color:#f1f5f9;margin-bottom:10px;line-height:1
   <hr class="divider">
 
   <div class="hint" style="margin-bottom:10px;text-align:left;color:#94a3b8;font-size:12px;font-weight:600">
-    App already open? Paste this URL directly into the app:
+    App already open? Copy this link and paste it into the app:
   </div>
   <div class="copy-row">
     <input class="copy-url" id="copy-url-input" readonly>
@@ -169,8 +169,8 @@ if (window.AlaricProctor && window.AlaricProctor.isSecureBrowser) {
   window.location.replace(_examUrl);
 }
 
-// ── Populate copy field ────────────────────────────────────────────────────────
-document.getElementById('copy-url-input').value = _thisUrl;
+// ── Populate copy field — give the exam URL (not /e/ path) so app accepts it ──
+document.getElementById('copy-url-input').value = _examUrl;
 
 // ── OS detection ──────────────────────────────────────────────────────────────
 const ua = navigator.userAgent.toLowerCase();
