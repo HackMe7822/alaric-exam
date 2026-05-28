@@ -140,7 +140,9 @@ h1{font-size:24px;font-weight:800;color:#f1f5f9;margin-bottom:10px;line-height:1
           Open in Alaric Secure Browser
         </button>
         <div id="not-installed">
-          ⚠ The app didn't open — it may not be installed yet. Complete steps 1 and 2 first, then click again.
+          <strong>Did Chrome show a popup asking to open the app?</strong> Click <em>Open Alaric Secure Browser</em> in that popup.<br><br>
+          If no popup appeared, the app may not be installed yet — complete steps 1 and 2 first, then click again.<br><br>
+          <strong>Alternatively:</strong> Open the app directly from your Start Menu or Desktop, then copy the link below and paste it into the app.
         </div>
       </div>
     </div>
@@ -203,14 +205,19 @@ if (isMac) {
 let _launchAttempted = false;
 function launchSecureBrowser() {
   const deepLink = 'alaricexam://start?url=' + encodeURIComponent(_thisUrl);
-  window.location = deepLink;
+  // Use a hidden iframe trick — avoids navigating away from page
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+  iframe.src = deepLink;
+  setTimeout(() => document.body.removeChild(iframe), 2000);
   _launchAttempted = true;
-  // Show "not installed" hint if still here after 3s
+  // Show help after 8s — gives time for Chrome's "Open app?" dialog + user interaction
   setTimeout(() => {
-    if (_launchAttempted && document.hasFocus()) {
+    if (_launchAttempted) {
       document.getElementById('not-installed').style.display = 'block';
     }
-  }, 3000);
+  }, 8000);
 }
 
 // ── Copy link ──────────────────────────────────────────────────────────────────
