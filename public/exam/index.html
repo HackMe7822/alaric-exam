@@ -2512,13 +2512,19 @@ if (window.AlaricProctor && typeof window.AlaricProctor.onSecurityEvent === 'fun
     if (!state.examStarted || state.submitted) return;
     const eventType = ev.type || 'security_event';
     const label     = ev.message || eventType;
-    // Show a brief on-screen toast for critical events
+
+    // Tab switch from Electron window blur → use the violation approval flow
+    if (eventType === 'tab_switch' && !_examPaused) {
+      state.tabSwitchCount++;
+      if (state.webcamStream) takeSnapshot('tab_switch');
+      triggerTabViolation();
+      return;
+    }
+
     if (ev.severity === 'critical') {
       showToast(`⚠ Security alert: ${label}`, 'danger', 5000);
     }
-    // Forward to proctor via WS (increments flaggedCount server-side)
     sendMonitorState(eventType);
-    // Record on server (stores in events table, may trigger auto-submit)
     _origPostEvent(eventType);
   });
 }

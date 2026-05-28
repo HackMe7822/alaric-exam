@@ -5,10 +5,35 @@
 <title>Live Monitor — Alaric Exam Admin</title>
 <link rel="stylesheet" href="/assets/css/admin.css">
 <style>
-/* ── Layout ── */
-#monitor-wrap { display: flex; gap: 18px; height: calc(100vh - 130px); min-height: 400px; }
-#session-list-col { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: 0; }
-#detail-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+/* ── Page override: fill viewport, no double-scroll ── */
+#main { display: flex; flex-direction: column; overflow: hidden; }
+#page  { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; padding: 0 16px 0 !important; }
+
+/* ── Waiting-room banner ── */
+#waiting-room-panel { flex-shrink: 0; margin-bottom: 10px; margin-top: 10px; }
+
+/* ── Main monitor split ── */
+#monitor-wrap { flex: 1; min-height: 0; display: flex; gap: 14px; overflow: hidden; }
+
+/* ── Session list (left column) ── */
+#session-list-col { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
+#sessions-scroll { flex: 1; overflow-y: auto; }
+
+/* ── Detail panel (right, scrollable grid) ── */
+#detail-col {
+  flex: 1; min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: min-content;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 0 2px 10px;
+  align-content: start;
+}
+/* Full-width grid items */
+#empty-detail, #cand-card, #controls-card, #events-card, #screen-card { grid-column: 1 / -1; }
+/* Camera + chat share a row */
+#exam-cam-card, #chat-card { grid-column: span 1; min-width: 0; }
 
 /* ── Connection status ── */
 #conn-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
@@ -18,103 +43,104 @@
 .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
 /* ── Session cards ── */
-#session-list-header { padding: 10px 14px 8px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+#session-list-header { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 #session-list-header h3 { font-size: 13px; font-weight: 700; margin: 0; }
-#sessions-scroll { flex: 1; overflow-y: auto; }
-.session-card { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
+.session-card { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
 .session-card:hover { background: #f0f7ff; }
 .session-card.active { background: #e8f4fd; border-left: 3px solid var(--primary); }
 .sc-name { font-size: 13px; font-weight: 700; color: #1b1a19; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sc-exam { font-size: 11px; color: #888; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sc-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.sc-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+.sc-exam { font-size: 11px; color: #888; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sc-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sc-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
 .sc-badge.q { background: #e8f4fd; color: #0078d4; }
 .sc-badge.time { background: #e8ffe8; color: #107c10; }
 .sc-badge.time.low { background: #fff3cd; color: #856404; }
 .sc-badge.time.urgent { background: #fde7e9; color: #a4262c; }
 .sc-badge.flag { background: #fde7e9; color: #a4262c; }
-.sc-empty { padding: 40px 20px; text-align: center; color: #bbb; font-size: 13px; }
+.sc-empty { padding: 30px 16px; text-align: center; color: #bbb; font-size: 13px; }
 
-/* ── Detail panel ── */
-.detail-card { background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-.detail-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.detail-card-header h3 { margin: 0; font-size: 14px; font-weight: 700; }
-.detail-card-body { padding: 18px; }
+/* ── Detail cards ── */
+.detail-card { background: #fff; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.detail-card-header { padding: 9px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.detail-card-header h3 { margin: 0; font-size: 13px; font-weight: 700; }
+.detail-card-body { padding: 12px 14px; }
 
-.cand-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
-.cand-avatar { width: 44px; height: 44px; border-radius: 50%; background: #e8f4fd; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; flex-shrink: 0; }
-.cand-info h2 { font-size: 16px; font-weight: 700; margin: 0 0 2px; }
-.cand-info p { font-size: 12px; color: #666; margin: 0; }
+/* Candidate card — compact */
+.cand-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.cand-avatar { width: 36px; height: 36px; border-radius: 50%; background: #e8f4fd; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.cand-info h2 { font-size: 14px; font-weight: 700; margin: 0 0 1px; }
+.cand-info p { font-size: 11px; color: #666; margin: 0; }
 
-.progress-bar-wrap { margin-bottom: 16px; }
-.progress-bar-wrap label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; margin-bottom: 5px; }
-.progress-bar-track { height: 6px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
+.progress-bar-wrap { margin-bottom: 10px; }
+.progress-bar-wrap label { font-size: 10px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .06em; display: flex; justify-content: space-between; margin-bottom: 4px; }
+.progress-bar-track { height: 5px; background: #f0f0f0; border-radius: 3px; overflow: hidden; }
 .progress-bar-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width .5s; }
 
-.stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.stat-chip { flex: 1; min-width: 90px; background: #f7f7f7; border-radius: 8px; padding: 10px 12px; }
-.stat-chip .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: #888; font-weight: 700; margin-bottom: 3px; }
-.stat-chip .val { font-size: 20px; font-weight: 800; color: #1b1a19; }
+.stat-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0; }
+.stat-chip { flex: 1; min-width: 70px; background: #f7f7f7; border-radius: 6px; padding: 7px 10px; }
+.stat-chip .lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .06em; color: #888; font-weight: 700; margin-bottom: 2px; }
+.stat-chip .val { font-size: 15px; font-weight: 800; color: #1b1a19; }
 
-.events-list { max-height: 160px; overflow-y: auto; }
-.event-item { display: flex; align-items: flex-start; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f5f5f5; font-size: 12px; }
+/* Events */
+.events-list { max-height: 130px; overflow-y: auto; }
+.event-item { display: flex; align-items: flex-start; gap: 6px; padding: 4px 0; border-bottom: 1px solid #f5f5f5; font-size: 11px; }
 .event-item:last-child { border-bottom: none; }
-.event-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+.event-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; }
 .event-dot.flag { background: #e3503e; }
 .event-dot.normal { background: #bbb; }
-.event-time { color: #999; white-space: nowrap; font-size: 11px; margin-top: 1px; }
+.event-time { color: #999; white-space: nowrap; font-size: 10px; margin-top: 1px; }
 .event-label { color: #333; flex: 1; }
 
-/* ── Screen view ── */
+/* Screen view */
 #screen-card { display: none; }
-#screen-video { width: 100%; max-height: 520px; object-fit: contain; background: #111; border-radius: 6px; display: none; }
-.screen-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 40px 20px; color: #bbb; font-size: 13px; text-align: center; background: #f9f9f9; border-radius: 6px; }
-.screen-placeholder svg { width: 40px; height: 40px; color: #ddd; }
-#screen-ts { font-size: 11px; color: #888; text-align: right; margin-top: 4px; }
-.screen-actions { display: flex; gap: 8px; align-items: center; }
-#btn-req-screen { display: inline-flex; align-items: center; gap: 6px; }
+#screen-video { width: 100%; max-height: 320px; object-fit: contain; background: #111; border-radius: 6px; display: none; }
+.screen-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; color: #bbb; font-size: 12px; text-align: center; background: #f9f9f9; border-radius: 6px; }
+.screen-placeholder svg { width: 32px; height: 32px; color: #ddd; }
+#screen-ts { font-size: 10px; color: #888; text-align: right; margin-top: 3px; }
+.screen-actions { display: flex; gap: 6px; align-items: center; }
+#btn-req-screen { display: inline-flex; align-items: center; gap: 5px; }
 #btn-stop-screen { display: none; }
 #btn-fullscreen { display: none; }
 
-#empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; min-height: 300px; color: #bbb; font-size: 13px; text-align: center; }
-#empty-detail svg { width: 52px; height: 52px; color: #e0e0e0; }
+#empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 200px; color: #bbb; font-size: 13px; text-align: center; }
+#empty-detail svg { width: 44px; height: 44px; color: #e0e0e0; }
 
-/* ── Live camera ── */
+/* Live camera */
 #exam-cam-card { display: none; }
-#exam-cam-video { width: 100%; max-height: 240px; object-fit: cover; background: #111; border-radius: 6px; display: none; transform: scaleX(-1); }
-.cam-placeholder { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 28px 20px; color: #bbb; font-size: 13px; text-align: center; background: #f9f9f9; border-radius: 6px; }
+#exam-cam-video { width: 100%; max-height: 160px; object-fit: cover; background: #111; border-radius: 5px; display: none; transform: scaleX(-1); }
+.cam-placeholder { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 20px 10px; color: #bbb; font-size: 12px; background: #f9f9f9; border-radius: 5px; }
 
-/* ── Chat ── */
+/* Chat */
 #chat-card { display: none; }
-.chat-messages { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-.chat-msg { border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+.chat-messages { height: 140px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.chat-msg { border-radius: 6px; padding: 6px 10px; font-size: 11px; }
 .chat-msg.proctor { background: #eff6ff; color: #1d4ed8; text-align: right; }
 .chat-msg.candidate { background: #f3f4f6; color: #333; }
-.chat-input-row { display: flex; gap: 6px; }
-.chat-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; }
+.chat-input-row { display: flex; gap: 5px; }
+.chat-input { flex: 1; border: 1px solid var(--border); border-radius: 5px; padding: 5px 8px; font-size: 11px; }
 
-/* ── Admin controls ── */
+/* Admin controls */
 #controls-card { display: none; }
-.controls-row { display: flex; gap: 8px; flex-wrap: wrap; }
-.btn-control { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: opacity .15s; }
+.controls-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-control { display: inline-flex; align-items: center; gap: 4px; padding: 6px 11px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; border: none; transition: opacity .15s; white-space: nowrap; }
 .btn-control:hover { opacity: .85; }
 .btn-pause  { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
 .btn-resume { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
 .btn-stop   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 .btn-mute   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 
-/* ── Waiting room ── */
-.waiting-card { display: flex; align-items: center; gap: 14px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
-.waiting-avatar { width: 36px; height: 36px; border-radius: 50%; background: #fff3cd; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+/* Waiting room */
+.waiting-card { display: flex; align-items: center; gap: 12px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
+.waiting-avatar { width: 34px; height: 34px; border-radius: 50%; background: #fff3cd; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
 .waiting-info { flex: 1; min-width: 0; }
 .waiting-name { font-size: 13px; font-weight: 700; color: #1b1a19; }
 .waiting-sub { font-size: 11px; color: #888; }
 .waiting-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.waiting-camera-wrap { width: 200px; background: #111; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
-.waiting-camera-wrap video { width: 100%; height: 120px; object-fit: cover; display: block; transform: scaleX(-1); }
+.waiting-camera-wrap { width: 160px; background: #111; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.waiting-camera-wrap video { width: 100%; height: 100px; object-fit: cover; display: block; transform: scaleX(-1); }
 .waiting-detail { display: none; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 .waiting-detail.open { display: flex; }
-.proctor-chat-area { background: #f0f4f8; border-radius: 6px; padding: 8px; max-height: 100px; overflow-y: auto; font-size: 12px; margin-bottom: 6px; }
+.proctor-chat-area { background: #f0f4f8; border-radius: 6px; padding: 8px; max-height: 90px; overflow-y: auto; font-size: 12px; margin-bottom: 6px; }
 .pcm { padding: 3px 0; }
 .pcm.candidate { color: #333; }
 .pcm.proctor { color: #0078d4; font-weight: 600; }
@@ -158,10 +184,10 @@
     </div>
   </div>
 
-  <div id="page" style="padding-bottom:0">
+  <div id="page">
 
     <!-- ── Waiting Room banner (Secure Browser candidates) ── -->
-    <div id="waiting-room-panel" class="card" style="margin-bottom:16px;display:none">
+    <div id="waiting-room-panel" class="card" style="display:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px">
           🔐 Secure Browser — Waiting Room
@@ -184,22 +210,24 @@
         </div>
       </div>
 
-      <!-- Detail panel -->
+      <!-- Detail panel — 2-column grid -->
       <div id="detail-col">
+
+        <!-- Empty state -->
         <div id="empty-detail">
           <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
           <p>Select a session from the left to start monitoring</p>
         </div>
 
-        <!-- Candidate info card (shown when session selected) -->
+        <!-- 1. Candidate info — full width -->
         <div class="detail-card" id="cand-card" style="display:none">
           <div class="detail-card-body">
             <div class="cand-header">
               <div class="cand-avatar">👤</div>
-              <div class="cand-info">
+              <div class="cand-info" style="flex:1;min-width:0">
                 <h2 id="det-name">—</h2>
                 <p id="det-email">—</p>
-                <p id="det-exam" style="margin-top:2px;font-weight:600;color:#333"></p>
+                <p id="det-exam" style="margin-top:1px;font-weight:600;color:#333;font-size:11px"></p>
               </div>
             </div>
             <div class="progress-bar-wrap">
@@ -210,69 +238,65 @@
               <div class="stat-chip"><div class="lbl">Time Left</div><div class="val" id="det-time">—</div></div>
               <div class="stat-chip"><div class="lbl">Answered</div><div class="val" id="det-answered">—</div></div>
               <div class="stat-chip"><div class="lbl">Tab Switches</div><div class="val" id="det-tabs">—</div></div>
-              <div class="stat-chip"><div class="lbl">Flag Events</div><div class="val" id="det-flags" style="color:#d13438">—</div></div>
+              <div class="stat-chip"><div class="lbl">Flags</div><div class="val" id="det-flags" style="color:#d13438">—</div></div>
             </div>
           </div>
         </div>
 
-        <!-- Events card -->
-        <div class="detail-card" id="events-card" style="display:none">
-          <div class="detail-card-header"><h3>Activity Log</h3></div>
-          <div class="detail-card-body" style="padding:10px 18px">
-            <div class="events-list" id="events-list">
-              <div style="color:#bbb;font-size:13px;padding:10px 0;text-align:center">No events yet</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Admin controls card -->
+        <!-- 2. Proctor controls — full width -->
         <div class="detail-card" id="controls-card">
-          <div class="detail-card-header">
-            <h3>Proctor Controls</h3>
-          </div>
-          <div class="detail-card-body" style="padding:14px 18px">
-            <!-- Violation resume request banner (shown when candidate requests resume) -->
-            <div id="violation-banner" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
-              <div style="font-weight:700;color:#991b1b;font-size:13px;margin-bottom:6px">🚨 Candidate Requesting Resume — Violation #<span id="viol-num">1</span></div>
-              <div id="viol-remark" style="font-size:12px;color:#7f1d1d;background:#fff;border-radius:5px;padding:8px 10px;margin-bottom:10px;line-height:1.5;font-style:italic"></div>
-              <div style="display:flex;gap:8px">
-                <button class="btn-control btn-resume" onclick="approveResume()" style="flex:1">✅ Approve &amp; Resume</button>
-                <button class="btn-control btn-stop" onclick="stopExam()" style="flex:1">❌ Terminate Exam</button>
+          <div class="detail-card-header"><h3>Proctor Controls</h3></div>
+          <div class="detail-card-body">
+            <!-- Violation resume request banner -->
+            <div id="violation-banner" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:7px;padding:10px 12px;margin-bottom:10px">
+              <div style="font-weight:700;color:#991b1b;font-size:12px;margin-bottom:5px">🚨 Violation #<span id="viol-num">1</span> — Candidate requesting resume</div>
+              <div id="viol-remark" style="font-size:11px;color:#7f1d1d;background:#fff;border-radius:4px;padding:6px 8px;margin-bottom:8px;line-height:1.5;font-style:italic;max-height:60px;overflow-y:auto"></div>
+              <div style="display:flex;gap:7px">
+                <button class="btn-control btn-resume" onclick="approveResume()" style="flex:1;justify-content:center">✅ Approve &amp; Resume</button>
+                <button class="btn-control btn-stop"   onclick="stopExam()"      style="flex:1;justify-content:center">❌ Terminate</button>
               </div>
             </div>
-            <div class="controls-row" id="controls-row">
-              <button class="btn-control btn-pause" id="btn-pause-exam" onclick="pauseExam()">⏸ Pause Exam</button>
-              <button class="btn-control btn-stop" onclick="stopExam()">⏹ Stop &amp; Submit</button>
-              <button class="btn-control btn-mute" id="btn-mute-mic" onclick="toggleMic()">🎤 Mute Mic</button>
+            <div class="controls-row">
+              <button class="btn-control btn-pause" id="btn-pause-exam" onclick="pauseExam()">⏸ Pause</button>
+              <button class="btn-control btn-stop"  onclick="stopExam()">⏹ Stop &amp; Submit</button>
+              <button class="btn-control btn-mute"  id="btn-mute-mic"  onclick="toggleMic()">🎤 Mute Mic</button>
             </div>
           </div>
         </div>
 
-        <!-- Live camera card -->
+        <!-- 3a. Live camera (half-width) -->
         <div class="detail-card" id="exam-cam-card">
           <div class="detail-card-header">
-            <h3>Live Camera</h3>
-            <span id="cam-status" style="font-size:11px;color:#888">Connecting…</span>
+            <h3>📷 Live Camera</h3>
+            <span id="cam-status" style="font-size:10px;color:#888">Connecting…</span>
           </div>
-          <div class="detail-card-body" style="padding:14px">
-            <div class="cam-placeholder" id="cam-placeholder">
-              <span>📷</span><span>Waiting for camera feed…</span>
-            </div>
+          <div class="detail-card-body" style="padding:10px">
+            <div class="cam-placeholder" id="cam-placeholder"><span>📷</span><span>Waiting…</span></div>
             <video id="exam-cam-video" autoplay playsinline muted></video>
           </div>
         </div>
 
-        <!-- Chat card -->
+        <!-- 3b. Chat (half-width) -->
         <div class="detail-card" id="chat-card">
-          <div class="detail-card-header"><h3>Chat with Candidate</h3></div>
-          <div class="detail-card-body" style="padding:14px 18px">
+          <div class="detail-card-header"><h3>💬 Chat</h3></div>
+          <div class="detail-card-body" style="padding:10px">
             <div class="chat-messages" id="exam-chat-messages">
-              <div style="color:#bbb;font-size:12px;text-align:center">No messages yet</div>
+              <div style="color:#bbb;font-size:11px;text-align:center;padding:8px 0">No messages yet</div>
             </div>
             <div class="chat-input-row">
-              <input class="chat-input" id="exam-chat-input" placeholder="Type a message to candidate…" maxlength="200"
+              <input class="chat-input" id="exam-chat-input" placeholder="Message candidate…" maxlength="200"
                 onkeydown="if(event.key==='Enter')sendExamChat()">
               <button class="btn btn-sm btn-primary" onclick="sendExamChat()">Send</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Activity log — full width -->
+        <div class="detail-card" id="events-card" style="display:none">
+          <div class="detail-card-header"><h3>Activity Log</h3></div>
+          <div class="detail-card-body" style="padding:8px 12px">
+            <div class="events-list" id="events-list">
+              <div style="color:#bbb;font-size:12px;padding:8px 0;text-align:center">No events yet</div>
             </div>
           </div>
         </div>
