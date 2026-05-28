@@ -468,7 +468,29 @@
     <div class="result-details" id="result-details"></div>
     <p class="result-msg" id="result-msg"></p>
     <button class="btn-print" id="btn-print" onclick="window.print()" style="display:none">Download Result (Print)</button>
+    <button id="btn-exit-exam" onclick="exitExam()"
+      style="margin-top:12px;padding:10px 28px;background:#dc2626;color:#fff;border:none;border-radius:8px;font-size:0.9rem;font-weight:700;cursor:pointer;display:none">
+      Exit &amp; Close Exam
+    </button>
     <div class="result-breakdown" id="result-breakdown"></div>
+  </div>
+</div>
+
+<!-- Tab violation overlay — requires proctor approval to resume -->
+<div id="overlay-violation" class="overlay">
+  <div class="overlay-card">
+    <span class="ov-icon">🚨</span>
+    <h3 style="color:#dc2626">Tab Switch Detected</h3>
+    <p>You left the exam screen. <strong>This is violation #<span id="violation-count">1</span></strong>. Your proctor has been notified and your exam is now paused.</p>
+    <p style="margin-top:8px;font-size:0.88rem;color:var(--text-muted)">Please explain why you left the exam below, then request your proctor to resume. You cannot continue until your proctor approves.</p>
+    <textarea id="violation-remark" placeholder="Explain why you left the exam…"
+      style="width:100%;margin:14px 0;padding:12px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:0.92rem;min-height:90px;resize:none;outline:none;font-family:inherit"></textarea>
+    <div class="overlay-btns">
+      <button class="btn-ov-primary" id="btn-req-resume" onclick="requestViolationResume()">Send &amp; Request Resume</button>
+    </div>
+    <p id="violation-wait-msg" style="margin-top:14px;font-size:0.85rem;color:var(--text-muted);display:none">
+      ⏳ Request sent — waiting for proctor approval…
+    </p>
   </div>
 </div>
 
@@ -794,11 +816,11 @@ async function startExam() {
   }
   // Always try mic for proctor audio monitoring
   initMicStream();
-  // Start recordings (webcam video + screen)
+  // Start recordings (webcam video + screen) — 1s delay so streams initialise
   setTimeout(() => {
     startWebcamRecording();
     startScreenRecording();
-  }, 3000); // slight delay so streams are ready
+  }, 1000);
 
   // Multi-monitor check
   startMultiMonitorCheck();
@@ -1032,25 +1054,25 @@ function setupSecurity() {
     }
   });
 
-  // Tab switch detection
+  // Tab switch detection — pause exam and require proctor approval to resume
   document.addEventListener('visibilitychange', () => {
-    if (!state.examStarted || state.submitted) return;
+    if (!state.examStarted || state.submitted || _examPaused) return;
     if (document.hidden) {
       state.tabSwitchCount++;
-      postEvent('tab_switch');
-      showToast(`Warning: Tab switch detected (${state.tabSwitchCount}). Exam will auto-submit after ${state.maxTabSwitches} violations.`, 'danger', 6000);
       if (state.webcamStream) takeSnapshot('tab_switch');
+      triggerTabViolation();
     }
   });
 }
 
 async function postEvent(eventType) {
   if (!state.submissionId) return;
-  const res = await api('POST', '/event', {
+  await api('POST', '/event', {
     submission_id: state.submissionId,
     event_type: eventType
   });
-  if (res.data && res.data.auto_submitted) {
+  // Auto-submit only as hard safety fallback (>10 unreviewed violations)
+  if (eventType === 'tab_switch' && state.tabSwitchCount > 10) {
     autoSubmit('violation_limit');
   }
 }
@@ -1950,6 +1972,10 @@ function showResultScreen(data, timeTaken) {
   // Clear localStorage on successful submit
   try { localStorage.removeItem(`exam_state_${state.token}`); } catch {}
 
+  // Show exit button (especially needed in Electron kiosk)
+  const exitBtn = document.getElementById('btn-exit-exam');
+  if (exitBtn) exitBtn.style.display = '';
+
   showScreen('result');
 }
 
@@ -2253,6 +2279,17 @@ async function initMicStream() {
   } catch(e) {} // mic denied — fine, camera-only stream still works
 }
 
+// ── Exit exam (kiosk close) ──────────────────────────────────────────────────
+function exitExam() {
+  if (window.AlaricProctor?.closeExam) {
+    window.AlaricProctor.closeExam();
+  } else {
+    try { window.close(); } catch(e) {}
+    // Fallback: navigate to portal
+    window.location.href = '/portal';
+  }
+}
+
 // ── Recording (webcam video + screen) ───────────────────────────────────────
 function _startRecorder(stream, type) {
   if (!stream || !state.submissionId) return;
@@ -2265,7 +2302,7 @@ function _startRecorder(stream, type) {
     rec.ondataavailable = e => {
       if (e.data && e.data.size > 200) uploadRecordingChunk(e.data, type);
     };
-    rec.start(30000); // 30-second chunks
+    rec.start(15000); // 15-second chunks — captures events sooner
     if (type === 'webcam') _webcamRecorder = rec;
     else                   _screenRecorder = rec;
   } catch(e) {}
@@ -2374,6 +2411,31 @@ async function handleExamCameraIce(candidate) {
   try { await _examCamPc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
 }
 
+// ── Tab violation (pause + require proctor approval) ─────────────────────────
+function triggerTabViolation() {
+  _examPaused = true;
+  sendMonitorState('tab_switch');
+  postEvent('tab_switch');
+  document.getElementById('violation-count').textContent = state.tabSwitchCount;
+  document.getElementById('violation-remark').value = '';
+  document.getElementById('violation-wait-msg').style.display = 'none';
+  const btn = document.getElementById('btn-req-resume');
+  if (btn) { btn.disabled = false; btn.textContent = 'Send & Request Resume'; }
+  document.getElementById('overlay-violation').classList.add('active');
+}
+
+function requestViolationResume() {
+  const remark = document.getElementById('violation-remark').value.trim();
+  if (!remark) {
+    showToast('Please explain why you left the exam before requesting to resume.', 'danger', 4000);
+    return;
+  }
+  const btn = document.getElementById('btn-req-resume');
+  if (btn) { btn.disabled = true; btn.textContent = 'Request Sent…'; }
+  document.getElementById('violation-wait-msg').style.display = '';
+  wsSend({ type: 'resume_request', submissionId: state.submissionId, remark, violationNum: state.tabSwitchCount });
+}
+
 // ── Admin controls ───────────────────────────────────────────────────────────
 function handlePauseExam() {
   _examPaused = true;
@@ -2383,7 +2445,9 @@ function handlePauseExam() {
 
 function handleResumeExam() {
   _examPaused = false;
+  // Close both overlays (proctor pause AND tab violation)
   document.getElementById('overlay-paused').classList.remove('active');
+  document.getElementById('overlay-violation').classList.remove('active');
   sendMonitorState('exam_resumed');
 }
 

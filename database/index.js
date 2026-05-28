@@ -81,6 +81,16 @@ function initDb() {
   try { d.exec(`ALTER TABLE submissions ADD COLUMN is_abandoned INTEGER DEFAULT 0`); } catch(e) {}
   // JS migration: screen monitoring consent gate per exam
   try { d.exec(`ALTER TABLE exams ADD COLUMN require_screen_consent INTEGER DEFAULT 0`); } catch(e) {}
+  // JS migration: exam chat log table (proctor ↔ candidate messages during exam)
+  try { d.exec(`CREATE TABLE IF NOT EXISTS exam_chats (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+    sender TEXT NOT NULL CHECK(sender IN ('candidate','proctor')),
+    sender_name TEXT,
+    message TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  )`); } catch(e) {}
+  try { d.exec(`CREATE INDEX IF NOT EXISTS idx_exam_chats_sub ON exam_chats(submission_id)`); } catch(e) {}
   // JS migration: exam recordings table (webcam video + screen recordings)
   try { d.exec(`CREATE TABLE IF NOT EXISTS recordings (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

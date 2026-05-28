@@ -231,6 +231,15 @@
             <h3>Proctor Controls</h3>
           </div>
           <div class="detail-card-body" style="padding:14px 18px">
+            <!-- Violation resume request banner (shown when candidate requests resume) -->
+            <div id="violation-banner" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:12px">
+              <div style="font-weight:700;color:#991b1b;font-size:13px;margin-bottom:6px">🚨 Candidate Requesting Resume — Violation #<span id="viol-num">1</span></div>
+              <div id="viol-remark" style="font-size:12px;color:#7f1d1d;background:#fff;border-radius:5px;padding:8px 10px;margin-bottom:10px;line-height:1.5;font-style:italic"></div>
+              <div style="display:flex;gap:8px">
+                <button class="btn-control btn-resume" onclick="approveResume()" style="flex:1">✅ Approve &amp; Resume</button>
+                <button class="btn-control btn-stop" onclick="stopExam()" style="flex:1">❌ Terminate Exam</button>
+              </div>
+            </div>
             <div class="controls-row" id="controls-row">
               <button class="btn-control btn-pause" id="btn-pause-exam" onclick="pauseExam()">⏸ Pause Exam</button>
               <button class="btn-control btn-stop" onclick="stopExam()">⏹ Stop &amp; Submit</button>
@@ -422,6 +431,11 @@ function handleMsg(msg) {
   if (msg.type === 'exam_chat_reply') {
     appendExamChat('candidate', msg.candidateName, msg.message);
   }
+  // Violation resume request
+  if (msg.type === 'resume_request' && msg.submissionId === _selectedId) {
+    showViolationRequest(msg.remark, msg.violationNum);
+    toast(`⚠ ${msg.candidateName} requesting resume after violation #${msg.violationNum}`, 'warning');
+  }
 }
 
 function send(data) {
@@ -490,10 +504,10 @@ function showDetail(d) {
   document.getElementById('empty-detail').style.display = 'none';
   document.getElementById('cand-card').style.display = '';
   document.getElementById('events-card').style.display = '';
-  document.getElementById('screen-card').style.display = '';
-  document.getElementById('controls-card').style.display = '';
-  document.getElementById('exam-cam-card').style.display = '';
-  document.getElementById('chat-card').style.display = '';
+  document.getElementById('screen-card').style.display = 'block';
+  document.getElementById('controls-card').style.display = 'block';
+  document.getElementById('exam-cam-card').style.display = 'block';
+  document.getElementById('chat-card').style.display = 'block';
 
   document.getElementById('det-name').textContent = d.candidateName || '—';
   document.getElementById('det-email').textContent = d.candidateEmail || '—';
@@ -503,6 +517,15 @@ function showDetail(d) {
   _isPaused   = d.paused || false;
   _isMicMuted = d.micMuted || false;
   updateControlButtons();
+  // Show violation banner if there's a pending request
+  const vb = document.getElementById('violation-banner');
+  if (vb) {
+    if (d.pendingViolation) {
+      showViolationRequest(d.pendingViolation.remark, d.pendingViolation.violationNum);
+    } else {
+      vb.style.display = 'none';
+    }
+  }
 
   applyDetailUpdate(d);
   renderEvents(d.events || []);
@@ -883,6 +906,20 @@ function updateControlButtons() {
     muteBtn.style.background = _isMicMuted ? '#fee2e2' : '';
     muteBtn.style.color      = _isMicMuted ? '#991b1b' : '';
   }
+}
+
+function showViolationRequest(remark, num) {
+  const banner = document.getElementById('violation-banner');
+  if (!banner) return;
+  document.getElementById('viol-num').textContent = num || '?';
+  document.getElementById('viol-remark').textContent = remark || '(No explanation provided)';
+  banner.style.display = '';
+}
+
+function approveResume() {
+  resumeExam();
+  const banner = document.getElementById('violation-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 function pauseExam() {

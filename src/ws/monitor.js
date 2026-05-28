@@ -33,6 +33,7 @@ function sessionSnapshot() {
     lastSeen: s.lastSeen,
     paused: s.paused || false,
     micMuted: s.micMuted || false,
+    pendingViolation: s.pendingViolation || null,
   }));
 }
 
@@ -221,6 +222,17 @@ function handleExamMsg(ws, msg) {
     );
   }
 
+  // ── Violation resume request (exam → subscribed admin) ──────────────────
+  if (msg.type === 'resume_request') {
+    session.pendingViolation = { remark: msg.remark, violationNum: msg.violationNum, at: new Date().toISOString() };
+    sendToAdmins(
+      { type: 'resume_request', submissionId: msg.submissionId,
+        candidateName: session.candidateName, remark: msg.remark, violationNum: msg.violationNum },
+      info => info.subscribedTo === msg.submissionId
+    );
+    broadcastSessions();
+  }
+
   // ── Active exam camera (exam is caller, admin is answerer) ───────────────
   if (msg.type === 'exam_camera_offer') {
     sendToAdmins(
@@ -242,6 +254,12 @@ function handleExamMsg(ws, msg) {
       { type: 'exam_chat_reply', submissionId: msg.submissionId, message: msg.message, candidateName: session.candidateName },
       info => info.subscribedTo === msg.submissionId
     );
+    // Persist to DB
+    try {
+      const db = getDb();
+      const sub = db.prepare('SELECT id FROM submissions WHERE id=? LIMIT 1').get(parseInt(msg.submissionId));
+      if (sub) db.prepare('INSERT INTO exam_chats(submission_id, sender, sender_name, message) VALUES(?,?,?,?)').run(sub.id, 'candidate', session.candidateName, msg.message);
+    } catch(e) {}
   }
 }
 
@@ -351,6 +369,12 @@ function handleAdminMsg(ws, msg) {
     const s = info.subscribedTo && examSessions.get(info.subscribedTo);
     if (s && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'exam_chat', message: msg.message, proctorName: info.userName }));
+      // Persist to DB
+      try {
+        const db = getDb();
+        const sub = db.prepare('SELECT id FROM submissions WHERE id=? LIMIT 1').get(parseInt(info.subscribedTo));
+        if (sub) db.prepare('INSERT INTO exam_chats(submission_id, sender, sender_name, message) VALUES(?,?,?,?)').run(sub.id, 'proctor', info.userName, msg.message);
+      } catch(e) {}
     }
   }
 
@@ -368,6 +392,7 @@ function handleAdminMsg(ws, msg) {
     if (s && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'resume_exam' }));
       s.paused = false;
+      s.pendingViolation = null;
       broadcastSessions();
     }
   }

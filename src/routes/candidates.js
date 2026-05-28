@@ -167,8 +167,9 @@ router.get('/:id/history', auth, (req, res) => {
   `).all(candId);
   const result = submissions.map(s => {
     const recordings = db.prepare('SELECT type FROM recordings WHERE submission_id=?').all(s.id);
-    const events = db.prepare('SELECT event_type, created_at FROM exam_events WHERE submission_id=? ORDER BY created_at DESC LIMIT 30').all(s.id);
-    return { ...s, recordings, events };
+    const events = db.prepare('SELECT event_type, created_at FROM exam_events WHERE submission_id=? ORDER BY created_at ASC').all(s.id);
+    const chats = db.prepare('SELECT sender, sender_name, message, created_at FROM exam_chats WHERE submission_id=? ORDER BY created_at ASC').all(s.id);
+    return { ...s, recordings, events, chats };
   });
   res.json(result);
 });
