@@ -862,13 +862,13 @@ async function loadDetailHistory(candId) {
                         expired ? '<span class="badge badge-danger">Expired</span>' :
                                   '<span class="badge badge-success">Active</span>';
         const url = lk.url || lk.exam_url || `${window.location.origin}/e/${lk.token||''}`;
-        const canRevoke = !revoked && !used;
+        const canCancel = !revoked && !used;
         return `<div class="lh-row">
           ${st}
           <span style="flex:1;font-weight:500">${exam?esc(exam.title):`Exam #${lk.exam_id}`}</span>
           <span class="text-muted" style="font-size:11px">${lk.expires_at?new Date(lk.expires_at).toLocaleDateString():'No expiry'}</span>
-          <button class="btn btn-outline btn-sm" onclick="copyText('${esc(url)}')">Copy</button>
-          ${canRevoke ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeLink('${lk.token}',this)">Revoke</button>` : ''}
+          <button class="btn btn-outline btn-sm" onclick="copyText('${esc(url)}')">Copy Link</button>
+          ${canCancel ? `<button class="btn btn-sm" style="background:#dc2626;color:#fff;border:1px solid #dc2626;font-weight:600" onclick="cancelLink('${lk.token}',this)">✕ Cancel Exam</button>` : ''}
         </div>`;
       }).join('');
     }
@@ -878,17 +878,21 @@ async function loadDetailHistory(candId) {
   }
 }
 
-async function revokeLink(token, btn) {
-  if (!confirm('Revoke this exam link? The candidate will no longer be able to use it.')) return;
-  btn.disabled = true; btn.textContent = 'Revoking…';
+async function cancelLink(token, btn) {
+  if (!confirm('Cancel this exam? The candidate will no longer be able to use this link.')) return;
+  btn.disabled = true; btn.textContent = 'Cancelling…';
   try {
     await api('POST', `/api/candidates/links/${token}/revoke`);
-    toast('Link revoked');
+    toast('Exam cancelled — link is now inactive');
     loadCandidateDetail(_currentCandId);
   } catch(e) {
-    btn.disabled = false; btn.textContent = 'Revoke';
-    toast('Failed to revoke link', 'error');
+    btn.disabled = false; btn.textContent = '✕ Cancel Exam';
+    toast('Failed to cancel', 'error');
   }
+}
+
+async function revokeLink(token, btn) {
+  return cancelLink(token, btn);
 }
 
 // ── Departments modal ─────────────────────────────────────────────────────────
