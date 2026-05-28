@@ -81,6 +81,16 @@ function initDb() {
   try { d.exec(`ALTER TABLE submissions ADD COLUMN is_abandoned INTEGER DEFAULT 0`); } catch(e) {}
   // JS migration: screen monitoring consent gate per exam
   try { d.exec(`ALTER TABLE exams ADD COLUMN require_screen_consent INTEGER DEFAULT 0`); } catch(e) {}
+  // JS migration: exam recordings table (webcam video + screen recordings)
+  try { d.exec(`CREATE TABLE IF NOT EXISTS recordings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+    type TEXT NOT NULL CHECK(type IN ('webcam','screen')),
+    file_path TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`); } catch(e) {}
+  try { d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_recordings_sub_type ON recordings(submission_id, type)`); } catch(e) {}
   // JS migration: recycle bin tables
   try { d.exec(`CREATE TABLE IF NOT EXISTS deleted_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

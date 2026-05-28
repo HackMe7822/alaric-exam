@@ -44,6 +44,15 @@
   .lh-row { padding:8px 0; border-bottom:1px solid var(--border); font-size:12px; display:flex; gap:10px; align-items:center; }
   .lh-row:last-child { border-bottom:none; }
 
+  /* ── Detail modal tabs ── */
+  .det-tab { background:none; border:none; border-bottom:3px solid transparent; padding:8px 16px; font-size:13px; font-weight:600; color:var(--gray); cursor:pointer; margin-bottom:-2px; }
+  .det-tab.active { color:var(--mid); border-bottom-color:var(--mid); }
+  .det-tab:hover:not(.active) { color:var(--dark); }
+
+  /* ── Recordings ── */
+  .rec-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:5px; font-size:11px; font-weight:700; background:#e0f2fe; color:#0369a1; text-decoration:none; }
+  .rec-badge:hover { background:#bae6fd; }
+
   /* ── CSV import ── */
   .csv-drop { border:2px dashed var(--border); border-radius:8px; padding:28px; text-align:center;
     cursor:pointer; transition:border-color .15s; }
@@ -309,13 +318,23 @@
         <div class="det-grid" id="det-info"></div>
       </div>
 
+      <!-- Tabs -->
+      <div style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:16px" id="det-tabs">
+        <button class="det-tab active" data-tab="links" onclick="switchDetTab('links',this)">🔗 Exam Links</button>
+        <button class="det-tab" data-tab="history" onclick="switchDetTab('history',this)">📋 History &amp; Recordings</button>
+      </div>
+
       <!-- Exam link history -->
-      <div class="det-section">
-        <h4 style="display:flex;align-items:center;justify-content:space-between">
-          Exam Links
+      <div id="det-tab-links">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
           <button class="btn btn-primary btn-sm" onclick="closeModal('detail-modal');openGenLink(_currentCandId)" style="font-size:11px;padding:4px 10px">+ Generate New Link</button>
-        </h4>
+        </div>
         <div id="det-links"><span class="spinner"></span></div>
+      </div>
+
+      <!-- Submissions & Recordings history -->
+      <div id="det-tab-history" style="display:none">
+        <div id="det-subs"><span class="spinner"></span></div>
       </div>
 
     </div>
@@ -841,13 +860,19 @@ async function openDetail(id) {
   loadDetailHistory(id);
 }
 
+function switchDetTab(tab, btn) {
+  document.querySelectorAll('.det-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('det-tab-links').style.display   = tab === 'links'   ? '' : 'none';
+  document.getElementById('det-tab-history').style.display = tab === 'history' ? '' : 'none';
+}
+
 async function loadDetailHistory(candId) {
+  // ── Exam links ──
   try {
     const lr = await api('GET', `/api/candidates/${candId}/links`);
     const linksRaw = await lr.json();
     const links = Array.isArray(linksRaw)?linksRaw:(linksRaw.links??[]);
-
-    // Links
     const lDiv = document.getElementById('det-links');
     if (!links.length) {
       lDiv.innerHTML='<p class="text-muted" style="font-size:13px">No exam links generated yet.</p>';
@@ -872,9 +897,55 @@ async function loadDetailHistory(candId) {
         </div>`;
       }).join('');
     }
-
   } catch(e) {
     document.getElementById('det-links').innerHTML = '<p class="text-muted" style="font-size:13px">Failed to load.</p>';
+  }
+
+  // ── Submissions + Recordings ──
+  try {
+    const hr = await api('GET', `/api/candidates/${candId}/history`);
+    const subs = await hr.json();
+    const sDiv = document.getElementById('det-subs');
+    if (!Array.isArray(subs) || !subs.length) {
+      sDiv.innerHTML = '<p class="text-muted" style="font-size:13px">No exam sessions recorded yet.</p>';
+      return;
+    }
+    sDiv.innerHTML = subs.map(s => {
+      const stBadge = ({
+        submitted:      '<span class="badge badge-success">Submitted</span>',
+        graded:         '<span class="badge badge-success">Graded</span>',
+        in_progress:    '<span class="badge badge-warning">In Progress</span>',
+        auto_submitted: '<span class="badge badge-secondary">Auto-Submitted</span>',
+        grading:        '<span class="badge badge-info">Grading</span>',
+      }[s.status]) || `<span class="badge badge-secondary">${esc(s.status)}</span>`;
+      const score = s.final_score != null ? s.final_score : s.auto_score != null ? s.auto_score : '—';
+      const mins  = s.time_taken_seconds ? Math.round(s.time_taken_seconds/60) + ' min' : '—';
+      const webcam = s.recordings?.find(r=>r.type==='webcam');
+      const screen = s.recordings?.find(r=>r.type==='screen');
+      const events = s.events || [];
+      const flags  = events.filter(e=>/tab_switch|fullscreen|paste|flag/i.test(e.event_type));
+      return `<div class="sub-row" style="flex-wrap:wrap;gap:8px">
+        <div style="display:flex;align-items:center;gap:8px;width:100%">
+          ${stBadge}
+          <span style="font-weight:600;font-size:13px;flex:1">${esc(s.exam_title)}</span>
+          <span class="text-muted" style="font-size:11px">${new Date(s.started_at).toLocaleString()}</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding-left:4px">
+          <span class="text-muted" style="font-size:12px">Score: <strong>${score}</strong></span>
+          <span class="text-muted" style="font-size:12px">Time: ${mins}</span>
+          ${s.tab_switches ? `<span class="badge badge-warning">${s.tab_switches} tab switches</span>` : ''}
+          ${flags.length   ? `<span class="badge badge-danger">${flags.length} flag events</span>` : ''}
+          ${webcam ? `<a href="/api/candidates/recordings/${s.id}/webcam" target="_blank" class="rec-badge">📷 Webcam Rec</a>` : ''}
+          ${screen ? `<a href="/api/candidates/recordings/${s.id}/screen"  target="_blank" class="rec-badge">🖥 Screen Rec</a>` : ''}
+          ${events.length  ? `<details style="font-size:11px;color:var(--gray)"><summary style="cursor:pointer">${events.length} events</summary>
+            <div style="margin-top:6px;max-height:120px;overflow-y:auto;background:#f8f9fa;border-radius:4px;padding:6px">
+              ${events.map(e=>`<div>${esc(e.event_type.replace(/_/g,' '))} — ${new Date(e.created_at).toLocaleTimeString()}</div>`).join('')}
+            </div></details>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('det-subs').innerHTML = '<p class="text-muted" style="font-size:13px">Failed to load history.</p>';
   }
 }
 

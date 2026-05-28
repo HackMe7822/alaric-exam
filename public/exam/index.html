@@ -420,6 +420,10 @@
     <div class="header-right">
       <span class="progress-label" id="header-progress">Q 1 of 1</span>
       <span class="flagged-label" id="header-flagged" style="display:none"></span>
+      <button id="btn-submit-header" onclick="confirmSubmit()"
+        style="background:#1a7f4b;color:#fff;border:none;border-radius:6px;padding:5px 14px;font-size:.8rem;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
+        Submit Exam
+      </button>
       <span class="save-indicator" id="save-indicator"></span>
     </div>
   </div>
@@ -790,6 +794,11 @@ async function startExam() {
   }
   // Always try mic for proctor audio monitoring
   initMicStream();
+  // Start recordings (webcam video + screen)
+  setTimeout(() => {
+    startWebcamRecording();
+    startScreenRecording();
+  }, 3000); // slight delay so streams are ready
 
   // Multi-monitor check
   startMultiMonitorCheck();
@@ -1825,6 +1834,9 @@ async function submitExam(isAuto, reason) {
   clearInterval(state.timerInterval);
   clearInterval(state.autoSaveInterval);
 
+  // Stop recorders and flush final recording chunks
+  await stopAllRecorders();
+
   // Flush all pending saves
   const saves = state.examData.questions.map(q => {
     const a = state.answers[q.id];
@@ -2050,6 +2062,9 @@ let _examCamPc = null;         // Camera WebRTC to admin (during exam)
 let _pendingExamCamIce = [];
 let _micStream = null;
 let _examPaused = false;
+let _webcamRecorder = null;    // MediaRecorder for webcam
+let _screenRecorder = null;    // MediaRecorder for screen
+let _screenRecordStream = null;
 
 function startMonitorWs() {
   if (_monitorWs && _monitorWs.readyState < 2) return;
@@ -2236,6 +2251,78 @@ async function initMicStream() {
   try {
     _micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
   } catch(e) {} // mic denied — fine, camera-only stream still works
+}
+
+// ── Recording (webcam video + screen) ───────────────────────────────────────
+function _startRecorder(stream, type) {
+  if (!stream || !state.submissionId) return;
+  const opts = {};
+  if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) opts.mimeType = 'video/webm;codecs=vp9';
+  else if (MediaRecorder.isTypeSupported('video/webm'))       opts.mimeType = 'video/webm';
+  opts.videoBitsPerSecond = type === 'screen' ? 300000 : 150000;
+  try {
+    const rec = new MediaRecorder(stream, opts);
+    rec.ondataavailable = e => {
+      if (e.data && e.data.size > 200) uploadRecordingChunk(e.data, type);
+    };
+    rec.start(30000); // 30-second chunks
+    if (type === 'webcam') _webcamRecorder = rec;
+    else                   _screenRecorder = rec;
+  } catch(e) {}
+}
+
+function startWebcamRecording() {
+  if (!state.webcamStream) return;
+  // Create a video-only stream from webcam (don't include mic — that's separate)
+  const videoStream = new MediaStream(state.webcamStream.getVideoTracks());
+  _startRecorder(videoStream, 'webcam');
+}
+
+async function startScreenRecording() {
+  try {
+    let stream = null;
+    if (window.AlaricProctor?.getScreenSourceId) {
+      // Electron kiosk: silent screen capture via desktopCapturer
+      const sourceId = await window.AlaricProctor.getScreenSourceId();
+      if (sourceId) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId,
+              maxWidth: 1280, maxHeight: 720, maxFrameRate: 5,
+            }
+          }
+        });
+      }
+    }
+    if (stream) {
+      _screenRecordStream = stream;
+      _startRecorder(stream, 'screen');
+    }
+  } catch(e) {}
+}
+
+async function uploadRecordingChunk(blob, type) {
+  if (!state.submissionId || state.submitted) return;
+  try {
+    const fd = new FormData();
+    fd.append('chunk', blob, `${type}.webm`);
+    fd.append('submission_id', state.submissionId);
+    fd.append('type', type);
+    fetch(`/exam/${state.token}/recording-chunk`, { method: 'POST', body: fd }).catch(() => {});
+  } catch(e) {}
+}
+
+async function stopAllRecorders() {
+  const stop = rec => rec && rec.state !== 'inactive'
+    ? new Promise(r => { rec.onstop = r; rec.stop(); })
+    : Promise.resolve();
+  await Promise.all([stop(_webcamRecorder), stop(_screenRecorder)]);
+  _webcamRecorder = null;
+  _screenRecorder = null;
+  if (_screenRecordStream) { _screenRecordStream.getTracks().forEach(t => t.stop()); _screenRecordStream = null; }
 }
 
 // ── Camera WebRTC to admin (during exam) ────────────────────────────────────

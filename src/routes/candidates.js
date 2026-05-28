@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../../database/index');
 const auth = require('../middleware/auth');
@@ -151,6 +153,37 @@ router.post('/links/:token/revoke', auth, requireRole('exam_manager', 'super_adm
 router.get('/departments/list', auth, (req, res) => {
   const db = getDb();
   res.json(db.prepare('SELECT * FROM departments ORDER BY name').all());
+});
+
+// GET /api/candidates/:id/history — all submissions + recordings + events for a candidate
+router.get('/:id/history', auth, (req, res) => {
+  const db = getDb();
+  const candId = parseInt(req.params.id);
+  const submissions = db.prepare(`
+    SELECT s.id, s.status, s.started_at, s.submitted_at, s.auto_score, s.final_score,
+           s.tab_switches, s.fullscreen_exits, s.time_taken_seconds, e.title as exam_title
+    FROM submissions s JOIN exams e ON e.id=s.exam_id
+    WHERE s.candidate_id=? ORDER BY s.started_at DESC
+  `).all(candId);
+  const result = submissions.map(s => {
+    const recordings = db.prepare('SELECT type FROM recordings WHERE submission_id=?').all(s.id);
+    const events = db.prepare('SELECT event_type, created_at FROM exam_events WHERE submission_id=? ORDER BY created_at DESC LIMIT 30').all(s.id);
+    return { ...s, recordings, events };
+  });
+  res.json(result);
+});
+
+// GET /api/candidates/recordings/:submissionId/:type — stream recording file to admin
+router.get('/recordings/:submissionId/:type', auth, (req, res) => {
+  const db = getDb();
+  const rec = db.prepare('SELECT file_path FROM recordings WHERE submission_id=? AND type=?')
+    .get(parseInt(req.params.submissionId), req.params.type);
+  if (!rec) return res.status(404).json({ error: 'Recording not found' });
+  const fullPath = path.resolve(rec.file_path);
+  if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'File not found on disk' });
+  res.setHeader('Content-Type', 'video/webm');
+  res.setHeader('Content-Disposition', `inline; filename="${req.params.submissionId}-${req.params.type}.webm"`);
+  res.sendFile(fullPath);
 });
 
 // POST /api/departments

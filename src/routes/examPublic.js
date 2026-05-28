@@ -207,6 +207,29 @@ router.post('/:token/snapshot', snapUpload.single('image'), (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /exam/:token/recording-chunk — append webcam/screen chunk to recording file
+const recUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+router.post('/:token/recording-chunk', recUpload.single('chunk'), (req, res) => {
+  const db = getDb();
+  const { submission_id, type } = req.body;
+  if (!req.file?.buffer?.length) return res.json({ ok: true });
+  if (!['webcam', 'screen'].includes(type)) return res.status(400).json({ error: 'Invalid type' });
+  const sub = db.prepare('SELECT s.* FROM submissions s JOIN exam_links el ON el.id=s.link_id WHERE s.id=? AND el.token=?').get(parseInt(submission_id), req.params.token);
+  if (!sub) return res.status(403).json({ error: 'Forbidden' });
+  const dir = path.join(__dirname, '..', '..', 'uploads', 'recordings');
+  fs.mkdirSync(dir, { recursive: true });
+  const filePath = path.join(dir, `${sub.id}-${type}.webm`);
+  fs.appendFileSync(filePath, req.file.buffer);
+  const relPath = `uploads/recordings/${sub.id}-${type}.webm`;
+  const existing = db.prepare('SELECT id FROM recordings WHERE submission_id=? AND type=?').get(sub.id, type);
+  if (existing) {
+    db.prepare(`UPDATE recordings SET updated_at=datetime('now') WHERE id=?`).run(existing.id);
+  } else {
+    db.prepare('INSERT INTO recordings(submission_id, type, file_path) VALUES(?,?,?)').run(sub.id, type, relPath);
+  }
+  res.json({ ok: true });
+});
+
 // POST /exam/:token/upload-file
 router.post('/:token/upload-file', fileUpload.single('file'), (req, res) => {
   const db = getDb();
