@@ -318,6 +318,23 @@ function renderDetail() {
   document.getElementById('ar-reject-form').classList.remove('show');
   document.getElementById('ar-reject-reason').value = '';
 
+  // Show/hide footer buttons based on current request status
+  const isPending  = req.status === 'pending';
+  const isApproved = req.status === 'approved';
+  document.getElementById('btn-reject-toggle').style.display = isPending ? '' : 'none';
+  document.getElementById('btn-approve').style.display       = isPending ? '' : 'none';
+  // Revoke Link button — only for approved requests that have a token
+  let revokeBtn = document.getElementById('btn-revoke-link');
+  if (!revokeBtn) {
+    revokeBtn = document.createElement('button');
+    revokeBtn.id = 'btn-revoke-link';
+    revokeBtn.style.cssText = 'padding:9px 16px;background:#fff;color:#dc2626;border:1.5px solid #dc2626;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap';
+    revokeBtn.onclick = doRevokeLink;
+    document.getElementById('btn-approve').insertAdjacentElement('afterend', revokeBtn);
+  }
+  revokeBtn.style.display = (isApproved && req.link_token) ? '' : 'none';
+  revokeBtn.textContent = '✕ Revoke Link';
+
   // ── Exam card ──────────────────────────────────────────────────────────────
   const examMeta = [
     req.duration_minutes ? `⏱ ${req.duration_minutes} min`    : '',
@@ -449,6 +466,25 @@ async function doApprove() {
   } catch(e) { toast('Network error', 'error'); btn.disabled=false; btn.textContent='✅ Approve & Send Link'; }
 }
 
+async function doRevokeLink() {
+  if (!_selected || !_selected.link_token) return;
+  showConfirm(
+    `Revoke the exam link for ${_selected.email}?\n\nThe candidate will no longer be able to use their link. You can approve a new request or generate a new link from the Candidates page.`,
+    async () => {
+      const btn = document.getElementById('btn-revoke-link');
+      if (btn) { btn.disabled = true; btn.textContent = 'Revoking…'; }
+      try {
+        const r = await api('POST', `/api/candidates/links/${_selected.link_token}/revoke`);
+        const d = await r.json();
+        if (!r.ok) { toast(d.error || 'Failed to revoke', 'error'); if (btn) { btn.disabled=false; btn.textContent='✕ Revoke Link'; } return; }
+        toast('Link revoked — candidate can no longer access the exam');
+        _selected = null; resetDetail(); await loadArList();
+      } catch(e) { toast('Network error', 'error'); if (btn) { btn.disabled=false; btn.textContent='✕ Revoke Link'; } }
+    },
+    { title: 'Revoke Exam Link', confirmText: 'Revoke Link' }
+  );
+}
+
 async function doDeleteRequest() {
   if (!_selected) return;
   showConfirm(`Move this request from ${_selected.email} to the recycle bin?`, async () => {
@@ -488,6 +524,10 @@ function resetDetail() {
   document.getElementById('ar-reject-form').classList.remove('show');
   document.getElementById('btn-approve').disabled = false;
   document.getElementById('btn-approve').textContent = '✅ Approve & Send Link';
+  document.getElementById('btn-reject-toggle').style.display = '';
+  document.getElementById('btn-approve').style.display = '';
+  const revokeBtn = document.getElementById('btn-revoke-link');
+  if (revokeBtn) revokeBtn.style.display = 'none';
 }
 
 // ── Filter & search ────────────────────────────────────────────────────────────

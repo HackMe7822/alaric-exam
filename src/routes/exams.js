@@ -253,6 +253,20 @@ router.post('/:id/archive', auth, requireRole('super_admin'), (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/exams/:id/cancel — cancel exam + revoke all unused links
+router.post('/:id/cancel', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  const exam = db.prepare('SELECT id FROM exams WHERE id=?').get(id);
+  if (!exam) return res.status(404).json({ error: 'Not found' });
+  db.prepare(`UPDATE exams SET status='cancelled', updated_at=datetime('now') WHERE id=?`).run(id);
+  const revoked = db.prepare(
+    `UPDATE exam_links SET is_revoked=1 WHERE exam_id=? AND is_revoked=0 AND used_at IS NULL`
+  ).run(id);
+  audit(req.user.id, 'cancel_exam', 'exam', id, { links_revoked: revoked.changes }, req);
+  res.json({ ok: true, links_revoked: revoked.changes });
+});
+
 // POST /api/exams/:id/duplicate
 router.post('/:id/duplicate', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
   const db = getDb();

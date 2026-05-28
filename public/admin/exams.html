@@ -408,12 +408,17 @@ function renderGrid() {
     const subs     = ex.submission_count ?? ex.attempts ?? ex.candidate_count ?? '—';
     const created  = fmtDate(ex.created_at);
 
-    const badgeCls = st === 'published' ? 'badge-success'
-                   : st === 'archived'  ? 'badge-dark'
+    const badgeCls = st === 'published'  ? 'badge-success'
+                   : st === 'archived'   ? 'badge-dark'
+                   : st === 'cancelled'  ? 'badge-danger'
                    : 'badge-secondary';
 
-    const toggleLabel = st === 'published' ? 'Archive' : 'Publish';
+    const toggleLabel = st === 'published' ? 'Archive' : (st === 'cancelled' ? 'Re-publish' : 'Publish');
     const toggleCls   = st === 'published' ? 'btn-warning' : 'btn-success';
+
+    const cancelBtn = (st === 'published' || st === 'draft')
+      ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;font-weight:600" onclick="cancelExam(${ex.id},'${title}')">✕ Cancel</button>`
+      : '';
 
     const deleteBtn = isSuperAdmin
       ? `<button class="btn btn-danger btn-sm" onclick="confirmDelete(${ex.id},'${title}')">Delete</button>`
@@ -457,6 +462,7 @@ function renderGrid() {
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           Copy
         </button>
+        ${cancelBtn}
         <button class="btn ${toggleCls} btn-sm" onclick="toggleStatus(${ex.id},'${st}')">${toggleLabel}</button>
         ${deleteBtn}
       </div>
@@ -559,6 +565,24 @@ async function duplicateExam(id) {
       if (!result) return;
       if (result.error) { toast(result.error, 'error'); return; }
       toast('Exam duplicated successfully');
+      await loadExams();
+    }
+  );
+}
+
+// ════════════════════════════════════════════════════════
+//  Cancel exam (marks cancelled + revokes unused links)
+// ════════════════════════════════════════════════════════
+function cancelExam(id, title) {
+  document.getElementById('confirm-ok-btn').className = 'btn btn-danger';
+  openConfirm(
+    'Cancel Exam',
+    `Cancel "${title}"?\n\nThis will:\n• Mark the exam as Cancelled\n• Revoke all unused candidate links (candidates who haven't started yet won't be able to join)\n• Already-started or submitted exams are not affected\n\nYou can re-publish the exam afterwards if needed.`,
+    async () => {
+      const result = await api('POST', `/api/exams/${id}/cancel`);
+      if (result === null) return;
+      const n = result.links_revoked ?? 0;
+      toast(`Exam cancelled — ${n} pending link${n !== 1 ? 's' : ''} revoked`, 'warning');
       await loadExams();
     }
   );
