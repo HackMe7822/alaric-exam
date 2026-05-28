@@ -311,7 +311,10 @@
 
       <!-- Exam link history -->
       <div class="det-section">
-        <h4>Exam Links</h4>
+        <h4 style="display:flex;align-items:center;justify-content:space-between">
+          Exam Links
+          <button class="btn btn-primary btn-sm" onclick="closeModal('detail-modal');openGenLink(_currentCandId)" style="font-size:11px;padding:4px 10px">+ Generate New Link</button>
+        </h4>
         <div id="det-links"><span class="spinner"></span></div>
       </div>
 
@@ -811,7 +814,9 @@ document.getElementById('gl-gen-btn').onclick = async ()=>{
 };
 
 // ── Candidate detail ──────────────────────────────────────────────────────────
+let _currentCandId = null;
 async function openDetail(id) {
+  _currentCandId = id;
   const c = _candidates.find(x=>x.id==id);
   if (!c) return;
   const dept  = _departments.find(d=>d.id==c.department_id);
@@ -850,22 +855,39 @@ async function loadDetailHistory(candId) {
       lDiv.innerHTML = links.map(lk=>{
         const exam    = _exams.find(e=>e.id==lk.exam_id);
         const expired = lk.expires_at && new Date(lk.expires_at) < new Date();
+        const revoked = lk.is_revoked;
         const used    = lk.is_used || (lk.used_count >= lk.max_attempts);
-        const st      = used ? '<span class="badge badge-secondary">Used</span>' :
+        const st      = revoked ? '<span class="badge badge-danger">Revoked</span>' :
+                        used    ? '<span class="badge badge-secondary">Used</span>' :
                         expired ? '<span class="badge badge-danger">Expired</span>' :
-                        '<span class="badge badge-success">Active</span>';
-        const url = lk.url || lk.exam_url || `${window.location.origin}/exam/${lk.token||lk.code||''}`;
+                                  '<span class="badge badge-success">Active</span>';
+        const url = lk.url || lk.exam_url || `${window.location.origin}/e/${lk.token||''}`;
+        const canRevoke = !revoked && !used;
         return `<div class="lh-row">
           ${st}
           <span style="flex:1;font-weight:500">${exam?esc(exam.title):`Exam #${lk.exam_id}`}</span>
-          <span class="text-muted">${lk.expires_at?new Date(lk.expires_at).toLocaleDateString():'No expiry'}</span>
+          <span class="text-muted" style="font-size:11px">${lk.expires_at?new Date(lk.expires_at).toLocaleDateString():'No expiry'}</span>
           <button class="btn btn-outline btn-sm" onclick="copyText('${esc(url)}')">Copy</button>
+          ${canRevoke ? `<button class="btn btn-sm" style="background:#fee2e2;color:#dc2626;border:1px solid #fca5a5" onclick="revokeLink('${lk.token}',this)">Revoke</button>` : ''}
         </div>`;
       }).join('');
     }
 
   } catch(e) {
     document.getElementById('det-links').innerHTML = '<p class="text-muted" style="font-size:13px">Failed to load.</p>';
+  }
+}
+
+async function revokeLink(token, btn) {
+  if (!confirm('Revoke this exam link? The candidate will no longer be able to use it.')) return;
+  btn.disabled = true; btn.textContent = 'Revoking…';
+  try {
+    await api('POST', `/api/candidates/links/${token}/revoke`);
+    toast('Link revoked');
+    loadCandidateDetail(_currentCandId);
+  } catch(e) {
+    btn.disabled = false; btn.textContent = 'Revoke';
+    toast('Failed to revoke link', 'error');
   }
 }
 

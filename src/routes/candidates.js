@@ -69,6 +69,19 @@ router.delete('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, re
 });
 
 // --- Exam Links ---
+// GET /api/candidates/:id/links — list all exam links for a candidate
+router.get('/:id/links', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const links = db.prepare(`
+    SELECT el.*, e.title as exam_title
+    FROM exam_links el
+    JOIN exams e ON e.id = el.exam_id
+    WHERE el.candidate_id = ?
+    ORDER BY el.created_at DESC
+  `).all(parseInt(req.params.id));
+  res.json(links.map(l => ({ ...l, url: buildExamUrl(l.token) })));
+});
+
 // POST /api/candidates/:id/links — generate exam link for candidate
 router.post('/:id/links', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
   const db = getDb();
