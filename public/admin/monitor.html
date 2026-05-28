@@ -79,6 +79,30 @@
 #empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 100%; min-height: 300px; color: #bbb; font-size: 13px; text-align: center; }
 #empty-detail svg { width: 52px; height: 52px; color: #e0e0e0; }
 
+/* ── Live camera ── */
+#exam-cam-card { display: none; }
+#exam-cam-video { width: 100%; max-height: 240px; object-fit: cover; background: #111; border-radius: 6px; display: none; transform: scaleX(-1); }
+.cam-placeholder { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 28px 20px; color: #bbb; font-size: 13px; text-align: center; background: #f9f9f9; border-radius: 6px; }
+
+/* ── Chat ── */
+#chat-card { display: none; }
+.chat-messages { max-height: 160px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.chat-msg { border-radius: 8px; padding: 8px 12px; font-size: 12px; }
+.chat-msg.proctor { background: #eff6ff; color: #1d4ed8; text-align: right; }
+.chat-msg.candidate { background: #f3f4f6; color: #333; }
+.chat-input-row { display: flex; gap: 6px; }
+.chat-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; font-size: 12px; }
+
+/* ── Admin controls ── */
+#controls-card { display: none; }
+.controls-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-control { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; transition: opacity .15s; }
+.btn-control:hover { opacity: .85; }
+.btn-pause  { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+.btn-resume { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+.btn-stop   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+.btn-mute   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+
 /* ── Waiting room ── */
 .waiting-card { display: flex; align-items: center; gap: 14px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
 .waiting-avatar { width: 36px; height: 36px; border-radius: 50%; background: #fff3cd; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
@@ -201,6 +225,49 @@
           </div>
         </div>
 
+        <!-- Admin controls card -->
+        <div class="detail-card" id="controls-card">
+          <div class="detail-card-header">
+            <h3>Proctor Controls</h3>
+          </div>
+          <div class="detail-card-body" style="padding:14px 18px">
+            <div class="controls-row" id="controls-row">
+              <button class="btn-control btn-pause" id="btn-pause-exam" onclick="pauseExam()">⏸ Pause Exam</button>
+              <button class="btn-control btn-stop" onclick="stopExam()">⏹ Stop &amp; Submit</button>
+              <button class="btn-control btn-mute" id="btn-mute-mic" onclick="toggleMic()">🎤 Mute Mic</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live camera card -->
+        <div class="detail-card" id="exam-cam-card">
+          <div class="detail-card-header">
+            <h3>Live Camera</h3>
+            <span id="cam-status" style="font-size:11px;color:#888">Connecting…</span>
+          </div>
+          <div class="detail-card-body" style="padding:14px">
+            <div class="cam-placeholder" id="cam-placeholder">
+              <span>📷</span><span>Waiting for camera feed…</span>
+            </div>
+            <video id="exam-cam-video" autoplay playsinline muted></video>
+          </div>
+        </div>
+
+        <!-- Chat card -->
+        <div class="detail-card" id="chat-card">
+          <div class="detail-card-header"><h3>Chat with Candidate</h3></div>
+          <div class="detail-card-body" style="padding:14px 18px">
+            <div class="chat-messages" id="exam-chat-messages">
+              <div style="color:#bbb;font-size:12px;text-align:center">No messages yet</div>
+            </div>
+            <div class="chat-input-row">
+              <input class="chat-input" id="exam-chat-input" placeholder="Type a message to candidate…" maxlength="200"
+                onkeydown="if(event.key==='Enter')sendExamChat()">
+              <button class="btn btn-sm btn-primary" onclick="sendExamChat()">Send</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Screen view card -->
         <div class="detail-card" id="screen-card">
           <div class="detail-card-header">
@@ -299,6 +366,10 @@ function handleMsg(msg) {
   }
   if (msg.type === 'sessions_list') {
     renderSessions(msg.sessions);
+    if (_selectedId) {
+      const s = _sessions[_selectedId];
+      if (s) { _isPaused = s.paused || false; _isMicMuted = s.micMuted || false; updateControlButtons(); }
+    }
   }
   if (msg.type === 'session_ended') {
     delete _sessions[msg.submissionId];
@@ -339,6 +410,17 @@ function handleMsg(msg) {
   }
   if (msg.type === 'camera_ice' && msg.dir === 'candidate_to_admin') {
     handleCameraIce(msg);
+  }
+  // Active exam camera
+  if (msg.type === 'exam_camera_offer') {
+    handleExamCameraOffer(msg);
+  }
+  if (msg.type === 'exam_camera_ice' && msg.dir === 'exam_to_admin') {
+    handleExamCameraIce(msg);
+  }
+  // Exam chat reply
+  if (msg.type === 'exam_chat_reply') {
+    appendExamChat('candidate', msg.candidateName, msg.message);
   }
 }
 
@@ -409,15 +491,25 @@ function showDetail(d) {
   document.getElementById('cand-card').style.display = '';
   document.getElementById('events-card').style.display = '';
   document.getElementById('screen-card').style.display = '';
+  document.getElementById('controls-card').style.display = '';
+  document.getElementById('exam-cam-card').style.display = '';
+  document.getElementById('chat-card').style.display = '';
 
   document.getElementById('det-name').textContent = d.candidateName || '—';
   document.getElementById('det-email').textContent = d.candidateEmail || '—';
   document.getElementById('det-exam').textContent = d.examTitle || '';
 
-  applyDetailUpdate(d);
+  // Sync control state
+  _isPaused   = d.paused || false;
+  _isMicMuted = d.micMuted || false;
+  updateControlButtons();
 
-  // Events
+  applyDetailUpdate(d);
   renderEvents(d.events || []);
+
+  // Clear chat history for new session
+  const chatBox = document.getElementById('exam-chat-messages');
+  if (chatBox) chatBox.innerHTML = '<div style="color:#bbb;font-size:12px;text-align:center">No messages yet</div>';
 }
 
 function applyDetailUpdate(d) {
@@ -472,10 +564,14 @@ function eventHtml(e) {
 
 function showEmptyDetail() {
   if (_screenActive || _adminPc) stopScreen();
+  closeExamCam();
   document.getElementById('empty-detail').style.display = '';
   document.getElementById('cand-card').style.display = 'none';
   document.getElementById('events-card').style.display = 'none';
   document.getElementById('screen-card').style.display = 'none';
+  document.getElementById('controls-card').style.display = 'none';
+  document.getElementById('exam-cam-card').style.display = 'none';
+  document.getElementById('chat-card').style.display = 'none';
 }
 
 function requestScreen() {
@@ -708,6 +804,135 @@ async function handleCameraIce(msg) {
 }
 
 function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+// ── Active exam camera ────────────────────────────────────────────────────────
+let _examCamPc     = null;
+let _examCamIce    = [];
+let _isPaused      = false;
+let _isMicMuted    = false;
+
+async function handleExamCameraOffer(msg) {
+  closeExamCam();
+  _examCamIce = [];
+
+  const pc = new RTCPeerConnection(_RTC_CONFIG);
+  _examCamPc = pc;
+
+  pc.ontrack = e => {
+    const vid = document.getElementById('exam-cam-video');
+    if (vid) {
+      vid.srcObject = e.streams[0];
+      vid.style.display = 'block';
+      document.getElementById('cam-placeholder').style.display = 'none';
+      document.getElementById('cam-status').textContent = 'Live';
+      document.getElementById('cam-status').style.color = '#16a34a';
+    }
+  };
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) send({ type: 'exam_camera_ice', candidate, dir: 'admin_to_exam' });
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') closeExamCam();
+  };
+
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+    for (const c of _examCamIce) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+    }
+    _examCamIce = [];
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    send({ type: 'exam_camera_answer', answer: pc.localDescription });
+  } catch(e) {
+    document.getElementById('cam-status').textContent = 'Failed';
+  }
+}
+
+async function handleExamCameraIce(msg) {
+  if (!_examCamPc || !_examCamPc.remoteDescription) {
+    _examCamIce.push(msg.candidate); return;
+  }
+  try { await _examCamPc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
+}
+
+function closeExamCam() {
+  if (_examCamPc) { try { _examCamPc.close(); } catch {} _examCamPc = null; }
+  _examCamIce = [];
+  const vid = document.getElementById('exam-cam-video');
+  if (vid) { vid.srcObject = null; vid.style.display = 'none'; }
+  const ph = document.getElementById('cam-placeholder');
+  if (ph) ph.style.display = '';
+  const cs = document.getElementById('cam-status');
+  if (cs) { cs.textContent = 'Connecting…'; cs.style.color = ''; }
+}
+
+// ── Admin controls ─────────────────────────────────────────────────────────────
+function updateControlButtons() {
+  const pauseBtn = document.getElementById('btn-pause-exam');
+  const muteBtn  = document.getElementById('btn-mute-mic');
+  if (pauseBtn) {
+    pauseBtn.className = _isPaused ? 'btn-control btn-resume' : 'btn-control btn-pause';
+    pauseBtn.innerHTML = _isPaused ? '▶ Resume Exam' : '⏸ Pause Exam';
+    pauseBtn.onclick   = _isPaused ? resumeExam : pauseExam;
+  }
+  if (muteBtn) {
+    muteBtn.innerHTML = _isMicMuted ? '🎤 Unmute Mic' : '🎤 Mute Mic';
+    muteBtn.style.background = _isMicMuted ? '#fee2e2' : '';
+    muteBtn.style.color      = _isMicMuted ? '#991b1b' : '';
+  }
+}
+
+function pauseExam() {
+  send({ type: 'pause_exam' });
+  _isPaused = true;
+  updateControlButtons();
+  toast('Exam paused');
+}
+
+function resumeExam() {
+  send({ type: 'resume_exam' });
+  _isPaused = false;
+  updateControlButtons();
+  toast('Exam resumed');
+}
+
+function stopExam() {
+  if (!confirm('Stop and force-submit this candidate\'s exam? This cannot be undone.')) return;
+  send({ type: 'stop_exam' });
+  toast('Stop command sent — exam will auto-submit', 'warning');
+}
+
+function toggleMic() {
+  _isMicMuted = !_isMicMuted;
+  send({ type: 'mute_mic', muted: _isMicMuted });
+  updateControlButtons();
+  toast(_isMicMuted ? 'Candidate mic muted' : 'Candidate mic unmuted');
+}
+
+// ── Exam chat ─────────────────────────────────────────────────────────────────
+function sendExamChat() {
+  const inp = document.getElementById('exam-chat-input');
+  if (!inp || !inp.value.trim()) return;
+  const message = inp.value.trim();
+  send({ type: 'exam_chat', message });
+  appendExamChat('proctor', 'You', message);
+  inp.value = '';
+}
+
+function appendExamChat(who, name, message) {
+  const box = document.getElementById('exam-chat-messages');
+  if (!box) return;
+  const empty = box.querySelector('[style*="color:#bbb"]');
+  if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.className = `chat-msg ${who}`;
+  div.innerHTML = `<div style="font-size:10px;opacity:.7;margin-bottom:3px;font-weight:700">${esc(name)}</div>${esc(message)}`;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
 
 // Admin auth
 async function loadMe() {

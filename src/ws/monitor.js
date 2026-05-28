@@ -31,6 +31,8 @@ function sessionSnapshot() {
     tabSwitches: s.tabSwitches,
     connectedAt: s.connectedAt,
     lastSeen: s.lastSeen,
+    paused: s.paused || false,
+    micMuted: s.micMuted || false,
   }));
 }
 
@@ -218,6 +220,29 @@ function handleExamMsg(ws, msg) {
       info => info.subscribedTo === msg.submissionId
     );
   }
+
+  // ── Active exam camera (exam is caller, admin is answerer) ───────────────
+  if (msg.type === 'exam_camera_offer') {
+    sendToAdmins(
+      { type: 'exam_camera_offer', submissionId: msg.submissionId, offer: msg.offer },
+      info => info.subscribedTo === msg.submissionId
+    );
+  }
+
+  if (msg.type === 'exam_camera_ice' && msg.dir === 'exam_to_admin') {
+    sendToAdmins(
+      { type: 'exam_camera_ice', candidate: msg.candidate, dir: 'exam_to_admin' },
+      info => info.subscribedTo === msg.submissionId
+    );
+  }
+
+  // ── Exam chat reply (exam → admin) ───────────────────────────────────────
+  if (msg.type === 'exam_chat_reply') {
+    sendToAdmins(
+      { type: 'exam_chat_reply', submissionId: msg.submissionId, message: msg.message, candidateName: session.candidateName },
+      info => info.subscribedTo === msg.submissionId
+    );
+  }
 }
 
 function handleAdminMsg(ws, msg) {
@@ -243,7 +268,13 @@ function handleAdminMsg(ws, msg) {
           tabSwitches: s.tabSwitches,
           events: s.events,
           connectedAt: s.connectedAt,
+          paused: s.paused || false,
+          micMuted: s.micMuted || false,
         }));
+        // Request live camera feed from exam
+        if (s.ws.readyState === WebSocket.OPEN) {
+          s.ws.send(JSON.stringify({ type: 'request_exam_camera' }));
+        }
       }
     }
   }
@@ -300,7 +331,7 @@ function handleAdminMsg(ws, msg) {
     }
   }
 
-  // ── Camera WebRTC answer (admin is answerer for candidate camera) ──
+  // ── Camera WebRTC answer (admin is answerer for waiting-room candidate camera) ──
   if (msg.type === 'camera_answer') {
     const c = info.watchingToken && waitingCandidates.get(info.watchingToken);
     if (c && c.ws.readyState === WebSocket.OPEN) {
@@ -312,6 +343,62 @@ function handleAdminMsg(ws, msg) {
     const c = info.watchingToken && waitingCandidates.get(info.watchingToken);
     if (c && c.ws.readyState === WebSocket.OPEN) {
       c.ws.send(JSON.stringify({ type: 'camera_ice', candidate: msg.candidate, dir: 'admin_to_candidate' }));
+    }
+  }
+
+  // ── Active exam: admin controls ──────────────────────────────────────────
+  if (msg.type === 'exam_chat') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'exam_chat', message: msg.message, proctorName: info.userName }));
+    }
+  }
+
+  if (msg.type === 'pause_exam') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'pause_exam' }));
+      s.paused = true;
+      broadcastSessions();
+    }
+  }
+
+  if (msg.type === 'resume_exam') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'resume_exam' }));
+      s.paused = false;
+      broadcastSessions();
+    }
+  }
+
+  if (msg.type === 'stop_exam') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'stop_exam' }));
+    }
+  }
+
+  if (msg.type === 'mute_mic') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'mute_mic', muted: !!msg.muted }));
+      s.micMuted = !!msg.muted;
+    }
+  }
+
+  // ── Active exam camera WebRTC (admin is answerer) ─────────────────────────
+  if (msg.type === 'exam_camera_answer') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'exam_camera_answer', answer: msg.answer }));
+    }
+  }
+
+  if (msg.type === 'exam_camera_ice' && msg.dir === 'admin_to_exam') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'exam_camera_ice', candidate: msg.candidate, dir: 'admin_to_exam' }));
     }
   }
 }

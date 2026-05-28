@@ -468,6 +468,30 @@
   </div>
 </div>
 
+<!-- Proctor pause overlay -->
+<div id="overlay-paused" class="overlay">
+  <div class="overlay-card">
+    <span class="ov-icon">⏸</span>
+    <h3>Exam Paused</h3>
+    <p>Your exam has been paused by the proctor. Your timer has stopped. The exam will resume shortly — please stay on this screen.</p>
+  </div>
+</div>
+
+<!-- Proctor chat panel -->
+<div id="proctor-chat-panel" style="display:none;position:fixed;bottom:20px;right:20px;width:320px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.5);z-index:99999;font-size:13px">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border)">
+    <span style="font-weight:700;display:flex;align-items:center;gap:7px">💬 Proctor Message</span>
+    <button onclick="document.getElementById('proctor-chat-panel').style.display='none'" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;line-height:1">✕</button>
+  </div>
+  <div id="proctor-chat-messages" style="padding:10px 14px;max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:8px"></div>
+  <div style="display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--border)">
+    <input id="proctor-chat-input" placeholder="Reply to proctor…" maxlength="200"
+      style="flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;outline:none"
+      onkeydown="if(event.key==='Enter')sendChatReply()">
+    <button onclick="sendChatReply()" style="background:var(--accent);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Send</button>
+  </div>
+</div>
+
 <!-- Fullscreen overlay -->
 <div id="overlay-fullscreen" class="overlay">
   <div class="overlay-card">
@@ -760,10 +784,12 @@ async function startExam() {
     document.documentElement.requestFullscreen().catch(() => {});
   }
 
-  // Webcam
+  // Webcam + mic
   if (s.webcam_enabled === '1') {
     initWebcam(parseInt(s.webcam_interval || '60'));
   }
+  // Always try mic for proctor audio monitoring
+  initMicStream();
 
   // Multi-monitor check
   startMultiMonitorCheck();
@@ -921,6 +947,7 @@ function startTimer(totalSeconds) {
   state.timeLeft = totalSeconds;
   renderTimer();
   state.timerInterval = setInterval(() => {
+    if (_examPaused) return;
     state.timeLeft--;
     renderTimer();
 
@@ -2019,6 +2046,10 @@ let _monitorStateInterval = null;
 let _screenStream = null;
 let _screenPc = null;          // RTCPeerConnection (caller side)
 let _pendingExamIce = [];      // ICE candidates buffered before remoteDescription is set
+let _examCamPc = null;         // Camera WebRTC to admin (during exam)
+let _pendingExamCamIce = [];
+let _micStream = null;
+let _examPaused = false;
 
 function startMonitorWs() {
   if (_monitorWs && _monitorWs.readyState < 2) return;
@@ -2033,13 +2064,13 @@ function startMonitorWs() {
       type: 'exam_register',
       token: state.token,
       submissionId: state.submissionId,
-      candidateName: state.examData?.candidate?.full_name || state.examData?.candidate?.name || '',
-      candidateEmail: state.examData?.candidate?.email || '',
+      candidateName: state.examData?.link?.candidate_name || state.examData?.candidate?.name || '',
+      candidateEmail: state.examData?.link?.candidate_email || state.examData?.candidate?.email || '',
       examTitle: state.examData?.exam?.title || '',
       questionIndex: state.currentQuestion,
       totalQuestions: qs.length,
       timeLeft: state.timeLeft,
-      answeredCount: Object.keys(state.answers).length,
+      answeredCount: Object.values(state.answers).filter(a => hasAnswer(a)).length,
     }));
     clearInterval(_monitorStateInterval);
     _monitorStateInterval = setInterval(sendMonitorState, 10000);
@@ -2051,6 +2082,15 @@ function startMonitorWs() {
     if (msg.type === 'screen_stop')    stopScreenShare();
     if (msg.type === 'rtc_answer')     handleRtcAnswer(msg.answer);
     if (msg.type === 'rtc_ice' && msg.dir === 'admin_to_exam') handleRtcIce(msg.candidate);
+    // Admin controls
+    if (msg.type === 'request_exam_camera') offerExamCamera();
+    if (msg.type === 'exam_camera_answer')  handleExamCameraAnswer(msg.answer);
+    if (msg.type === 'exam_camera_ice' && msg.dir === 'admin_to_exam') handleExamCameraIce(msg.candidate);
+    if (msg.type === 'pause_exam')   handlePauseExam();
+    if (msg.type === 'resume_exam')  handleResumeExam();
+    if (msg.type === 'stop_exam')    handleStopExam();
+    if (msg.type === 'exam_chat')    handleExamChat(msg.message, msg.proctorName);
+    if (msg.type === 'mute_mic')     handleMuteMic(msg.muted);
   };
 
   ws.onclose = () => {
@@ -2075,7 +2115,7 @@ function sendMonitorState(event) {
     questionIndex: state.currentQuestion,
     totalQuestions: qs.length,
     timeLeft: state.timeLeft,
-    answeredCount: Object.keys(state.answers).length,
+    answeredCount: Object.values(state.answers).filter(a => hasAnswer(a)).length,
     tabSwitches: state.tabSwitchCount,
     event: event || null,
   });
@@ -2189,6 +2229,119 @@ function showMonitoringIndicator() {
     }
   }
   ind.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;animation:_blink 1.2s infinite"></span> Proctor Monitoring';
+}
+
+// ── Mic capture ──────────────────────────────────────────────────────────────
+async function initMicStream() {
+  try {
+    _micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {} // mic denied — fine, camera-only stream still works
+}
+
+// ── Camera WebRTC to admin (during exam) ────────────────────────────────────
+async function offerExamCamera() {
+  if (_examCamPc) { try { _examCamPc.close(); } catch {} _examCamPc = null; }
+  _pendingExamCamIce = [];
+
+  const tracks = [];
+  if (state.webcamStream) state.webcamStream.getVideoTracks().forEach(t => tracks.push(t));
+  if (_micStream)         _micStream.getAudioTracks().forEach(t => tracks.push(t));
+  if (!tracks.length) return;
+
+  const pc = new RTCPeerConnection(_RTC_CONFIG);
+  _examCamPc = pc;
+
+  const combined = new MediaStream(tracks);
+  tracks.forEach(t => pc.addTrack(t, combined));
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) wsSend({ type: 'exam_camera_ice', submissionId: state.submissionId, candidate, dir: 'exam_to_admin' });
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed') { pc.close(); if (_examCamPc === pc) _examCamPc = null; }
+  };
+
+  try {
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    wsSend({ type: 'exam_camera_offer', submissionId: state.submissionId, offer: pc.localDescription });
+  } catch(e) {}
+}
+
+async function handleExamCameraAnswer(answer) {
+  if (!_examCamPc) return;
+  try {
+    await _examCamPc.setRemoteDescription(new RTCSessionDescription(answer));
+    for (const c of _pendingExamCamIce) {
+      try { await _examCamPc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+    }
+    _pendingExamCamIce = [];
+  } catch(e) {}
+}
+
+async function handleExamCameraIce(candidate) {
+  if (!_examCamPc || !_examCamPc.remoteDescription) {
+    _pendingExamCamIce.push(candidate);
+    return;
+  }
+  try { await _examCamPc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+}
+
+// ── Admin controls ───────────────────────────────────────────────────────────
+function handlePauseExam() {
+  _examPaused = true;
+  document.getElementById('overlay-paused').classList.add('active');
+  sendMonitorState('exam_paused');
+}
+
+function handleResumeExam() {
+  _examPaused = false;
+  document.getElementById('overlay-paused').classList.remove('active');
+  sendMonitorState('exam_resumed');
+}
+
+function handleStopExam() {
+  showToast('Your exam has been stopped by the proctor. Submitting now…', 'danger', 5000);
+  sendMonitorState('exam_force_stopped');
+  setTimeout(() => autoSubmit('proctor_stop'), 1500);
+}
+
+function handleMuteMic(muted) {
+  if (_examCamPc) {
+    _examCamPc.getSenders().forEach(s => { if (s.track?.kind === 'audio') s.track.enabled = !muted; });
+  }
+  if (_micStream) _micStream.getAudioTracks().forEach(t => { t.enabled = !muted; });
+  showToast(muted ? 'Your microphone has been muted by the proctor' : 'Your microphone has been unmuted', 'info', 3000);
+}
+
+// ── Proctor chat ─────────────────────────────────────────────────────────────
+function handleExamChat(message, proctorName) {
+  const panel = document.getElementById('proctor-chat-panel');
+  const msgs  = document.getElementById('proctor-chat-messages');
+  if (!panel || !msgs) return;
+  panel.style.display = '';
+  const div = document.createElement('div');
+  div.style.cssText = 'background:var(--surface2);border-radius:8px;padding:8px 10px';
+  div.innerHTML = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;font-weight:600">${escapeHTML(proctorName || 'Proctor')}</div><div style="color:var(--text)">${escapeHTML(message)}</div>`;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  showToast('Message from proctor — see bottom-right', 'info', 4000);
+}
+
+function sendChatReply() {
+  const inp = document.getElementById('proctor-chat-input');
+  if (!inp || !inp.value.trim()) return;
+  const message = inp.value.trim();
+  wsSend({ type: 'exam_chat_reply', submissionId: state.submissionId, message });
+  const msgs = document.getElementById('proctor-chat-messages');
+  if (msgs) {
+    const div = document.createElement('div');
+    div.style.cssText = 'background:rgba(0,102,204,0.15);border-radius:8px;padding:8px 10px;text-align:right';
+    div.innerHTML = `<div style="font-size:11px;color:var(--text-muted);margin-bottom:3px;font-weight:600">You</div><div style="color:var(--text)">${escapeHTML(message)}</div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  inp.value = '';
 }
 
 // Intercept postEvent to also send WS state update
