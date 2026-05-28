@@ -514,14 +514,15 @@ router.post('/request-access', candidateAuth, (req, res) => {
 // POST /api/portal/links/:token/cancel — candidate withdraws from their own exam
 router.post('/links/:token/cancel', candidateAuth, (req, res) => {
   const db = getDb();
-  const candidate = req.candidate;
+  const candidate = db.prepare('SELECT * FROM candidates WHERE id=?').get(req.candidateId);
+  if (!candidate) return res.status(401).json({ error: 'Candidate not found' });
+
   const link = db.prepare(
     'SELECT * FROM exam_links WHERE token=? AND is_revoked=0 AND (is_used=0 OR is_used IS NULL)'
   ).get(req.params.token);
 
   if (!link) return res.status(404).json({ error: 'Link not found or already used' });
 
-  // Ensure the link belongs to this candidate
   const belongsToCandidate =
     link.candidate_email === candidate.email ||
     link.candidate_id    === candidate.id;

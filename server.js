@@ -65,8 +65,10 @@ app.get('/portal/*', (req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/catalog', (req, res) => res.sendFile(path.join(__dirname, 'public', 'catalog', 'index.html')));
 app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register', 'index.html')));
 // /e/:token — Secure Browser launch/download page (detects app, offers download)
+// /go/:token — serves exam HTML; token becomes last path segment so exam page can read it
 // /exam/index.html — actual exam, only loads meaningfully inside Secure Browser
 app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'secure-launch', 'index.html')));
+app.get('/go/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
 
 // Dynamic custom slug middleware — reads from DB with 10s cache, no restart needed
 let _slugCache = null, _slugCacheAt = 0;
