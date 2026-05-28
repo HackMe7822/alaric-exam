@@ -135,7 +135,7 @@ function setupMonitor(wss) {
       if (!ws._role && msg.type === 'proctor_wait') {
         const db = getDb();
         const link = db.prepare(
-          'SELECT el.*, e.title as exam_title, c.full_name as cname, c.email as cemail FROM exam_links el JOIN exams e ON e.id=el.exam_id LEFT JOIN candidates c ON c.id=el.candidate_id WHERE el.token=?'
+          'SELECT el.*, e.title as exam_title, c.name as cname, c.email as cemail FROM exam_links el JOIN exams e ON e.id=el.exam_id LEFT JOIN candidates c ON c.id=el.candidate_id WHERE el.token=?'
         ).get(msg.token);
         if (!link) { ws.send(JSON.stringify({ type: 'error', message: 'Invalid exam token' })); return; }
 
