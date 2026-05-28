@@ -1341,7 +1341,7 @@ function examCardHtml(e,idx=0){
   if(inProgress && !e.one_time_link){
     footerBtn=`<a href="${esc(e.exam_url)}" class="btn-start-exam" target="_blank" style="background:#ca5010;border-color:#ca5010"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>Resume Exam</a>`;
   } else if(inProgress && e.one_time_link){
-    footerBtn=`<button onclick="refreshStaleExam('${ea(e.token)}',${e.sub_id||0})" class="btn-start-exam" style="background:#6b7280;border-color:#6b7280;font-size:.8rem">🔄 Session Ended — Click to Refresh</button>`;
+    footerBtn=`<button onclick="refreshStaleExam('${esc(e.token)}',${e.sub_id||0})" class="btn-start-exam" style="background:#6b7280;border-color:#6b7280;font-size:.8rem">🔄 Session Ended — Click to Refresh</button>`;
   } else if(isCancelled){
     footerBtn=`<span style="font-size:.8rem;color:var(--text-muted)">Exam was cancelled</span>`;
   } else if(e.exam_url&&!expired){
@@ -1350,9 +1350,9 @@ function examCardHtml(e,idx=0){
     footerBtn=`<span style="font-size:.8rem;color:var(--text-muted)">${expired?'Link expired':'No link yet'}</span>`;
   }
   // Cancel button — only for active unused links (not in-progress, not expired, not already cancelled)
-  const canCancel = e.token && !inProgress && !isCancelled && !expired && e.exam_url;
+  const canCancel = !!(e.token && !inProgress && !isCancelled && !expired && e.exam_url);
   const cancelBtn = canCancel
-    ? `<button onclick="cancelMyExam('${ea(e.token)}')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600;cursor:pointer">✕ Cancel</button>`
+    ? `<button onclick="cancelMyExam('${esc(e.token)}')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600;cursor:pointer;white-space:nowrap">✕ Cancel</button>`
     : '';
   return `<div class="exam-card">
     <div class="exam-card-thumb ${thumbClass(idx)}">${thumb}${ribbonChip?`<div class="exam-card-status-ribbon">${ribbonChip}</div>`:''}</div>
