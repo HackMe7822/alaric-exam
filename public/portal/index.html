@@ -1349,6 +1349,11 @@ function examCardHtml(e,idx=0){
   } else {
     footerBtn=`<span style="font-size:.8rem;color:var(--text-muted)">${expired?'Link expired':'No link yet'}</span>`;
   }
+  // Cancel button — only for active unused links (not in-progress, not expired, not already cancelled)
+  const canCancel = e.token && !inProgress && !isCancelled && !expired && e.exam_url;
+  const cancelBtn = canCancel
+    ? `<button onclick="cancelMyExam('${ea(e.token)}')" style="background:none;border:1px solid #dc2626;color:#dc2626;border-radius:6px;padding:6px 12px;font-size:.8rem;font-weight:600;cursor:pointer">✕ Cancel</button>`
+    : '';
   return `<div class="exam-card">
     <div class="exam-card-thumb ${thumbClass(idx)}">${thumb}${ribbonChip?`<div class="exam-card-status-ribbon">${ribbonChip}</div>`:''}</div>
     <div class="exam-card-body">
@@ -1360,7 +1365,7 @@ function examCardHtml(e,idx=0){
         ${e.total_marks?`<span class="meta-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${e.total_marks} marks</span>`:''}
       </div>
       <div class="exam-card-footer">
-        <span></span>
+        ${cancelBtn}
         ${footerBtn}
       </div>
     </div>
@@ -1368,6 +1373,17 @@ function examCardHtml(e,idx=0){
 }
 
 /* ── DASHBOARD ── */
+async function cancelMyExam(token) {
+  if (!confirm('Cancel this exam?\n\nYour approved link will be removed. You can request access again if needed.')) return;
+  try {
+    const r = await apiCall('POST', `/api/portal/links/${token}/cancel`);
+    showToast('Exam cancelled successfully.', 'success');
+    await loadDashboard();
+  } catch(e) {
+    showToast('Could not cancel — ' + (e.message || 'please try again.'), 'error');
+  }
+}
+
 async function refreshStaleExam(token, subId) {
   try {
     await fetch(`/exam/${token}/abandon`, {
