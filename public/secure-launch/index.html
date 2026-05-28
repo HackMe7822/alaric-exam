@@ -139,6 +139,9 @@ h1{font-size:24px;font-weight:800;color:#f1f5f9;margin-bottom:10px;line-height:1
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
           Open in Alaric Secure Browser
         </button>
+        <div style="text-align:center;margin-top:10px;font-size:12px;color:#475569">
+          Button not working? <a id="direct-open-link" href="#" style="color:#38bdf8">Click here directly</a>
+        </div>
         <div id="not-installed">
           <strong>Did Chrome show a popup asking to open the app?</strong> Click <em>Open Alaric Secure Browser</em> in that popup.<br><br>
           If no popup appeared, the app may not be installed yet — complete steps 1 and 2 first, then click again.<br><br>
@@ -202,17 +205,25 @@ if (isMac) {
 }
 
 // ── Launch deep link ───────────────────────────────────────────────────────────
+// Build link once so the direct anchor also uses the same URL
+const _deepLink = 'alaricexam://start?url=' + encodeURIComponent(_thisUrl);
+
+// Set the direct-link anchor href
+const _directAnchor = document.getElementById('direct-open-link');
+if (_directAnchor) _directAnchor.href = _deepLink;
+
 let _launchAttempted = false;
 function launchSecureBrowser() {
-  const deepLink = 'alaricexam://start?url=' + encodeURIComponent(_thisUrl);
-  // Use a hidden iframe trick — avoids navigating away from page
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  document.body.appendChild(iframe);
-  iframe.src = deepLink;
-  setTimeout(() => document.body.removeChild(iframe), 2000);
+  // Programmatic anchor click is the most reliable cross-browser method
+  // for triggering a registered custom protocol (Chrome, Edge, Firefox)
+  const a = document.createElement('a');
+  a.href = _deepLink;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => document.body.removeChild(a), 500);
   _launchAttempted = true;
-  // Show help after 8s — gives time for Chrome's "Open app?" dialog + user interaction
+  // Show help after 8s — enough time for Chrome's "Open app?" dialog
   setTimeout(() => {
     if (_launchAttempted) {
       document.getElementById('not-installed').style.display = 'block';
