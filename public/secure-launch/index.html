@@ -166,7 +166,8 @@ h1{font-size:24px;font-weight:800;color:#f1f5f9;margin-bottom:10px;line-height:1
 <script>
 // ── Extract token from URL path (/e/TOKEN) ─────────────────────────────────────
 const _token   = window.location.pathname.split('/').filter(Boolean).pop() || '';
-const _examUrl = window.location.origin + '/exam/index.html?token=' + _token;
+// Use /exam/TOKEN format — the exam page reads the token from the URL path segment
+const _examUrl = window.location.origin + '/exam/' + _token;
 const _thisUrl = window.location.href;
 
 // ── If already inside Alaric Secure Browser, skip straight to exam ─────────────
@@ -174,7 +175,7 @@ if (window.AlaricProctor && window.AlaricProctor.isSecureBrowser) {
   window.location.replace(_examUrl);
 }
 
-// ── Populate copy field — give the exam URL (not /e/ path) so app accepts it ──
+// ── Populate copy field — /exam/TOKEN so the app loads the exam correctly ──────
 document.getElementById('copy-url-input').value = _examUrl;
 
 // ── OS detection ──────────────────────────────────────────────────────────────
@@ -233,7 +234,7 @@ function launchSecureBrowser() {
 
 // ── Copy link ──────────────────────────────────────────────────────────────────
 function copyLink() {
-  navigator.clipboard.writeText(_thisUrl).then(() => {
+  navigator.clipboard.writeText(_examUrl).then(() => {
     const btn = document.getElementById('copy-btn');
     btn.textContent = 'Copied ✓';
     btn.classList.add('copied');
