@@ -1850,6 +1850,11 @@ function showReview() {
 // SUBMIT
 // ============================================================
 function confirmSubmit() {
+  // Don't allow submitting while the exam is paused (violation overlay or proctor pause)
+  if (_examPaused) {
+    showToast('The exam is paused — wait for your proctor to resume before submitting.', 'warning', 5000);
+    return;
+  }
   const { questions } = state.examData;
   let unanswered = 0;
   questions.forEach(q => {
@@ -1905,27 +1910,33 @@ async function submitExam(isAuto, reason) {
 
   const timeTaken = Math.max(0, (state.examData.exam.duration_minutes * 60) - state.timeLeft);
 
-  let retries = 0;
-  const doSubmit = async () => {
+  // Proper awaitable retry loop (the previous setTimeout approach was fire-and-forget
+  // causing doSubmit() to resolve immediately on first failure before retries ran)
+  let submitOk = false;
+  let resultData = {};
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    if (attempt > 0) {
+      showToast(`Submission failed, retrying (${attempt}/3)…`, 'warning', 3000);
+      await new Promise(r => setTimeout(r, 3000));
+    }
     const { status, data } = await api('POST', '/submit', {
       submission_id: state.submissionId,
       time_taken_seconds: timeTaken
     });
-    if ((status !== 200 && !data?.ok) && retries < 3) {
-      retries++;
-      showToast(`Submission failed, retrying (${retries}/3)…`, 'warning', 3000);
-      setTimeout(doSubmit, 3000);
-      return;
+    if (status === 200 || data?.ok) {
+      submitOk  = true;
+      resultData = data || {};
+      break;
     }
-    showResultScreen(data || {}, timeTaken);
-  };
-  await doSubmit();
+    resultData = data || {};
+  }
+  showResultScreen(resultData, timeTaken, submitOk);
 }
 
 // ============================================================
 // RESULT SCREEN
 // ============================================================
-function showResultScreen(data, timeTaken) {
+function showResultScreen(data, timeTaken, submitOk = true) {
   // Stop webcam
   if (state.webcamStream) {
     state.webcamStream.getTracks().forEach(t => t.stop());
@@ -2005,13 +2016,16 @@ function showResultScreen(data, timeTaken) {
   // Clear localStorage on successful submit
   try { localStorage.removeItem(`exam_state_${state.token}`); } catch {}
 
-  // In Electron kiosk: lock machine on submit + show Release Machine button
+  // In Electron kiosk: lock machine ONLY if submission actually reached the server
   if (window.AlaricProctor?.lockMachine) {
-    window.AlaricProctor.lockMachine({
-      candidateName: state.examData?.link?.candidate_name || '',
-      examTitle:     state.examData?.exam?.title          || '',
-      submissionId:  state.submissionId,
-    }).catch(() => {});
+    if (submitOk) {
+      // Submission confirmed — lock the machine
+      window.AlaricProctor.lockMachine({
+        candidateName: state.examData?.link?.candidate_name || '',
+        examTitle:     state.examData?.exam?.title          || '',
+        submissionId:  state.submissionId,
+      }).catch(() => {});
+    }
     document.getElementById('btn-release-machine').style.display = '';
   } else {
     // Browser mode: show simple exit button
@@ -2395,7 +2409,10 @@ async function startScreenRecording() {
 }
 
 async function uploadRecordingChunk(blob, type) {
-  if (!state.submissionId || state.submitted) return;
+  // Do NOT check state.submitted here — the final chunk fires via ondataavailable
+  // AFTER state.submitted is set true (inside submitExam). Blocking on state.submitted
+  // would silently discard the last 0-15 seconds of recording.
+  if (!state.submissionId) return;
   try {
     const fd = new FormData();
     fd.append('chunk', blob, `${type}.webm`);
@@ -2406,9 +2423,15 @@ async function uploadRecordingChunk(blob, type) {
 }
 
 async function stopAllRecorders() {
-  const stop = rec => rec && rec.state !== 'inactive'
-    ? new Promise(r => { rec.onstop = r; rec.stop(); })
-    : Promise.resolve();
+  // 8-second timeout per recorder so submitExam() can't hang forever if
+  // onstop never fires (e.g. stream already stopped by Electron or browser)
+  const stop = rec => {
+    if (!rec || rec.state === 'inactive') return Promise.resolve();
+    return Promise.race([
+      new Promise(r => { rec.onstop = r; rec.stop(); }),
+      new Promise(r => setTimeout(r, 8000)),
+    ]);
+  };
   await Promise.all([stop(_webcamRecorder), stop(_screenRecorder)]);
   _webcamRecorder = null;
   _screenRecorder = null;
