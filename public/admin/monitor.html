@@ -795,9 +795,37 @@ function joinCandidate(token) {
   send({ type: 'proctor_join', token });
   if (!_waitingCandidates[token]) _waitingCandidates[token] = {};
   _waitingCandidates[token]._joined = true;
-  renderWaitingList(Object.values(_waitingCandidates));
-  toast(`👁 Joined — scroll down to see ID verification photos`);
-  // Load ID verification photos for this candidate
+
+  // Update the existing card IN-PLACE instead of full re-render
+  // (full re-render would wipe chat history, photos panel, camera feed)
+  const card = document.getElementById(`wcard-${token}`);
+  if (card) {
+    // Show the camera wrap
+    const waitingCard = card.querySelector('.waiting-card');
+    if (waitingCard && !card.querySelector(`#wcam-${token}`)) {
+      const camWrap = document.createElement('div');
+      camWrap.className = 'waiting-camera-wrap';
+      camWrap.innerHTML = `<video id="wcam-${token}" autoplay muted playsinline></video>`;
+      const actionsDiv = waitingCard.querySelector('.waiting-actions');
+      if (actionsDiv) waitingCard.insertBefore(camWrap, actionsDiv);
+    }
+    // Switch action buttons to joined state
+    const actionsDiv = waitingCard?.querySelector('.waiting-actions');
+    if (actionsDiv) {
+      actionsDiv.innerHTML = `
+        <button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="sendWaitingChat('${token}')">💬 Chat</button>
+        <button class="btn btn-sm btn-primary" onclick="startExam('${token}')">▶ Start Exam</button>
+        <button class="btn btn-sm btn-danger" onclick="rejectCandidate('${token}')">✕ Reject</button>`;
+    }
+    // Open the detail panel (camera + chat + photos)
+    const detail = document.getElementById(`wdetail-${token}`);
+    if (detail) detail.classList.add('open');
+  } else {
+    // Card doesn't exist yet (shouldn't happen) — fall back to full re-render
+    renderWaitingList(Object.values(_waitingCandidates));
+  }
+
+  toast(`👁 Joined — camera feed, chat and verification photos are below`);
   loadVerificationPhotos(token);
 }
 
