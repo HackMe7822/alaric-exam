@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Exam Identity Verification</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #4f46e5; --primary-dark: #3730a3; --success: #16a34a;
+    --danger: #dc2626; --warn: #d97706;
+    --bg: #f8fafc; --surface: #fff; --border: #e2e8f0;
+    --text: #1e293b; --muted: #64748b; --radius: 12px;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .header { background: var(--primary); color: #fff; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+  .header h1 { font-size: 18px; font-weight: 700; }
+  .header .logo { font-size: 22px; }
+
+  .container { max-width: 520px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  /* Code entry */
+  .code-screen { text-align: center; padding: 32px 0; }
+  .code-screen h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .code-screen p  { color: var(--muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+  .code-input { width: 100%; font-size: 22px; font-weight: 700; letter-spacing: .15em; text-align: center; text-transform: uppercase; padding: 14px; border: 2px solid var(--border); border-radius: var(--radius); outline: none; background: var(--surface); }
+  .code-input:focus { border-color: var(--primary); }
+  .code-input::placeholder { letter-spacing: 0; font-size: 16px; font-weight: 400; }
+  .btn-primary { width: 100%; margin-top: 16px; padding: 14px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius); font-size: 16px; font-weight: 700; cursor: pointer; transition: background .15s; }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+  /* Progress bar */
+  .progress-bar { display: flex; margin: 0 0 24px; gap: 4px; }
+  .progress-step { flex: 1; height: 4px; border-radius: 2px; background: var(--border); }
+  .progress-step.done { background: var(--success); }
+  .progress-step.active { background: var(--primary); }
+
+  /* Photo card */
+  .photo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+  .photo-card-header { padding: 14px 16px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
+  .photo-card-header .icon { width: 36px; height: 36px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .photo-card-header .icon.done { background: #f0fdf4; }
+  .photo-card-header .title { font-weight: 700; font-size: 14px; }
+  .photo-card-header .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .photo-card-header .badge { margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 10px; }
+  .badge-done { background: #f0fdf4; color: var(--success); }
+  .badge-req  { background: #fff7ed; color: var(--warn); }
+  .badge-opt  { background: #f1f5f9; color: var(--muted); }
+
+  .photo-card-body { padding: 14px 16px; }
+  .preview-wrap { position: relative; width: 100%; aspect-ratio: 4/3; background: #0f172a; border-radius: 8px; overflow: hidden; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; }
+  .preview-wrap img { width: 100%; height: 100%; object-fit: cover; }
+  .preview-placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #94a3b8; font-size: 13px; }
+  .preview-placeholder .ph-icon { font-size: 2rem; }
+  .retake-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+
+  .capture-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: 2px dashed var(--border); background: var(--bg); border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; transition: all .15s; }
+  .capture-btn:hover { border-color: var(--primary); background: #eff6ff; }
+  .capture-btn.has-photo { border-style: solid; border-color: var(--success); color: var(--success); }
+  .file-input { display: none; }
+
+  /* Instruction tip */
+  .tip { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-top: 8px; line-height: 1.5; }
+
+  /* Status screens */
+  .status-screen { text-align: center; padding: 40px 20px; }
+  .status-screen .status-icon { font-size: 4rem; margin-bottom: 16px; display: block; }
+  .status-screen h2 { font-size: 22px; font-weight: 800; margin-bottom: 10px; }
+  .status-screen p { color: var(--muted); font-size: 14px; line-height: 1.6; max-width: 340px; margin: 0 auto 20px; }
+  .status-screen.approved h2 { color: var(--success); }
+  .status-screen.rejected h2 { color: var(--danger); }
+  .status-screen.waiting h2  { color: var(--primary); }
+
+  .submit-section { padding: 20px 0 0; }
+  .submit-note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 12px; line-height: 1.5; }
+
+  .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="logo">🎓</span>
+  <div>
+    <h1>Exam Verification</h1>
+    <div style="font-size:12px;opacity:.8">Secure Identity Check</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Code entry screen -->
+  <div id="screen-code" class="code-screen">
+    <div style="font-size:3rem;margin-bottom:12px">🔐</div>
+    <h2>Enter Your Verification Code</h2>
+    <p>Enter the unique code shown on your exam computer. It looks like <strong>ABC-1234-XYZ</strong>.</p>
+    <input class="code-input" id="code-input" type="text" placeholder="XXX-XXXX-XXX"
+      maxlength="11" autocapitalize="characters" autocomplete="off" spellcheck="false"
+      oninput="formatCode(this)">
+    <div id="code-error" style="color:var(--danger);font-size:13px;margin-top:8px;display:none"></div>
+    <button class="btn-primary" onclick="startVerification()">Continue →</button>
+  </div>
+
+  <!-- Photo upload screen -->
+  <div id="screen-photos" style="display:none">
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;font-weight:700;color:var(--muted);margin-bottom:6px">EXAM VERIFICATION</div>
+      <div style="font-size:16px;font-weight:700" id="v-exam-title"></div>
+      <div style="font-size:13px;color:var(--muted)" id="v-candidate-name"></div>
+    </div>
+    <div class="progress-bar" id="progress-bar"></div>
+    <div id="photo-cards"></div>
+    <div class="submit-section">
+      <button class="btn-primary" id="btn-submit" onclick="submitPhotos()" disabled>
+        Submit for Proctor Review
+      </button>
+      <p class="submit-note">All required photos must be uploaded before submitting. Your proctor will review and approve before the exam starts.</p>
+    </div>
+  </div>
+
+  <!-- Waiting for approval screen -->
+  <div id="screen-waiting" class="status-screen waiting" style="display:none">
+    <span class="status-icon">⏳</span>
+    <h2>Awaiting Proctor Approval</h2>
+    <p>Your photos have been submitted. Your proctor is reviewing them now.<br><strong>Keep this page open</strong> — you'll be notified when approved.</p>
+    <div style="color:var(--muted);font-size:13px;margin-top:16px" id="wait-status">Checking status…</div>
+  </div>
+
+  <!-- Approved screen -->
+  <div id="screen-approved" class="status-screen approved" style="display:none">
+    <span class="status-icon">✅</span>
+    <h2>Identity Verified!</h2>
+    <p>Your proctor has approved your verification. Return to your exam computer — the proctor will start your exam shortly.</p>
+  </div>
+
+  <!-- Rejected screen -->
+  <div id="screen-rejected" class="status-screen rejected" style="display:none">
+    <span class="status-icon">❌</span>
+    <h2>Verification Rejected</h2>
+    <p id="reject-reason">Your verification could not be approved. Please contact your proctor.</p>
+    <button class="btn-primary" style="max-width:280px;margin:0 auto" onclick="retryVerification()">Re-upload Photos</button>
+  </div>
+
+</div>
+
+<script>
+const PHOTO_DEFS = [
+  { field: 'photo_id_front',   icon: '🪪', title: 'Government ID — Front',  sub: 'Passport, driving licence, or national ID card (front)',                       required: true,  capture: 'environment' },
+  { field: 'photo_id_back',    icon: '🪪', title: 'Government ID — Back',   sub: 'Back of the same ID (skip if single-sided)',                                  required: false, capture: 'environment' },
+  { field: 'photo_face',       icon: '🤳', title: 'Face Selfie',            sub: 'Hold your ID next to your face — both must be clearly visible',               required: true,  capture: 'user' },
+  { field: 'photo_desk_front', icon: '🖥️', title: 'Desk — Front View',      sub: 'Show your monitor, keyboard and the area directly in front of you',           required: true,  capture: 'environment' },
+  { field: 'photo_desk_back',  icon: '🔙', title: 'Desk — Behind You',      sub: 'Turn around and photograph the space behind your chair',                      required: true,  capture: 'environment' },
+  { field: 'photo_desk_left',  icon: '◀️', title: 'Desk — Left Side',       sub: 'Photograph the area to your left (walls, shelves, windows)',                  required: true,  capture: 'environment' },
+  { field: 'photo_desk_right', icon: '▶️', title: 'Desk — Right Side',      sub: 'Photograph the area to your right (walls, shelves, windows)',                 required: true,  capture: 'environment' },
+];
+
+const TIPS = {
+  photo_id_front:   'Ensure all 4 corners are visible and text is readable. No glare.',
+  photo_id_back:    'Required for two-sided IDs only. Skip if your ID is single-sided.',
+  photo_face:       'Good lighting. Hold your ID flat beside your face. Remove sunglasses or hats.',
+  photo_desk_front: 'Desk must be clear of phones, books, or notes. Only exam-permitted materials.',
+  photo_desk_back:  'Show the whole area behind you — no second monitors, people, or screens.',
+  photo_desk_left:  'Show the entire left side of your workspace.',
+  photo_desk_right: 'Show the entire right side of your workspace.',
+};
+
+let _sessionCode = '';
+let _capturedFiles = {}; // field → File object
+let _pollTimer = null;
+
+// ─── Code screen ─────────────────────────────────────────────────────────────
+function formatCode(el) {
+  let v = el.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (v.length > 3)  v = v.slice(0,3) + '-' + v.slice(3);
+  if (v.length > 8)  v = v.slice(0,8) + '-' + v.slice(8);
+  if (v.length > 11) v = v.slice(0,11);
+  el.value = v;
+}
+
+// Auto-fill code from URL path
+window.addEventListener('DOMContentLoaded', () => {
+  const parts = location.pathname.split('/').filter(Boolean);
+  const code  = parts[parts.length - 1];
+  if (/^[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{3}$/i.test(code)) {
+    document.getElementById('code-input').value = code.toUpperCase();
+    startVerification();
+  }
+});
+
+async function startVerification() {
+  const raw  = document.getElementById('code-input').value.trim().toUpperCase();
+  const errEl = document.getElementById('code-error');
+  if (!/^[A-Z0-9]{3}-[A-Z0-9]{4}-[A-Z0-9]{3}$/.test(raw)) {
+    errEl.textContent = 'Please enter a valid code in the format XXX-XXXX-XXX';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const btn = document.querySelector('#screen-code .btn-primary');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Checking…';
+
+  try {
+    const r = await fetch(`/api/verify/${raw}`);
+    if (!r.ok) { errEl.textContent = 'Code not found. Check the code shown on your exam computer.'; errEl.style.display = ''; btn.disabled = false; btn.textContent = 'Continue →'; return; }
+    const data = await r.json();
+    _sessionCode = raw;
+
+    if (data.status === 'approved') { showApproved(); return; }
+    if (data.status === 'photos_submitted') { showWaiting(); startPolling(); return; }
+    if (data.status === 'rejected') { showRejected(data.rejectReason); return; }
+
+    // Show photo upload screen
+    document.getElementById('v-exam-title').textContent = data.examTitle || 'Exam';
+    document.getElementById('v-candidate-name').textContent = data.candidateName || '';
+    buildPhotoCards();
+    show('photos');
+  } catch(e) {
+    errEl.textContent = 'Network error — please try again.';
+    errEl.style.display = '';
+    btn.disabled = false;
+    btn.textContent = 'Continue →';
+  }
+}
+
+// ─── Photo cards ─────────────────────────────────────────────────────────────
+function buildPhotoCards() {
+  const container = document.getElementById('photo-cards');
+  const pb = document.getElementById('progress-bar');
+  container.innerHTML = '';
+  pb.innerHTML = PHOTO_DEFS.filter(d => d.required).map(() =>
+    `<div class="progress-step" id="ps-${arguments[0] || ''}" ></div>`).join('');
+
+  PHOTO_DEFS.forEach((def, idx) => {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+    card.id = `card-${def.field}`;
+    card.innerHTML = `
+      <div class="photo-card-header">
+        <div class="icon" id="icon-${def.field}">${def.icon}</div>
+        <div>
+          <div class="title">${def.title}</div>
+          <div class="sub">${def.sub}</div>
+        </div>
+        <span class="badge ${def.required ? 'badge-req' : 'badge-opt'}" id="badge-${def.field}">
+          ${def.required ? 'Required' : 'Optional'}
+        </span>
+      </div>
+      <div class="photo-card-body">
+        <div class="preview-wrap" id="preview-${def.field}">
+          <div class="preview-placeholder">
+            <span class="ph-icon">📷</span>
+            <span>No photo yet</span>
+          </div>
+        </div>
+        <label class="capture-btn" id="btn-${def.field}" for="file-${def.field}">
+          📷 Take / Choose Photo
+        </label>
+        <input type="file" id="file-${def.field}" class="file-input"
+          accept="image/*" capture="${def.capture}"
+          onchange="handleFile('${def.field}', this)">
+        <div class="tip">${TIPS[def.field]}</div>
+      </div>`;
+    container.appendChild(card);
+  });
+
+  updateProgressBar();
+}
+
+function handleFile(field, input) {
+  const file = input.files[0];
+  if (!file) return;
+  _capturedFiles[field] = file;
+
+  const preview = document.getElementById(`preview-${field}`);
+  const reader  = new FileReader();
+  reader.onload = e => {
+    preview.innerHTML = `
+      <img src="${e.target.result}" alt="Preview">
+      <button class="retake-btn" onclick="retakePhoto('${field}')">Retake</button>`;
+  };
+  reader.readAsDataURL(file);
+
+  document.getElementById(`badge-${field}`).className = 'badge badge-done';
+  document.getElementById(`badge-${field}`).textContent = '✓ Captured';
+  document.getElementById(`btn-${field}`).classList.add('has-photo');
+  document.getElementById(`btn-${field}`).innerHTML = '✓ Photo captured — tap to change';
+  document.getElementById(`icon-${field}`).classList.add('done');
+
+  updateProgressBar();
+  updateSubmitButton();
+}
+
+function retakePhoto(field) {
+  document.getElementById(`file-${field}`).click();
+}
+
+function updateProgressBar() {
+  const required = PHOTO_DEFS.filter(d => d.required);
+  const steps = document.getElementById('progress-bar').children;
+  required.forEach((def, i) => {
+    if (steps[i]) steps[i].className = 'progress-step ' + (_capturedFiles[def.field] ? 'done' : '');
+  });
+}
+
+function updateSubmitButton() {
+  const allRequired = PHOTO_DEFS.filter(d => d.required).every(d => _capturedFiles[d.field]);
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = !allRequired;
+  if (allRequired) btn.textContent = 'Submit for Proctor Review →';
+}
+
+// ─── Submit ───────────────────────────────────────────────────────────────────
+async function submitPhotos() {
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Uploading…';
+
+  try {
+    const fd = new FormData();
+    for (const [field, file] of Object.entries(_capturedFiles)) {
+      fd.append(field, file, `${field}.jpg`);
+    }
+    const r = await fetch(`/api/verify/${_sessionCode}/photos`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Upload failed');
+
+    if (d.allDone) { showWaiting(); startPolling(); }
+    else {
+      btn.disabled = false;
+      btn.textContent = 'Submit for Proctor Review →';
+      alert('Some photos could not be uploaded. Please try again.');
+    }
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = 'Submit for Proctor Review →';
+    alert('Upload failed: ' + e.message);
+  }
+}
+
+// ─── Polling ──────────────────────────────────────────────────────────────────
+function startPolling() {
+  clearInterval(_pollTimer);
+  _pollTimer = setInterval(async () => {
+    try {
+      const r = await fetch(`/api/verify/${_sessionCode}`);
+      const d = await r.json();
+      if (d.status === 'approved') { clearInterval(_pollTimer); showApproved(); }
+      if (d.status === 'rejected') { clearInterval(_pollTimer); showRejected(d.rejectReason); }
+      const waitEl = document.getElementById('wait-status');
+      if (waitEl) waitEl.textContent = `Status: ${d.status.replace('_',' ')} — refreshing every 5 seconds…`;
+    } catch {}
+  }, 5000);
+}
+
+// ─── Screen switching ─────────────────────────────────────────────────────────
+function show(name) {
+  ['code','photos','waiting','approved','rejected'].forEach(n =>
+    document.getElementById(`screen-${n}`).style.display = n === name ? '' : 'none');
+}
+function showWaiting()  { show('waiting'); }
+function showApproved() { show('approved'); }
+function showRejected(reason) {
+  document.getElementById('reject-reason').textContent =
+    reason || 'Your verification was rejected. Please contact your proctor.';
+  show('rejected');
+}
+function retryVerification() {
+  _capturedFiles = {};
+  buildPhotoCards();
+  show('photos');
+}
+</script>
+</body>
+</html>

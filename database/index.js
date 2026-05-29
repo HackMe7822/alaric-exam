@@ -86,6 +86,29 @@ function initDb() {
                       'check_vm','check_remote','check_displays','check_camera','check_mic']) {
     try { d.exec(`ALTER TABLE exams ADD COLUMN ${col} INTEGER DEFAULT 1`); } catch(e) {}
   }
+  // JS migration: pre-exam identity + environment verification
+  try { d.exec(`CREATE TABLE IF NOT EXISTS exam_verifications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_code TEXT NOT NULL UNIQUE,
+    link_token TEXT NOT NULL,
+    candidate_name TEXT,
+    candidate_email TEXT,
+    exam_title TEXT,
+    status TEXT DEFAULT 'pending' CHECK(status IN ('pending','photos_submitted','approved','rejected')),
+    photo_id_front TEXT,
+    photo_id_back TEXT,
+    photo_face TEXT,
+    photo_desk_front TEXT,
+    photo_desk_back TEXT,
+    photo_desk_left TEXT,
+    photo_desk_right TEXT,
+    reject_reason TEXT,
+    approved_by INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`); } catch(e) {}
+  try { d.exec(`CREATE INDEX IF NOT EXISTS idx_ev_token ON exam_verifications(link_token)`); } catch(e) {}
+  try { d.exec(`CREATE INDEX IF NOT EXISTS idx_ev_code  ON exam_verifications(session_code)`); } catch(e) {}
   // JS migration: exam chat log table (proctor ↔ candidate messages during exam)
   try { d.exec(`CREATE TABLE IF NOT EXISTS exam_chats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

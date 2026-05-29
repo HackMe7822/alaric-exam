@@ -45,6 +45,7 @@ app.use('/api/question-bank', require('./src/routes/questionBank'));
 app.use('/api/portal', require('./src/routes/portal'));
 app.use('/api/catalog', require('./src/routes/catalog'));
 app.use('/api/recycle', require('./src/routes/recycle'));
+app.use('/api/verify', require('./src/routes/verify'));
 app.use('/exam', require('./src/routes/examPublic'));
 
 // Health endpoint — used by admin panel to detect Render deploys
@@ -68,6 +69,8 @@ app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', '
 // /go/:token — serves exam HTML; token becomes last path segment so exam page can read it
 // /exam/index.html — actual exam, only loads meaningfully inside Secure Browser
 app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'secure-launch', 'index.html')));
+// Mobile verification page — scanned QR opens this
+app.get('/verify/:code', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verify', 'index.html')));
 app.get('/go/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
 
 // Dynamic custom slug middleware — reads from DB with 10s cache, no restart needed

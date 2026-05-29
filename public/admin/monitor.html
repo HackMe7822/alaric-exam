@@ -749,6 +749,15 @@ function renderWaitingList(candidates) {
         </div>
       </div>
       <div class="waiting-detail ${joined ? 'open' : ''}" id="wdetail-${c.token}">
+        <!-- ID Verification photos panel -->
+        <div id="verpanel-${c.token}" style="display:none">
+          <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">ID Verification Photos</div>
+          <div id="verphotos-${c.token}" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px"></div>
+          <div style="display:flex;gap:8px;margin-bottom:10px">
+            <button class="btn btn-sm" style="background:#22c55e;color:#fff;font-weight:700;flex:1" onclick="approveVerification('${c.token}')">✅ Approve ID</button>
+            <button class="btn btn-sm btn-danger" style="flex:1" onclick="rejectVerification('${c.token}')">❌ Reject ID</button>
+          </div>
+        </div>
         <div class="proctor-chat-area" id="wchat-${c.token}">
           <div class="pcm system">Chat with candidate</div>
         </div>
@@ -770,6 +779,109 @@ function joinCandidate(token) {
   _waitingCandidates[token]._joined = true;
   renderWaitingList(Object.values(_waitingCandidates));
   toast(`Joined candidate — waiting for camera feed`);
+  // Load ID verification photos for this candidate
+  loadVerificationPhotos(token);
+}
+
+// ── ID Verification ───────────────────────────────────────────────────────────
+const _VERIFY_FIELDS = [
+  { field: 'photo_id_front',   label: '🪪 ID Front' },
+  { field: 'photo_id_back',    label: '🪪 ID Back' },
+  { field: 'photo_face',       label: '🤳 Face' },
+  { field: 'photo_desk_front', label: '🖥️ Desk Front' },
+  { field: 'photo_desk_back',  label: '🔙 Desk Back' },
+  { field: 'photo_desk_left',  label: '◀️ Desk Left' },
+  { field: 'photo_desk_right', label: '▶️ Desk Right' },
+];
+
+async function loadVerificationPhotos(token) {
+  const c = _waitingCandidates[token];
+  if (!c) return;
+  const sessionCode = c.verifyCode;
+  if (sessionCode) {
+    renderVerifyPhotos(token, sessionCode);
+  } else {
+    // verifyCode not yet available — poll for it
+    pollVerifyStatus(token);
+  }
+}
+
+async function pollVerifyStatus(token) {
+  const c = _waitingCandidates[token];
+  if (!c || !c._joined) return;
+  try {
+    const r = await fetch('/api/verify/admin/pending', { credentials: 'include' });
+    const sessions = await r.json();
+    // Try to match by candidate email
+    const session = sessions.find(s =>
+      (c.candidateEmail && s.candidate_email === c.candidateEmail) ||
+      (c.candidateName  && s.candidate_name  === c.candidateName)
+    );
+    if (session) {
+      if (_waitingCandidates[token]) _waitingCandidates[token].verifyCode = session.session_code;
+      renderVerifyPhotos(token, session.session_code);
+    }
+  } catch {}
+  // Re-poll every 5s
+  setTimeout(() => { if (_waitingCandidates[token]?._joined) pollVerifyStatus(token); }, 5000);
+}
+
+function renderVerifyPhotos(token, sessionCode) {
+  const panel   = document.getElementById(`verpanel-${token}`);
+  const grid    = document.getElementById(`verphotos-${token}`);
+  if (!panel || !grid) return;
+  panel.style.display = '';
+
+  grid.innerHTML = _VERIFY_FIELDS.map(({ field, label }) => `
+    <div style="cursor:pointer" onclick="enlargePhoto('/api/verify/photo/${sessionCode}/${field}','${label}')" title="${label}">
+      <div style="font-size:9px;color:var(--gray);font-weight:700;margin-bottom:3px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap">${label}</div>
+      <img src="/api/verify/photo/${sessionCode}/${field}"
+        onerror="this.parentElement.style.opacity='.3'"
+        style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:5px;border:1px solid var(--border);background:#f8f9fa">
+    </div>
+  `).join('');
+
+  // Store session code on the candidate object for approve/reject
+  if (_waitingCandidates[token]) _waitingCandidates[token].verifyCode = sessionCode;
+}
+
+function enlargePhoto(url, label) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer';
+  overlay.innerHTML = `
+    <div style="font-size:13px;color:#fff;font-weight:700">${label}</div>
+    <img src="${url}" style="max-width:90vw;max-height:85vh;object-fit:contain;border-radius:8px">
+    <div style="font-size:12px;color:rgba(255,255,255,.6)">Click anywhere to close</div>`;
+  overlay.onclick = () => overlay.remove();
+  document.body.appendChild(overlay);
+}
+
+async function approveVerification(token) {
+  const code = _waitingCandidates[token]?.verifyCode;
+  if (!code) { toast('No verification session found for this candidate', 'warning'); return; }
+  try {
+    await fetch(`/api/verify/admin/${code}/approve`, { method: 'POST', credentials: 'include' });
+    toast(`✅ ID approved for ${esc(_waitingCandidates[token]?.candidateName || 'candidate')}`);
+    // Update panel
+    const panel = document.getElementById(`verpanel-${token}`);
+    if (panel) panel.querySelector('div[style*="gap:8px"]').innerHTML =
+      `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:#15803d;width:100%">✅ ID Verification Approved</div>`;
+  } catch(e) { toast('Approve failed', 'error'); }
+}
+
+async function rejectVerification(token) {
+  const code = _waitingCandidates[token]?.verifyCode;
+  if (!code) { toast('No verification session found', 'warning'); return; }
+  const reason = prompt('Enter rejection reason (sent to candidate):');
+  if (reason === null) return;
+  try {
+    await fetch(`/api/verify/admin/${code}/reject`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason: reason || 'Verification rejected by proctor' }),
+    });
+    toast(`ID rejected — candidate notified`, 'warning');
+  } catch(e) { toast('Reject failed', 'error'); }
 }
 
 function startExam(token) {

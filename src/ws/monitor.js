@@ -52,11 +52,12 @@ function broadcastSessions() {
 function waitingSnapshot() {
   return Array.from(waitingCandidates.entries()).map(([token, c]) => ({
     token,
-    candidateName: c.candidateName,
+    candidateName:  c.candidateName,
     candidateEmail: c.candidateEmail,
-    examTitle:     c.examTitle,
-    machineId:     c.machineId,
-    waitingSince:  c.waitingSince,
+    examTitle:      c.examTitle,
+    machineId:      c.machineId,
+    waitingSince:   c.waitingSince,
+    verifyCode:     c.verifyCode || null,
   }));
 }
 
@@ -151,6 +152,7 @@ function setupMonitor(wss) {
           candidateEmail: link.cemail || '',
           examTitle:      link.exam_title || '',
           machineId:      msg.machineId || '',
+          verifyCode:     msg.verifyCode || null,
           waitingSince:   Date.now(),
         });
 
