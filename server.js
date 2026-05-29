@@ -1,6 +1,7 @@
 require('dotenv').config();
-const http = require('http');
+const http    = require('http');
 const express = require('express');
+const QRCode  = require('qrcode');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
 const path = require('path');
@@ -71,6 +72,18 @@ app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', '
 app.get('/e/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'secure-launch', 'index.html')));
 // Mobile verification page — scanned QR opens this
 app.get('/verify/:code', (req, res) => res.sendFile(path.join(__dirname, 'public', 'verify', 'index.html')));
+
+// QR code generator — used by the Electron launcher to display a real scannable QR
+app.get('/qr', async (req, res) => {
+  const url = req.query.url;
+  if (!url || url.length > 500) return res.status(400).end();
+  try {
+    const png = await QRCode.toBuffer(decodeURIComponent(url), { width: 200, margin: 1, color: { dark: '#1e293b', light: '#ffffff' } });
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.send(png);
+  } catch(e) { res.status(500).end(); }
+});
 app.get('/go/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
 
 // Dynamic custom slug middleware — reads from DB with 10s cache, no restart needed
