@@ -722,8 +722,16 @@ function renderWaitingList(candidates) {
   panel.style.display = '';
   count.textContent = candidates.length;
 
-  list.innerHTML = '';
+  // Remove cards for candidates who left
+  list.querySelectorAll('[id^="wcard-"]').forEach(el => {
+    const tok = el.id.replace('wcard-','');
+    if (!_waitingCandidates[tok]) el.remove();
+  });
+
   candidates.forEach(c => {
+    // Skip re-render if card already exists — preserves photo panels and chat
+    if (document.getElementById(`wcard-${c.token}`)) return;
+
     const joined = c._joined || (_waitingCandidates[c.token] || {})._joined;
     const waitSec = Math.round((Date.now() - c.waitingSince) / 1000);
     const waitStr = waitSec < 60 ? `${waitSec}s` : `${Math.floor(waitSec/60)}m ${waitSec%60}s`;
