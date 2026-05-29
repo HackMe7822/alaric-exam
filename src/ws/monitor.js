@@ -460,4 +460,25 @@ function handleWaitingMsg(ws, msg) {
   }
 }
 
-module.exports = { setupMonitor };
+// Push a WS message to a specific waiting candidate (by their exam link token)
+// Used by verify.js to notify the Secure Browser when photos are submitted
+function notifyWaitingCandidate(linkToken, msg) {
+  for (const [, c] of waitingCandidates) {
+    if (c.ws && c.ws.readyState === 1) {
+      // Match by linkToken via the exam link token stored in the session
+      // The waiting candidate's ws._waitToken is the exam link token
+      if (c.ws._waitToken === linkToken) {
+        c.ws.send(JSON.stringify(msg));
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Push verify status update to all admins watching the waiting room
+function notifyAdminsVerifyUpdate(sessionCode, status) {
+  sendToAdmins({ type: 'verify_status_update', sessionCode, status });
+}
+
+module.exports = { setupMonitor, notifyWaitingCandidate, notifyAdminsVerifyUpdate };

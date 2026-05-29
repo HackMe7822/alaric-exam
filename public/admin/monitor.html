@@ -456,6 +456,16 @@ function handleMsg(msg) {
     appendExamChat('candidate', msg.candidateName, msg.message);
   }
   // Violation resume request
+  // Verification photos submitted — refresh photos panel for that candidate
+  if (msg.type === 'verify_status_update') {
+    for (const [token, c] of Object.entries(_waitingCandidates)) {
+      if (c.verifyCode === msg.sessionCode) {
+        renderVerifyPhotos(token, msg.sessionCode);
+        if (msg.status === 'photos_submitted') toast(`📸 ${esc(c.candidateName || 'Candidate')} submitted verification photos — review below`);
+        break;
+      }
+    }
+  }
   if (msg.type === 'resume_request' && msg.submissionId === _selectedId) {
     showViolationRequest(msg.remark, msg.violationNum);
     toast(`⚠ ${msg.candidateName} requesting resume after violation #${msg.violationNum}`, 'warning');
@@ -786,7 +796,7 @@ function joinCandidate(token) {
   if (!_waitingCandidates[token]) _waitingCandidates[token] = {};
   _waitingCandidates[token]._joined = true;
   renderWaitingList(Object.values(_waitingCandidates));
-  toast(`Joined candidate — waiting for camera feed`);
+  toast(`👁 Joined — scroll down to see ID verification photos`);
   // Load ID verification photos for this candidate
   loadVerificationPhotos(token);
 }

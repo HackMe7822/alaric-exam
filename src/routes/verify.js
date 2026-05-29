@@ -6,6 +6,7 @@ const path    = require('path');
 const fs      = require('fs');
 const { getDb } = require('../../database/index');
 const auth    = require('../middleware/auth');
+const { notifyWaitingCandidate, notifyAdminsVerifyUpdate } = require('../ws/monitor');
 
 // ─── Photo storage ────────────────────────────────────────────────────────────
 const photoStorage = multer.diskStorage({
@@ -120,11 +121,24 @@ router.post('/:code/photos', photoUpload.fields(PHOTO_FIELDS.map(f => ({ name: f
   const required = ['photo_id_front', 'photo_face', 'photo_desk_front', 'photo_desk_back', 'photo_desk_left', 'photo_desk_right'];
   const allDone  = required.every(k => !!merged[k]);
 
+  const newStatus = allDone ? 'photos_submitted' : 'pending';
   db.prepare(
     `UPDATE exam_verifications SET ${updates.join(',')}, status=?, updated_at=datetime('now') WHERE session_code=?`
-  ).run(...vals, allDone ? 'photos_submitted' : 'pending', req.params.code);
+  ).run(...vals, newStatus, req.params.code);
 
-  res.json({ ok: true, allDone, status: allDone ? 'photos_submitted' : 'pending' });
+  // Push WS notifications so Secure Browser and admin monitor update instantly
+  if (allDone) {
+    // Notify the waiting candidate's Secure Browser (launcher Step 3)
+    notifyWaitingCandidate(row.link_token, {
+      type:        'verify_photos_submitted',
+      sessionCode: req.params.code,
+      status:      'photos_submitted',
+    });
+    // Notify admins watching the waiting room
+    notifyAdminsVerifyUpdate(req.params.code, 'photos_submitted');
+  }
+
+  res.json({ ok: true, allDone, status: newStatus });
 });
 
 // ─── GET /api/verify/photo/:code/:field — serve a photo (admin auth) ──────────
@@ -161,19 +175,29 @@ router.get('/admin/pending', auth, (req, res) => {
 });
 
 router.post('/admin/:code/approve', auth, (req, res) => {
-  const db = getDb();
+  const db  = getDb();
+  const row = db.prepare('SELECT link_token FROM exam_verifications WHERE session_code=?').get(req.params.code);
   db.prepare(
     `UPDATE exam_verifications SET status='approved', approved_by=?, updated_at=datetime('now') WHERE session_code=?`
   ).run(req.user?.id || null, req.params.code);
+  if (row) {
+    notifyWaitingCandidate(row.link_token, { type: 'verify_photos_submitted', sessionCode: req.params.code, status: 'approved' });
+    notifyAdminsVerifyUpdate(req.params.code, 'approved');
+  }
   res.json({ ok: true });
 });
 
 router.post('/admin/:code/reject', auth, (req, res) => {
-  const db = getDb();
+  const db  = getDb();
+  const row = db.prepare('SELECT link_token FROM exam_verifications WHERE session_code=?').get(req.params.code);
   const { reason } = req.body;
   db.prepare(
     `UPDATE exam_verifications SET status='rejected', reject_reason=?, updated_at=datetime('now') WHERE session_code=?`
   ).run(reason || 'Verification rejected by proctor', req.params.code);
+  if (row) {
+    notifyWaitingCandidate(row.link_token, { type: 'verify_photos_submitted', sessionCode: req.params.code, status: 'rejected' });
+    notifyAdminsVerifyUpdate(req.params.code, 'rejected');
+  }
   res.json({ ok: true });
 });
 
