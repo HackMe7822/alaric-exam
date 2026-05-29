@@ -75,14 +75,16 @@ app.get('/verify/:code', (req, res) => res.sendFile(path.join(__dirname, 'public
 
 // QR code generator — used by the Electron launcher to display a real scannable QR
 app.get('/qr', async (req, res) => {
+  // Express already URL-decodes query params — don't call decodeURIComponent again
   const url = req.query.url;
-  if (!url || url.length > 500) return res.status(400).end();
+  if (!url || url.length > 600) return res.status(400).end();
   try {
-    const png = await QRCode.toBuffer(decodeURIComponent(url), { width: 200, margin: 1, color: { dark: '#1e293b', light: '#ffffff' } });
+    const png = await QRCode.toBuffer(url, { width: 220, margin: 2, color: { dark: '#1e293b', light: '#ffffff' } });
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.send(png);
-  } catch(e) { res.status(500).end(); }
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 app.get('/go/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'exam', 'index.html')));
 
