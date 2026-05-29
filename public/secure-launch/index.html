@@ -166,16 +166,16 @@ h1{font-size:24px;font-weight:800;color:#f1f5f9;margin-bottom:10px;line-height:1
 <script>
 // ── Extract token from URL path (/e/TOKEN) ─────────────────────────────────────
 const _token   = window.location.pathname.split('/').filter(Boolean).pop() || '';
-// Use /exam/TOKEN format — the exam page reads the token from the URL path segment
-const _examUrl = window.location.origin + '/exam/' + _token;
+// Use /go/TOKEN — this serves the exam HTML; /exam/TOKEN returns JSON (wrong)
+const _examUrl = window.location.origin + '/go/' + _token;
 const _thisUrl = window.location.href;
 
 // ── If already inside Alaric Secure Browser, skip straight to exam ─────────────
 if (window.AlaricProctor && window.AlaricProctor.isSecureBrowser) {
-  window.location.replace(_examUrl);
+  window.location.replace(_examUrl); // /go/TOKEN → exam HTML
 }
 
-// ── Populate copy field — /exam/TOKEN so the app loads the exam correctly ──────
+// ── Populate copy field — /go/TOKEN so the app loads the exam correctly ────────
 document.getElementById('copy-url-input').value = _examUrl;
 
 // ── OS detection ──────────────────────────────────────────────────────────────
@@ -215,21 +215,18 @@ if (_directAnchor) _directAnchor.href = _deepLink;
 
 let _launchAttempted = false;
 function launchSecureBrowser() {
-  // Programmatic anchor click is the most reliable cross-browser method
-  // for triggering a registered custom protocol (Chrome, Edge, Firefox)
-  const a = document.createElement('a');
-  a.href = _deepLink;
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => document.body.removeChild(a), 500);
   _launchAttempted = true;
-  // Show help after 8s — enough time for Chrome's "Open app?" dialog
+
+  // window.location.href is the most reliable way to trigger a custom protocol
+  // across Chrome, Edge, and Firefox without being blocked as a popup
+  window.location.href = _deepLink;
+
+  // Show help after 5s if the app didn't open (protocol not registered)
   setTimeout(() => {
     if (_launchAttempted) {
       document.getElementById('not-installed').style.display = 'block';
     }
-  }, 8000);
+  }, 5000);
 }
 
 // ── Copy link ──────────────────────────────────────────────────────────────────
