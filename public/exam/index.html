@@ -536,12 +536,12 @@
   <div class="overlay-card">
     <span class="ov-icon">&#128421;&#65039;</span>
     <h3>Multiple Displays Detected</h3>
-    <p>This exam requires a single-monitor setup. Please enable <strong>Display Mirroring / Clone</strong> so all screens show the same content, then click "Check Again".</p>
-    <p style="margin-top:10px;font-size:0.83rem;opacity:.75;line-height:1.5">
-      <strong>macOS:</strong> System Settings → Displays → select second display → Use As → Mirror display<br>
-      <strong>Windows:</strong> Win+P → Duplicate
+    <p id="multimon-msg">An extra display is connected. <strong>Attempting to disconnect it automatically…</strong></p>
+    <p id="multimon-hint" style="margin-top:10px;font-size:0.83rem;opacity:.75;line-height:1.5;display:none">
+      <strong>macOS:</strong> System Settings → Displays → Mirror display<br>
+      <strong>Windows:</strong> Win+P → PC screen only
     </p>
-    <p style="margin-top:8px;font-size:0.8rem;color:var(--warning)">This incident has been logged. You cannot continue until mirroring is enabled.</p>
+    <p style="margin-top:8px;font-size:0.8rem;color:var(--warning)">This incident has been logged.</p>
     <div class="overlay-btns">
       <button class="btn-ov-primary" id="btn-recheck-multimon">&#8635; Check Again</button>
     </div>
@@ -890,37 +890,65 @@ document.getElementById('btn-go-fullscreen').addEventListener('click', () => {
 // ============================================================
 // MULTI-MONITOR
 // ============================================================
-function startMultiMonitorCheck() {
-  const overlay = document.getElementById('overlay-multimonitor');
+async function autoFixMultiMonitor() {
+  // Try Electron IPC first (works silently in Secure Browser)
+  if (window.AlaricProctor?.fixMultiMonitor) {
+    try {
+      const r = await window.AlaricProctor.fixMultiMonitor();
+      if (r?.ok) return true;
+    } catch {}
+  }
+  return false;
+}
 
-  const checkNow = (logEvent) => {
+function startMultiMonitorCheck() {
+  const overlay  = document.getElementById('overlay-multimonitor');
+  const msg      = document.getElementById('multimon-msg');
+  const hint     = document.getElementById('multimon-hint');
+
+  const checkNow = async (logEvent) => {
     if (!window.screen) return false;
     const extended = window.screen.isExtended;
-    if (extended) {
-      overlay.classList.add('active');
-      if (logEvent) postEvent('multi_monitor');
-    } else {
-      // Only remove overlay via the Check Again button, not automatically
+    if (!extended) return false;
+
+    // Show overlay and attempt auto-fix immediately
+    overlay.classList.add('active');
+    if (msg) msg.innerHTML = 'Extra display detected — <strong>auto-disconnecting…</strong>';
+    if (hint) hint.style.display = 'none';
+    if (logEvent) postEvent('multi_monitor');
+
+    const fixed = await autoFixMultiMonitor();
+    if (fixed) {
+      // Wait briefly for screen state to update, then check again
+      await new Promise(r => setTimeout(r, 1000));
+      if (!window.screen.isExtended) {
+        overlay.classList.remove('active');
+        showToast('Extra display auto-disconnected — single monitor confirmed.', 'success', 4000);
+        return false;
+      }
     }
-    return extended;
+
+    // Auto-fix failed — show manual instructions
+    if (msg) msg.textContent = 'Could not auto-disconnect. Please switch to single display manually.';
+    if (hint) hint.style.display = '';
+    return true;
   };
 
-  // Initial check before exam starts
+  // Initial check
   checkNow(false);
 
-  // Continuous poll every 3 seconds during exam — catches reconnected monitors
-  setInterval(() => {
+  // Poll every 3 seconds — catches monitors plugged in mid-exam
+  setInterval(async () => {
     if (!state.examStarted || state.submitted) return;
-    checkNow(true);
+    await checkNow(true);
   }, 3000);
 
-  // Also re-check on window focus (tab return)
   window.addEventListener('focus', () => {
     if (state.examStarted && !state.submitted) checkNow(true);
   });
 }
 
-document.getElementById('btn-recheck-multimon').addEventListener('click', () => {
+document.getElementById('btn-recheck-multimon').addEventListener('click', async () => {
   if (window.screen && !window.screen.isExtended) {
     document.getElementById('overlay-multimonitor').classList.remove('active');
     showToast('Single display confirmed. You may continue.', 'success', 3000);
