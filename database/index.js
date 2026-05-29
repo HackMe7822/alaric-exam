@@ -81,6 +81,11 @@ function initDb() {
   try { d.exec(`ALTER TABLE submissions ADD COLUMN is_abandoned INTEGER DEFAULT 0`); } catch(e) {}
   // JS migration: screen monitoring consent gate per exam
   try { d.exec(`ALTER TABLE exams ADD COLUMN require_screen_consent INTEGER DEFAULT 0`); } catch(e) {}
+  // JS migration: per-exam Secure Browser pre-check toggles (1=required, 0=skipped)
+  for (const col of ['check_antivirus','check_firewall','check_processes','check_services',
+                      'check_vm','check_remote','check_displays','check_camera','check_mic']) {
+    try { d.exec(`ALTER TABLE exams ADD COLUMN ${col} INTEGER DEFAULT 1`); } catch(e) {}
+  }
   // JS migration: exam chat log table (proctor ↔ candidate messages during exam)
   try { d.exec(`CREATE TABLE IF NOT EXISTS exam_chats (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

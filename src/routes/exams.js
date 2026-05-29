@@ -95,7 +95,9 @@ router.put('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, res) 
   const fields = ['title','description','instructions','duration_minutes','total_marks','pass_marks',
     'negative_marking','shuffle_questions','shuffle_options','show_result_immediately','allow_review',
     'max_attempts','start_date','end_date','is_public','is_open_test','catalog_description','catalog_image','branding_color',
-    'branding_logo','certificate_template','status','require_screen_consent'];
+    'branding_logo','certificate_template','status','require_screen_consent',
+    'check_antivirus','check_firewall','check_processes','check_services',
+    'check_vm','check_remote','check_displays','check_camera','check_mic'];
   const updates = [];
   const vals = [];
   for (const f of fields) {

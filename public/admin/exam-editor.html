@@ -364,6 +364,47 @@ textarea.form-control-sm { resize: vertical; min-height: 72px; }
         <label class="toggle-sw" style="flex-shrink:0"><input type="checkbox" id="s-require-consent"><span class="sw-track"></span></label>
       </div>
 
+      <div class="panel-section-title">Secure Browser Pre-checks</div>
+      <div style="font-size:11px;color:var(--gray);margin-bottom:8px;line-height:1.5">
+        Choose which system checks must pass before the candidate can start the exam in the Secure Browser. Disabled checks are silently skipped.
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">Antivirus / EDR Active</label><span style="font-size:11px;color:var(--gray)">Require an active antivirus or endpoint agent</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-antivirus"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">Firewall Enabled</label><span style="font-size:11px;color:var(--gray)">Require OS firewall to be active</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-firewall"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">No Prohibited Software</label><span style="font-size:11px;color:var(--gray)">Block TeamViewer, AnyDesk, OBS, VNC etc.</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-processes"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">No Remote Services</label><span style="font-size:11px;color:var(--gray)">Block background remote-access services (Windows)</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-services"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">Physical Machine</label><span style="font-size:11px;color:var(--gray)">Detect and block virtual machines (VMware, VirtualBox, Hyper-V, Parallels)</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-vm"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">No Active Remote Session</label><span style="font-size:11px;color:var(--gray)">Block RDP / screen sharing sessions</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-remote"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">Single Monitor</label><span style="font-size:11px;color:var(--gray)">Require only one display connected</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-displays"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">Camera Available</label><span style="font-size:11px;color:var(--gray)">Require a working webcam</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-camera"><span class="sw-track"></span></label>
+      </div>
+      <div class="toggle-row">
+        <div><label style="display:block;font-weight:600">Microphone Available</label><span style="font-size:11px;color:var(--gray)">Require a working microphone</span></div>
+        <label class="toggle-sw"><input type="checkbox" id="s-check-mic"><span class="sw-track"></span></label>
+      </div>
+
       <div class="panel-section-title">Branding</div>
       <div class="form-group-sm">
         <label>Brand Color</label>
@@ -853,6 +894,18 @@ function populateSettings() {
   chk('s-is-open-test', e.is_open_test);
   chk('s-require-consent', e.require_screen_consent);
 
+  // Pre-check toggles — default ON (1) if column is null/undefined (new exams)
+  const pc = k => e[k] !== 0 && e[k] !== false; // null/undefined/1 → true; 0/false → false
+  chk('s-check-antivirus', pc('check_antivirus'));
+  chk('s-check-firewall',  pc('check_firewall'));
+  chk('s-check-processes', pc('check_processes'));
+  chk('s-check-services',  pc('check_services'));
+  chk('s-check-vm',        pc('check_vm'));
+  chk('s-check-remote',    pc('check_remote'));
+  chk('s-check-displays',  pc('check_displays'));
+  chk('s-check-camera',    pc('check_camera'));
+  chk('s-check-mic',       pc('check_mic'));
+
   const color = e.branding_color || '#0078D4';
   set('s-color',     color);
   set('s-color-hex', color);
@@ -928,6 +981,15 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
     is_public:            document.getElementById('s-is-public').checked,
     is_open_test:            document.getElementById('s-is-open-test').checked,
     require_screen_consent:  document.getElementById('s-require-consent').checked,
+    check_antivirus:  document.getElementById('s-check-antivirus').checked,
+    check_firewall:   document.getElementById('s-check-firewall').checked,
+    check_processes:  document.getElementById('s-check-processes').checked,
+    check_services:   document.getElementById('s-check-services').checked,
+    check_vm:         document.getElementById('s-check-vm').checked,
+    check_remote:     document.getElementById('s-check-remote').checked,
+    check_displays:   document.getElementById('s-check-displays').checked,
+    check_camera:     document.getElementById('s-check-camera').checked,
+    check_mic:        document.getElementById('s-check-mic').checked,
     branding_color:       document.getElementById('s-color-hex').value || document.getElementById('s-color').value,
     catalog_description:  document.getElementById('s-catalog-desc').value || null,
     catalog_image:        window._pendingCatalogImg !== undefined ? window._pendingCatalogImg : (_exam.catalog_image || null),
