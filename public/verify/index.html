@@ -340,7 +340,18 @@ async function submitPhotos() {
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || 'Upload failed');
 
-    if (d.allDone) { showWaiting(); startPolling(); }
+    if (d.allDone) {
+      // Show success briefly then auto-close so candidate returns to Secure Browser
+      show('waiting');
+      document.getElementById('wait-status').textContent =
+        '✅ All done! This window will close in 5 seconds — return to the Secure Browser app on your computer.';
+      setTimeout(() => {
+        try { window.close(); } catch {}
+        // If window.close() blocked (e.g. not opened by script), show instruction
+        document.getElementById('wait-status').textContent =
+          '✅ Photos submitted! Return to the Secure Browser app on your computer.';
+      }, 5000);
+    }
     else {
       btn.disabled = false;
       btn.textContent = 'Submit for Proctor Review →';

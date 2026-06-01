@@ -396,6 +396,13 @@ textarea.form-control-sm { resize: vertical; min-height: 72px; }
         <div><label style="display:block;font-weight:600">Single Monitor</label><span style="font-size:11px;color:var(--gray)">Require only one display connected</span></div>
         <label class="toggle-sw"><input type="checkbox" id="s-check-displays"><span class="sw-track"></span></label>
       </div>
+      <div class="toggle-row" id="display-mode-row" style="display:none">
+        <div>
+          <label style="display:block;font-weight:600">Require Physical Cable Removal</label>
+          <span style="font-size:11px;color:var(--gray)">ON = candidate must physically unplug extra monitors. OFF = Secure Browser disconnects them via software (DisplaySwitch)</span>
+        </div>
+        <label class="toggle-sw"><input type="checkbox" id="s-display-control-mode"><span class="sw-track"></span></label>
+      </div>
       <div class="toggle-row">
         <div><label style="display:block;font-weight:600">Camera Available</label><span style="font-size:11px;color:var(--gray)">Require a working webcam</span></div>
         <label class="toggle-sw"><input type="checkbox" id="s-check-camera"><span class="sw-track"></span></label>
@@ -903,6 +910,12 @@ function populateSettings() {
   chk('s-check-vm',        pc('check_vm'));
   chk('s-check-remote',    pc('check_remote'));
   chk('s-check-displays',  pc('check_displays'));
+  chk('s-display-control-mode', e.display_control_mode === 1);
+  // Show the cable-removal option only when display check is enabled
+  document.getElementById('display-mode-row').style.display = pc('check_displays') ? '' : 'none';
+  document.getElementById('s-check-displays').addEventListener('change', function() {
+    document.getElementById('display-mode-row').style.display = this.checked ? '' : 'none';
+  });
   chk('s-check-camera',    pc('check_camera'));
   chk('s-check-mic',       pc('check_mic'));
 
@@ -989,7 +1002,8 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
     check_remote:     document.getElementById('s-check-remote').checked,
     check_displays:   document.getElementById('s-check-displays').checked,
     check_camera:     document.getElementById('s-check-camera').checked,
-    check_mic:        document.getElementById('s-check-mic').checked,
+    check_mic:            document.getElementById('s-check-mic').checked,
+    display_control_mode: document.getElementById('s-display-control-mode').checked ? 1 : 0,
     branding_color:       document.getElementById('s-color-hex').value || document.getElementById('s-color').value,
     catalog_description:  document.getElementById('s-catalog-desc').value || null,
     catalog_image:        window._pendingCatalogImg !== undefined ? window._pendingCatalogImg : (_exam.catalog_image || null),

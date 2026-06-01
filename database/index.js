@@ -86,6 +86,8 @@ function initDb() {
                       'check_vm','check_remote','check_displays','check_camera','check_mic']) {
     try { d.exec(`ALTER TABLE exams ADD COLUMN ${col} INTEGER DEFAULT 1`); } catch(e) {}
   }
+  // JS migration: display control mode (0=software disconnect only, 1=require physical cable removal)
+  try { d.exec(`ALTER TABLE exams ADD COLUMN display_control_mode INTEGER DEFAULT 0`); } catch(e) {}
   // JS migration: pre-exam identity + environment verification
   try { d.exec(`CREATE TABLE IF NOT EXISTS exam_verifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
