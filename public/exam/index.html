@@ -872,15 +872,21 @@ window.addEventListener('beforeunload', () => {
 // ============================================================
 // FULLSCREEN
 // ============================================================
+let _suppressNextFullscreenEvent = false;
+// Electron main tells us when IT restores fullscreen (not user exiting)
+if (window.AlaricProctor?.onSuppressFullscreen) {
+  window.AlaricProctor.onSuppressFullscreen(() => { _suppressNextFullscreenEvent = true; });
+}
+
 document.addEventListener('fullscreenchange', () => {
   if (!state.examStarted || !state.fullscreenEnforced || state.submitted) return;
   if (!document.fullscreenElement) {
+    if (_suppressNextFullscreenEvent) { _suppressNextFullscreenEvent = false; return; }
     state.fullscreenExits++;
     postEvent('fullscreen_exit');
-    // Block the exam — overlay stays until fullscreen is re-entered
     document.getElementById('overlay-fullscreen').classList.add('active');
   } else {
-    // Fullscreen re-entered — unblock
+    _suppressNextFullscreenEvent = false;
     document.getElementById('overlay-fullscreen').classList.remove('active');
   }
 });

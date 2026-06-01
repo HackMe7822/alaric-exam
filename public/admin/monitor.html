@@ -757,7 +757,7 @@ function renderWaitingList(candidates) {
           <div class="waiting-sub">${esc(c.examTitle || 'Exam')} · waiting ${waitStr}</div>
         </div>
         ${joined
-          ? `<div class="waiting-camera-wrap"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>`
+          ? `<div class="waiting-camera-wrap" title="Double-click to enlarge" ondblclick="enlargeWcam('${c.token}')"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>`
           : ''}
         <div class="waiting-actions">
           ${!joined
