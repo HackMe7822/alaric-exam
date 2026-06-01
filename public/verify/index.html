@@ -341,16 +341,19 @@ async function submitPhotos() {
     if (!r.ok) throw new Error(d.error || 'Upload failed');
 
     if (d.allDone) {
-      // Show success briefly then auto-close so candidate returns to Secure Browser
       show('waiting');
       document.getElementById('wait-status').textContent =
-        '✅ All done! This window will close in 5 seconds — return to the Secure Browser app on your computer.';
+        '✅ All done! This window will close in 3 seconds — return to the Secure Browser.';
       setTimeout(() => {
-        try { window.close(); } catch {}
-        // If window.close() blocked (e.g. not opened by script), show instruction
-        document.getElementById('wait-status').textContent =
-          '✅ Photos submitted! Return to the Secure Browser app on your computer.';
-      }, 5000);
+        // Use Electron IPC to close — window.close() doesn't work in Electron child windows
+        if (window.AlaricProctor?.closeVerifyWindow) {
+          window.AlaricProctor.closeVerifyWindow();
+        } else {
+          // Fallback for non-Electron (mobile browser)
+          document.getElementById('wait-status').textContent =
+            '✅ Photos submitted! You can close this tab and return to the exam computer.';
+        }
+      }, 3000);
     }
     else {
       btn.disabled = false;

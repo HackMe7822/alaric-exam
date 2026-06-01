@@ -757,7 +757,7 @@ function renderWaitingList(candidates) {
           <div class="waiting-sub">${esc(c.examTitle || 'Exam')} · waiting ${waitStr}</div>
         </div>
         ${joined
-          ? `<div class="waiting-camera-wrap" title="Double-click to enlarge" ondblclick="enlargeWcam('${c.token}')"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>`
+          ? `<div class="waiting-camera-wrap" id="camwrap-${c.token}"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>`
           : ''}
         <div class="waiting-actions">
           ${!joined
@@ -806,9 +806,10 @@ function joinCandidate(token) {
     if (waitingCard && !card.querySelector(`#wcam-${token}`)) {
       const camWrap = document.createElement('div');
       camWrap.className = 'waiting-camera-wrap';
-      camWrap.title = 'Double-click to enlarge';
+      camWrap.id        = `camwrap-${token}`;
+      camWrap.title     = 'Double-click to enlarge';
       camWrap.ondblclick = () => enlargeWcam(token);
-      camWrap.innerHTML = `<video id="wcam-${token}" autoplay muted playsinline></video>`;
+      camWrap.innerHTML  = `<video id="wcam-${token}" autoplay muted playsinline></video>`;
       const actionsDiv = waitingCard.querySelector('.waiting-actions');
       if (actionsDiv) waitingCard.insertBefore(camWrap, actionsDiv);
     }
@@ -823,6 +824,13 @@ function joinCandidate(token) {
     // Open the detail panel (camera + chat + photos)
     const detail = document.getElementById(`wdetail-${token}`);
     if (detail) detail.classList.add('open');
+
+    // Ensure double-click on camera wrap works (covers both initial render and in-place paths)
+    const existingWrap = document.getElementById(`camwrap-${token}`);
+    if (existingWrap && !existingWrap.ondblclick) {
+      existingWrap.ondblclick = () => enlargeWcam(token);
+      existingWrap.title = 'Double-click to enlarge';
+    }
   } else {
     // Card doesn't exist yet (shouldn't happen) — fall back to full re-render
     renderWaitingList(Object.values(_waitingCandidates));
