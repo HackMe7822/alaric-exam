@@ -53,9 +53,9 @@
 /* Split video area */
 #pc-videos { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; gap: 2px; background: #010409; }
 .pc-video-pane { position: relative; background: #0d1117; overflow: hidden; cursor: pointer; min-height: 200px; }
-/* Absolute positioning guarantees video fills the pane regardless of flex/grid height */
-.pc-video-pane video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
-.pc-video-pane video.live { display: block; }
+/* Video always in DOM and rendered — display:none causes black frame in Electron
+   when srcObject/play() are called while hidden. Use placeholder overlay instead. */
+.pc-video-pane video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .pc-video-pane.cam-pane video { transform: scaleX(-1); object-fit: cover; }
 /* Screen share uses contain so full desktop is visible without cropping */
 #screen-pane video { object-fit: contain; background: #000; }
@@ -174,7 +174,7 @@
 /* Screen view */
 #screen-card { display: none; }
 /* #screen-video display controlled by .pc-video-pane video.live class now */
-.screen-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; color: #bbb; font-size: 12px; text-align: center; background: #f9f9f9; border-radius: 6px; }
+.screen-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 20px; color: #484f58; font-size: 12px; text-align: center; background: transparent; }
 .screen-placeholder svg { width: 32px; height: 32px; color: #ddd; }
 #screen-ts { font-size: 10px; color: #888; text-align: right; margin-top: 3px; }
 .screen-actions { display: flex; gap: 6px; align-items: center; }
@@ -188,7 +188,7 @@
 /* Live camera */
 #exam-cam-card { display: none; }
 /* #exam-cam-video display controlled by .pc-video-pane video.live class now */
-.cam-placeholder { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 20px 10px; color: #bbb; font-size: 12px; background: #f9f9f9; border-radius: 5px; }
+.cam-placeholder { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 20px 10px; color: #484f58; font-size: 12px; background: transparent; }
 
 /* Chat */
 #chat-card { display: none; }
@@ -796,7 +796,7 @@ function stopScreen() {
   _pendingAdminIce = [];
   _screenActive = false;
   const vid = document.getElementById('screen-video');
-  if (vid) { vid.srcObject = null; vid.classList.remove('live'); }
+  if (vid) { vid.srcObject = null; } // don't hide — video always rendered
   const ph  = document.getElementById('screen-placeholder');
   if (ph)  ph.style.display = '';
   const badge = document.getElementById('screen-live-badge');
@@ -817,8 +817,8 @@ async function handleRtcOffer(msg) {
   pc.ontrack = e => {
     const vid = document.getElementById('screen-video');
     vid.srcObject = e.streams[0];
-    vid.play().catch(() => {}); // must call play() — autoplay doesn't fire after programmatic srcObject set
-    vid.classList.add('live');
+    vid.play().catch(() => {});
+    // Hide placeholder — video always rendered, no display:none toggle needed
     document.getElementById('screen-placeholder').style.display = 'none';
     document.getElementById('btn-req-screen').style.display = 'none';
     const stopBtn = document.getElementById('btn-stop-screen');
@@ -1225,9 +1225,10 @@ async function handleExamCameraOffer(msg) {
     const vid = document.getElementById('exam-cam-video');
     if (vid) {
       vid.srcObject = e.streams[0];
-      vid.play().catch(() => {}); // explicit play — autoplay doesn't fire after programmatic srcObject set
-      vid.classList.add('live');
-      document.getElementById('cam-placeholder').style.display = 'none';
+      vid.play().catch(() => {});
+      // Hide placeholder — video element is always rendered (no display:none toggle)
+      const ph = document.getElementById('cam-placeholder');
+      if (ph) ph.style.display = 'none';
       const badge = document.getElementById('cam-status-badge');
       if (badge) badge.style.display = '';
       const statusEl = document.getElementById('cam-status');
@@ -1268,7 +1269,7 @@ function closeExamCam() {
   if (_examCamPc) { try { _examCamPc.close(); } catch {} _examCamPc = null; }
   _examCamIce = [];
   const vid = document.getElementById('exam-cam-video');
-  if (vid) { vid.srcObject = null; vid.style.display = 'none'; }
+  if (vid) { vid.srcObject = null; } // don't hide — video always rendered
   const ph = document.getElementById('cam-placeholder');
   if (ph) ph.style.display = '';
   const cs = document.getElementById('cam-status');
