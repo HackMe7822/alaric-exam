@@ -1094,11 +1094,12 @@ async function approveVerification(token) {
   if (!code) { toast('No verification session found for this candidate', 'warning'); return; }
   try {
     await fetch(`/api/verify/admin/${code}/approve`, { method: 'POST', credentials: 'include' });
-    toast(`✅ ID approved for ${esc(_waitingCandidates[token]?.candidateName || 'candidate')}`);
-    // Replace action buttons with approved banner
+    // Mark as approved so startExam() is unblocked
+    if (_waitingCandidates[token]) _waitingCandidates[token]._verifyApproved = true;
+    toast(`✅ ID approved — you can now start the exam`);
     const actionRow = document.getElementById(`ver-action-row-${token}`);
     if (actionRow) actionRow.innerHTML =
-      `<div style="flex:1;padding:10px;background:#f0fdf4;color:#15803d;font-size:13px;font-weight:700;text-align:center">✅ ID Verification Approved</div>`;
+      `<div style="flex:1;padding:10px;background:#f0fdf4;color:#15803d;font-size:13px;font-weight:700;text-align:center">✅ Approved — click ▶ Start Exam</div>`;
   } catch(e) { toast('Approve failed', 'error'); }
 }
 
@@ -1118,9 +1119,19 @@ async function rejectVerification(token) {
 }
 
 function startExam(token) {
+  const c = _waitingCandidates[token] || {};
+
+  // Block start if ID verification exists but not yet approved
+  if (c.verifyCode && !c._verifyApproved) {
+    toast('⚠ ID verification must be approved before starting the exam', 'warning');
+    // Scroll to the verification panel so proctor can approve
+    const verpanel = document.getElementById(`verpanel-${token}`);
+    if (verpanel) verpanel.scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
   send({ type: 'proctor_start', token });
-  toast(`Exam started for ${(_waitingCandidates[token] || {}).candidateName || 'candidate'}`);
-  // Remove from waiting list after short delay
+  toast(`▶ Exam started for ${c.candidateName || 'candidate'}`);
   setTimeout(() => {
     delete _waitingCandidates[token];
     renderWaitingList(Object.values(_waitingCandidates));
