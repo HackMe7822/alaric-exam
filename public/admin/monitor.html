@@ -815,6 +815,7 @@ async function handleRtcOffer(msg) {
   pc.ontrack = e => {
     const vid = document.getElementById('screen-video');
     vid.srcObject = e.streams[0];
+    vid.play().catch(() => {}); // must call play() — autoplay doesn't fire after programmatic srcObject set
     vid.classList.add('live');
     document.getElementById('screen-placeholder').style.display = 'none';
     document.getElementById('btn-req-screen').style.display = 'none';
@@ -1160,7 +1161,7 @@ async function handleCameraOffer(msg) {
 
   pc.ontrack = e => {
     const vid = document.getElementById(`wcam-${token}`);
-    if (vid) { vid.srcObject = e.streams[0]; }
+    if (vid) { vid.srcObject = e.streams[0]; vid.play().catch(() => {}); }
   };
 
   pc.onicecandidate = ({ candidate }) => {
@@ -1211,6 +1212,7 @@ async function handleExamCameraOffer(msg) {
     const vid = document.getElementById('exam-cam-video');
     if (vid) {
       vid.srcObject = e.streams[0];
+      vid.play().catch(() => {}); // explicit play — autoplay doesn't fire after programmatic srcObject set
       vid.classList.add('live');
       document.getElementById('cam-placeholder').style.display = 'none';
       const badge = document.getElementById('cam-status-badge');
@@ -1372,6 +1374,14 @@ setInterval(() => {
 // Boot
 loadMe();
 connect();
+
+// WebSocket keepalive — prevents load balancer / Render from dropping idle connections.
+// Send a ping every 25s so the connection is never considered idle.
+setInterval(() => {
+  if (_ws && _ws.readyState === 1) {
+    _ws.send(JSON.stringify({ type: 'ping' }));
+  }
+}, 25000);
 </script>
 <script src="/assets/js/admin-shared.js"></script>
 </body>
