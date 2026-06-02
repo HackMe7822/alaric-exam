@@ -243,8 +243,8 @@ function buildPhotoCards() {
   const container = document.getElementById('photo-cards');
   const pb = document.getElementById('progress-bar');
   container.innerHTML = '';
-  pb.innerHTML = PHOTO_DEFS.filter(d => d.required).map(() =>
-    `<div class="progress-step" id="ps-${arguments[0] || ''}" ></div>`).join('');
+  pb.innerHTML = PHOTO_DEFS.filter(d => d.required).map((d, i) =>
+    `<div class="progress-step" id="ps-${i}"></div>`).join('');
 
   PHOTO_DEFS.forEach((def, idx) => {
     const card = document.createElement('div');
