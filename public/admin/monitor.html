@@ -378,6 +378,12 @@ function connect() {
   ws.onopen = () => {
     setConnStatus('connected');
     clearTimeout(_reconnectTimer);
+    // Re-subscribe to previously selected session after reconnect.
+    // Without this, info.subscribedTo is null on server after reconnect and
+    // all Pause/Stop/Chat commands are silently dropped.
+    if (_selectedId) {
+      setTimeout(() => send({ type: 'subscribe', submissionId: _selectedId }), 200);
+    }
   };
 
   ws.onmessage = e => {
@@ -402,7 +408,13 @@ function handleMsg(msg) {
     renderSessions(msg.sessions);
     if (_selectedId) {
       const s = _sessions[_selectedId];
-      if (s) { _isPaused = s.paused || false; _isMicMuted = s.micMuted || false; updateControlButtons(); }
+      if (s) {
+        _isPaused = s.paused || false;
+        _isMicMuted = s.micMuted || false;
+        updateControlButtons();
+        // Re-subscribe if our subscription was lost (e.g. server restart, WS reconnect)
+        send({ type: 'subscribe', submissionId: _selectedId });
+      }
     }
   }
   if (msg.type === 'session_ended') {
@@ -474,7 +486,13 @@ function handleMsg(msg) {
 }
 
 function send(data) {
-  if (_ws && _ws.readyState === 1) _ws.send(JSON.stringify(data));
+  if (_ws && _ws.readyState === 1) {
+    _ws.send(JSON.stringify(data));
+    return true;
+  }
+  // WS not ready — show a visible error so proctor knows the command failed
+  toast('Connection lost — reconnecting. Please wait and try again.', 'warning');
+  return false;
 }
 
 function renderSessions(sessions) {
@@ -1134,26 +1152,33 @@ function approveResume() {
 }
 
 function pauseExam() {
-  send({ type: 'pause_exam' });
-  _isPaused = true;
-  updateControlButtons();
-  toast('Exam paused');
+  if (!_selectedId) { toast('No session selected', 'warning'); return; }
+  if (send({ type: 'pause_exam' })) {
+    _isPaused = true;
+    updateControlButtons();
+    toast('⏸ Pause command sent to candidate');
+  }
 }
 
 function resumeExam() {
-  send({ type: 'resume_exam' });
-  _isPaused = false;
-  updateControlButtons();
-  toast('Exam resumed');
+  if (!_selectedId) { toast('No session selected', 'warning'); return; }
+  if (send({ type: 'resume_exam' })) {
+    _isPaused = false;
+    updateControlButtons();
+    toast('▶ Resume command sent to candidate');
+  }
 }
 
 function stopExam() {
+  if (!_selectedId) { toast('No session selected', 'warning'); return; }
   if (!confirm('Stop and force-submit this candidate\'s exam? This cannot be undone.')) return;
-  send({ type: 'stop_exam' });
-  toast('Stop command sent — exam will auto-submit', 'warning');
+  if (send({ type: 'stop_exam' })) {
+    toast('⏹ Stop command sent — exam will auto-submit', 'warning');
+  }
 }
 
 function toggleMic() {
+  if (!_selectedId) { toast('No session selected', 'warning'); return; }
   _isMicMuted = !_isMicMuted;
   send({ type: 'mute_mic', muted: _isMicMuted });
   updateControlButtons();
