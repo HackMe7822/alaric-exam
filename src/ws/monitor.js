@@ -128,6 +128,7 @@ function setupMonitor(wss) {
           events: [],
           connectedAt: Date.now(),
           lastSeen: Date.now(),
+          cameraRequested: false, // reset so camera is re-requested on fresh connection
         });
 
         ws.send(JSON.stringify({ type: 'registered' }));
@@ -291,8 +292,11 @@ function handleAdminMsg(ws, msg) {
           paused: s.paused || false,
           micMuted: s.micMuted || false,
         }));
-        // Request live camera feed from exam
-        if (s.ws.readyState === WebSocket.OPEN) {
+        // Request live camera feed from exam — only if not already streaming.
+        // s.cameraRequested flag prevents re-requesting every subscribe (which
+        // would tear down and restart WebRTC on every 10s session update).
+        if (s.ws.readyState === WebSocket.OPEN && !s.cameraRequested) {
+          s.cameraRequested = true;
           s.ws.send(JSON.stringify({ type: 'request_exam_camera' }));
         }
       }

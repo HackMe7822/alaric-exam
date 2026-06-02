@@ -509,8 +509,10 @@ function handleMsg(msg) {
         _isPaused = s.paused || false;
         _isMicMuted = s.micMuted || false;
         updateControlButtons();
-        // Re-subscribe if our subscription was lost (e.g. server restart, WS reconnect)
-        send({ type: 'subscribe', submissionId: _selectedId });
+        // DO NOT re-subscribe here — sessions_list fires every 10s (exam state update).
+        // Sending subscribe every 10s triggers request_exam_camera on server each time,
+        // tearing down and restarting WebRTC repeatedly → camera black + excessive traffic.
+        // Re-subscription happens only in ws.onopen (after WS reconnect).
       }
     }
   }
