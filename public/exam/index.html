@@ -2225,6 +2225,13 @@ function sendMonitorState(event) {
 }
 
 function handleScreenRequest() {
+  // In Electron Secure Browser: auto-share without asking the candidate.
+  // The candidate gave consent before the exam started (consent gate).
+  if (window.AlaricProctor?.getScreenSourceId) {
+    startScreenShare(); // silent, no prompt
+    return;
+  }
+  // In regular browser mode: show a prompt so candidate can accept/decline
   let banner = document.getElementById('_monitor-screen-banner');
   if (!banner) {
     banner = document.createElement('div');
@@ -2237,7 +2244,7 @@ function handleScreenRequest() {
       <span style="font-size:1.2rem">🔍</span> Proctor Screen Request
     </div>
     <p style="margin:0 0 6px;color:#444">Your proctor would like to view your screen.</p>
-    <p style="margin:0 0 12px;color:#888;font-size:12px">When prompted, select <strong>"Entire Screen"</strong> and choose your monitor to share your full display.</p>
+    <p style="margin:0 0 12px;color:#888;font-size:12px">When prompted, select <strong>"Entire Screen"</strong> and choose your monitor.</p>
     <div style="display:flex;gap:8px">
       <button onclick="startScreenShare()" style="flex:1;background:#0078d4;color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer">Share Screen</button>
       <button onclick="document.getElementById('_monitor-screen-banner').remove();wsSend({type:'exam_state',submissionId:state.submissionId,event:'screen_share_declined',timeLeft:state.timeLeft})" style="background:#f3f2f1;border:1px solid #e0e0e0;border-radius:7px;padding:9px 14px;font-size:13px;cursor:pointer">Decline</button>
@@ -2248,11 +2255,29 @@ function handleScreenRequest() {
 async function startScreenShare() {
   document.getElementById('_monitor-screen-banner')?.remove();
   try {
-    // No constraints on framerate/resolution — let browser/OS decide for best quality
-    const stream = await navigator.mediaDevices.getDisplayMedia({
-      video: true,
-      audio: false,
-    });
+    let stream = null;
+
+    // Electron: use desktopCapturer for silent, no-prompt screen capture
+    if (window.AlaricProctor?.getScreenSourceId) {
+      const sourceId = await window.AlaricProctor.getScreenSourceId();
+      if (sourceId) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: 'desktop',
+              chromeMediaSourceId: sourceId,
+              maxWidth: 1920, maxHeight: 1080, maxFrameRate: 10,
+            }
+          }
+        });
+      }
+    }
+
+    // Browser fallback: getDisplayMedia (shows picker, requires user gesture)
+    if (!stream) {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    }
     _screenStream = stream;
 
     // Close any existing peer connection
@@ -2445,13 +2470,28 @@ async function stopAllRecorders() {
 }
 
 // ── Camera WebRTC to admin (during exam) ────────────────────────────────────
+let _liveCamStream = null; // dedicated stream for live monitoring (even if snapshots disabled)
+
 async function offerExamCamera() {
   if (_examCamPc) { try { _examCamPc.close(); } catch {} _examCamPc = null; }
   _pendingExamCamIce = [];
 
+  // Use existing webcam stream OR capture a new one specifically for live monitoring.
+  // The proctor must always see the candidate regardless of webcam_enabled exam setting.
+  let camStream = state.webcamStream;
+  if (!camStream) {
+    try {
+      _liveCamStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      camStream = _liveCamStream;
+    } catch(e) { console.warn('[examCam] Could not capture webcam for monitoring:', e.message); }
+  }
+
   const tracks = [];
-  if (state.webcamStream) state.webcamStream.getVideoTracks().forEach(t => tracks.push(t));
-  if (_micStream)         _micStream.getAudioTracks().forEach(t => tracks.push(t));
+  if (camStream) camStream.getVideoTracks().forEach(t => tracks.push(t));
+  if (_micStream) _micStream.getAudioTracks().forEach(t => tracks.push(t));
   if (!tracks.length) return;
 
   const pc = new RTCPeerConnection(_RTC_CONFIG);
