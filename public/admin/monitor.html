@@ -104,11 +104,11 @@
 .pc-chat-msg.proctor { background: #1f3361; color: #79c0ff; align-self: flex-end; }
 .pc-chat-msg.candidate { background: #21262d; color: #c9d1d9; align-self: flex-start; }
 
-/* Empty state — must fill full detail-col height */
-#empty-detail { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; color: #484f58; font-size: 13px; text-align: center; background: #0d1117; border-radius: 8px; min-height: 0; }
-#empty-detail svg { width: 52px; height: 52px; color: #21262d; }
-#empty-detail h3 { color: #484f58; font-size: 15px; font-weight: 600; margin: 0; }
-#empty-detail p { color: #30363d; font-size: 12px; margin: 0; }
+/* Empty state — light background matching admin theme */
+#empty-detail { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; font-size: 13px; text-align: center; background: #f8fafc; border-radius: 8px; border: 1px dashed #e2e8f0; min-height: 0; }
+#empty-detail svg { width: 48px; height: 48px; color: #cbd5e1; }
+#empty-detail h3 { color: #64748b; font-size: 15px; font-weight: 600; margin: 0; }
+#empty-detail p { color: #94a3b8; font-size: 12px; margin: 0; max-width: 260px; line-height: 1.5; }
 
 /* Fullscreen overlay for video expand */
 .vid-overlay { position: fixed; inset: 0; background: rgba(1,4,9,.95); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
