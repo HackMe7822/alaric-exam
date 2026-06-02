@@ -19,21 +19,97 @@
 #session-list-col { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
 #sessions-scroll { flex: 1; overflow-y: auto; }
 
-/* ── Detail panel (right, scrollable grid) ── */
-#detail-col {
-  flex: 1; min-width: 0;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-auto-rows: min-content;
-  gap: 10px;
-  overflow-y: auto;
-  padding: 0 2px 10px;
-  align-content: start;
-}
-/* Full-width grid items */
-#empty-detail, #cand-card, #controls-card, #events-card, #screen-card { grid-column: 1 / -1; }
-/* Camera + chat share a row */
-#exam-cam-card, #chat-card { grid-column: span 1; min-width: 0; }
+/* ── Detail panel ── */
+#detail-col { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Professional proctoring panel ── */
+#proctor-panel { display: none; flex-direction: column; height: 100%; background: #0d1117; overflow: hidden; border-radius: 8px; }
+
+/* Header bar */
+#pc-header { background: #161b22; border-bottom: 1px solid #30363d; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 12px; }
+#pc-cand-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+#pc-avatar { width: 34px; height: 34px; border-radius: 50%; background: #21262d; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+#pc-name { font-size: 14px; font-weight: 700; color: #e6edf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#pc-exam-sub { font-size: 11px; color: #8b949e; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.pc-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #3fb950; animation: livepulse 1.5s infinite; flex-shrink: 0; }
+@keyframes livepulse { 0%,100%{opacity:1}50%{opacity:.4} }
+#pc-live-label { font-size: 10px; font-weight: 700; color: #3fb950; letter-spacing: .08em; display: flex; align-items: center; gap: 4px; }
+
+/* Stats strip */
+#pc-stats { display: flex; gap: 0; flex-shrink: 0; }
+.pcs { padding: 6px 16px; border-left: 1px solid #21262d; text-align: center; }
+.pcs-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: #8b949e; font-weight: 700; display: block; margin-bottom: 2px; }
+.pcs-val { font-size: 18px; font-weight: 800; color: #e6edf3; line-height: 1; }
+.pcs-val.danger { color: #f85149; }
+.pcs-val.warn   { color: #f0883e; }
+
+/* Progress bar */
+#pc-progress { height: 3px; background: #21262d; flex-shrink: 0; }
+#pc-prog-fill { height: 100%; background: #3fb950; transition: width .5s; }
+
+/* Violation banner */
+#violation-banner { background: #3d1f1f; border-bottom: 1px solid #f85149; padding: 10px 16px; display: none; flex-shrink: 0; }
+
+/* Split video area */
+#pc-videos { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; gap: 2px; background: #010409; }
+.pc-video-pane { position: relative; background: #0d1117; overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 180px; }
+.pc-video-pane video { width: 100%; height: 100%; object-fit: contain; display: none; }
+.pc-video-pane video.live { display: block; }
+.pc-video-pane.cam-pane video { transform: scaleX(-1); }
+.pc-vpane-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: flex; align-items: center; gap: 5px; }
+.pc-vpane-expand { position: absolute; top: 8px; right: 8px; z-index: 2; background: rgba(0,0,0,.65); color: rgba(255,255,255,.8); font-size: 14px; padding: 2px 7px; border-radius: 4px; cursor: pointer; }
+.pc-vpane-ph { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #484f58; font-size: 12px; text-align: center; padding: 20px; }
+.pc-vpane-ph svg { width: 36px; height: 36px; opacity: .4; }
+.pc-vpane-ph button { margin-top: 8px; background: #21262d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.pc-vpane-ph button:hover { background: #30363d; }
+.pc-live-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; }
+.pc-live-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #3fb950; animation: livepulse 1.5s infinite; }
+
+/* Controls + chat bar */
+#pc-controls { background: #161b22; border-top: 1px solid #30363d; padding: 8px 12px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pc-ctrl-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; white-space: nowrap; transition: opacity .15s; }
+.pc-ctrl-btn:hover { opacity: .85; }
+.pcb-pause  { background: #2d3250; color: #79c0ff; }
+.pcb-resume { background: #0d2e1a; color: #3fb950; }
+.pcb-stop   { background: #3d1f1f; color: #f85149; }
+.pcb-mute   { background: #21262d; color: #8b949e; }
+#pc-chat-row { flex: 1; display: flex; gap: 6px; }
+#pc-chat-inp { flex: 1; background: #21262d; border: 1px solid #30363d; border-radius: 6px; color: #e6edf3; font-size: 12px; padding: 6px 10px; outline: none; }
+#pc-chat-inp:focus { border-color: #388bfd; }
+#pc-chat-inp::placeholder { color: #484f58; }
+#pc-chat-send { background: #388bfd; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
+#pc-chat-send:hover { background: #58a6ff; }
+
+/* Bottom: activity + chat messages */
+#pc-bottom { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #21262d; background: #0d1117; min-height: 0; max-height: 200px; flex-shrink: 0; }
+.pc-bottom-pane { display: flex; flex-direction: column; overflow: hidden; }
+.pc-bottom-pane:first-child { border-right: 1px solid #21262d; }
+.pc-pane-hdr { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #8b949e; padding: 6px 12px; border-bottom: 1px solid #21262d; flex-shrink: 0; }
+.pc-pane-body { flex: 1; overflow-y: auto; padding: 6px 10px; display: flex; flex-direction: column; gap: 3px; }
+
+/* Activity log items */
+.pc-event { display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; font-size: 11px; color: #8b949e; }
+.pc-event-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 3px; flex-shrink: 0; background: #30363d; }
+.pc-event-dot.flag { background: #f85149; }
+.pc-event-dot.warn { background: #f0883e; }
+.pc-event-dot.ok   { background: #3fb950; }
+.pc-event-text { flex: 1; color: #c9d1d9; }
+.pc-event-time { color: #484f58; font-size: 10px; white-space: nowrap; margin-top: 1px; }
+
+/* Chat messages */
+.pc-chat-msg { padding: 4px 8px; border-radius: 6px; font-size: 11px; max-width: 90%; line-height: 1.4; }
+.pc-chat-msg.proctor { background: #1f3361; color: #79c0ff; align-self: flex-end; }
+.pc-chat-msg.candidate { background: #21262d; color: #c9d1d9; align-self: flex-start; }
+
+/* Empty state */
+#empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; height: 100%; color: #484f58; font-size: 13px; text-align: center; background: #0d1117; border-radius: 8px; }
+#empty-detail svg { width: 48px; height: 48px; color: #21262d; }
+#empty-detail p { color: #484f58; }
+
+/* Fullscreen overlay for video expand */
+.vid-overlay { position: fixed; inset: 0; background: rgba(1,4,9,.95); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
+.vid-overlay video { max-width: 92vw; max-height: 88vh; border-radius: 8px; object-fit: contain; }
+.vid-overlay .vo-hint { color: rgba(255,255,255,.5); font-size: 12px; }
 
 /* ── Connection status ── */
 #conn-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
@@ -211,119 +287,116 @@
         </div>
       </div>
 
-      <!-- Detail panel — 2-column grid -->
+      <!-- Professional proctoring detail panel -->
       <div id="detail-col">
 
         <!-- Empty state -->
         <div id="empty-detail">
-          <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
-          <p>Select a session from the left to start monitoring</p>
+          <svg fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0H3"/></svg>
+          <p>Select a session from the left to begin monitoring</p>
         </div>
 
-        <!-- 1. Candidate info — full width -->
-        <div class="detail-card" id="cand-card" style="display:none">
-          <div class="detail-card-body">
-            <div class="cand-header">
-              <div class="cand-avatar">👤</div>
-              <div class="cand-info" style="flex:1;min-width:0">
-                <h2 id="det-name">—</h2>
-                <p id="det-email">—</p>
-                <p id="det-exam" style="margin-top:1px;font-weight:600;color:#333;font-size:11px"></p>
+        <!-- ── PROFESSIONAL PROCTORING PANEL ── -->
+        <div id="proctor-panel">
+
+          <!-- Header: candidate info + stats -->
+          <div id="pc-header">
+            <div id="pc-cand-info">
+              <div id="pc-avatar">👤</div>
+              <div style="min-width:0">
+                <div id="pc-name">—</div>
+                <div id="pc-exam-sub">—</div>
+              </div>
+              <div id="pc-live-label"><span class="pc-live-dot"></span>LIVE</div>
+            </div>
+            <div id="pc-stats">
+              <div class="pcs"><span class="pcs-lbl">Time Left</span><span class="pcs-val" id="det-time">—</span></div>
+              <div class="pcs"><span class="pcs-lbl">Question</span><span class="pcs-val" id="det-qprog">—</span></div>
+              <div class="pcs"><span class="pcs-lbl">Answered</span><span class="pcs-val" id="det-answered">—</span></div>
+              <div class="pcs"><span class="pcs-lbl">Switches</span><span class="pcs-val" id="det-tabs">—</span></div>
+              <div class="pcs"><span class="pcs-lbl">Flags</span><span class="pcs-val danger" id="det-flags">—</span></div>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div id="pc-progress"><div id="pc-prog-fill" style="width:0%"></div></div>
+
+          <!-- Violation banner -->
+          <div id="violation-banner">
+            <div style="font-weight:700;color:#f85149;font-size:12px;margin-bottom:6px">🚨 Violation #<span id="viol-num">1</span> — Candidate requesting resume</div>
+            <div id="viol-remark" style="font-size:11px;color:#ffa198;background:#161b22;border-radius:4px;padding:6px 8px;margin-bottom:8px;line-height:1.5;font-style:italic;max-height:55px;overflow-y:auto"></div>
+            <div style="display:flex;gap:7px">
+              <button class="pc-ctrl-btn pcb-resume" onclick="approveResume()" style="flex:1;justify-content:center">✅ Approve &amp; Resume</button>
+              <button class="pc-ctrl-btn pcb-stop"   onclick="stopExam()"      style="flex:1;justify-content:center">❌ Terminate</button>
+            </div>
+          </div>
+
+          <!-- ── Split video area: Webcam | Screen ── -->
+          <div id="pc-videos">
+            <!-- Webcam pane -->
+            <div class="pc-video-pane cam-pane" id="cam-pane" ondblclick="expandVideo('cam')" title="Double-click to expand">
+              <div class="pc-vpane-label">📷 Webcam <span id="cam-status-badge" class="pc-live-badge" style="display:none">Live</span></div>
+              <div class="pc-vpane-expand">⛶</div>
+              <video id="exam-cam-video" autoplay playsinline muted></video>
+              <div class="pc-vpane-ph" id="cam-placeholder">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+                <span id="cam-status">Connecting to camera…</span>
               </div>
             </div>
-            <div class="progress-bar-wrap">
-              <label><span>Progress</span><span id="det-qprog">—</span></label>
-              <div class="progress-bar-track"><div class="progress-bar-fill" id="prog-fill" style="width:0%"></div></div>
-            </div>
-            <div class="stat-row">
-              <div class="stat-chip"><div class="lbl">Time Left</div><div class="val" id="det-time">—</div></div>
-              <div class="stat-chip"><div class="lbl">Answered</div><div class="val" id="det-answered">—</div></div>
-              <div class="stat-chip"><div class="lbl">Tab Switches</div><div class="val" id="det-tabs">—</div></div>
-              <div class="stat-chip"><div class="lbl">Flags</div><div class="val" id="det-flags" style="color:#d13438">—</div></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 2. Proctor controls — full width -->
-        <div class="detail-card" id="controls-card">
-          <div class="detail-card-header"><h3>Proctor Controls</h3></div>
-          <div class="detail-card-body">
-            <!-- Violation resume request banner -->
-            <div id="violation-banner" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:7px;padding:10px 12px;margin-bottom:10px">
-              <div style="font-weight:700;color:#991b1b;font-size:12px;margin-bottom:5px">🚨 Violation #<span id="viol-num">1</span> — Candidate requesting resume</div>
-              <div id="viol-remark" style="font-size:11px;color:#7f1d1d;background:#fff;border-radius:4px;padding:6px 8px;margin-bottom:8px;line-height:1.5;font-style:italic;max-height:60px;overflow-y:auto"></div>
-              <div style="display:flex;gap:7px">
-                <button class="btn-control btn-resume" onclick="approveResume()" style="flex:1;justify-content:center">✅ Approve &amp; Resume</button>
-                <button class="btn-control btn-stop"   onclick="stopExam()"      style="flex:1;justify-content:center">❌ Terminate</button>
+            <!-- Screen share pane -->
+            <div class="pc-video-pane" id="screen-pane" ondblclick="expandVideo('screen')" title="Double-click to expand">
+              <div class="pc-vpane-label">🖥 Screen Share <span id="screen-live-badge" class="pc-live-badge" style="display:none">Live</span></div>
+              <div class="pc-vpane-expand">⛶</div>
+              <video id="screen-video" autoplay playsinline muted></video>
+              <div class="pc-vpane-ph" id="screen-placeholder">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                <span>Candidate's screen not shared yet</span>
+                <button id="btn-req-screen" onclick="event.stopPropagation();requestScreen()">▶ Request Screen Share</button>
               </div>
             </div>
-            <div class="controls-row">
-              <button class="btn-control btn-pause" id="btn-pause-exam" onclick="pauseExam()">⏸ Pause</button>
-              <button class="btn-control btn-stop"  onclick="stopExam()">⏹ Stop &amp; Submit</button>
-              <button class="btn-control btn-mute"  id="btn-mute-mic"  onclick="toggleMic()">🎤 Mute Mic</button>
-            </div>
           </div>
-        </div>
 
-        <!-- 3a. Live camera (half-width) -->
-        <div class="detail-card" id="exam-cam-card">
-          <div class="detail-card-header">
-            <h3>📷 Live Camera</h3>
-            <span id="cam-status" style="font-size:10px;color:#888">Connecting…</span>
-          </div>
-          <div class="detail-card-body" style="padding:10px">
-            <div class="cam-placeholder" id="cam-placeholder"><span>📷</span><span>Waiting…</span></div>
-            <video id="exam-cam-video" autoplay playsinline muted></video>
-          </div>
-        </div>
-
-        <!-- 3b. Chat (half-width) -->
-        <div class="detail-card" id="chat-card">
-          <div class="detail-card-header"><h3>💬 Chat</h3></div>
-          <div class="detail-card-body" style="padding:10px">
-            <div class="chat-messages" id="exam-chat-messages">
-              <div style="color:#bbb;font-size:11px;text-align:center;padding:8px 0">No messages yet</div>
-            </div>
-            <div class="chat-input-row">
-              <input class="chat-input" id="exam-chat-input" placeholder="Message candidate…" maxlength="200"
+          <!-- ── Controls + Chat bar ── -->
+          <div id="pc-controls">
+            <button class="pc-ctrl-btn pcb-pause" id="btn-pause-exam" onclick="pauseExam()">⏸ Pause</button>
+            <button class="pc-ctrl-btn pcb-stop"  onclick="stopExam()">⏹ Stop &amp; Submit</button>
+            <button class="pc-ctrl-btn pcb-mute"  id="btn-mute-mic"  onclick="toggleMic()">🎤 Mute Mic</button>
+            <button class="pc-ctrl-btn" style="background:#21262d;color:#e6edf3" id="btn-stop-screen" onclick="stopScreen()" style="display:none">⏹ Stop Screen</button>
+            <div id="pc-chat-row">
+              <input id="pc-chat-inp" id="exam-chat-input" placeholder="Message candidate…" maxlength="200"
                 onkeydown="if(event.key==='Enter')sendExamChat()">
-              <button class="btn btn-sm btn-primary" onclick="sendExamChat()">Send</button>
+              <button id="pc-chat-send" onclick="sendExamChat()">Send</button>
             </div>
           </div>
-        </div>
 
-        <!-- 4. Activity log — full width -->
-        <div class="detail-card" id="events-card" style="display:none">
-          <div class="detail-card-header"><h3>Activity Log</h3></div>
-          <div class="detail-card-body" style="padding:8px 12px">
-            <div class="events-list" id="events-list">
-              <div style="color:#bbb;font-size:12px;padding:8px 0;text-align:center">No events yet</div>
+          <!-- ── Activity log + Chat messages ── -->
+          <div id="pc-bottom">
+            <div class="pc-bottom-pane">
+              <div class="pc-pane-hdr">📋 Activity Log</div>
+              <div class="pc-pane-body" id="events-list">
+                <div class="pc-event" style="justify-content:center;color:#484f58">No events yet</div>
+              </div>
+            </div>
+            <div class="pc-bottom-pane">
+              <div class="pc-pane-hdr">💬 Chat Messages</div>
+              <div class="pc-pane-body" id="exam-chat-messages" style="flex-direction:column-reverse">
+                <div class="pc-event" style="justify-content:center;color:#484f58">No messages yet</div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Screen view card -->
-        <div class="detail-card" id="screen-card">
-          <div class="detail-card-header">
-            <h3>Screen View</h3>
-            <div class="screen-actions">
-              <button class="btn btn-sm btn-primary" id="btn-req-screen" onclick="requestScreen()">
-                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-                Request Screen View
-              </button>
-              <button class="btn btn-sm btn-danger" id="btn-stop-screen" onclick="stopScreen()">Stop</button>
-              <button class="btn btn-sm btn-ghost" id="btn-fullscreen" onclick="goFullscreen()" title="Fullscreen">⛶</button>
-            </div>
-          </div>
-          <div class="detail-card-body" style="padding:14px">
-            <div class="screen-placeholder" id="screen-placeholder">
-              <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-              <p>Click "Request Screen View" to ask the candidate to share their screen.<br>The candidate will see a prompt and must click "Share Screen" to begin.</p>
-            </div>
-            <video id="screen-video" autoplay playsinline muted></video>
-            <div id="screen-ts"></div>
-          </div>
-        </div>
+        </div><!-- /proctor-panel -->
+
+        <!-- Hidden elements kept for JS compat -->
+        <div id="cand-card" style="display:none"><div id="det-exam"></div></div>
+        <div id="prog-fill" style="display:none"></div>
+        <div id="controls-card" style="display:none"></div>
+        <div id="exam-cam-card" style="display:none"></div>
+        <div id="chat-card" style="display:none"></div>
+        <div id="events-card" style="display:none"></div>
+        <div id="screen-card" style="display:none"></div>
+        <div id="screen-ts" style="display:none"></div>
+        <div id="btn-fullscreen" style="display:none"></div>
 
       </div><!-- /detail-col -->
     </div><!-- /monitor-wrap -->
@@ -555,45 +628,51 @@ function selectSession(submissionId) {
 
 function showDetail(d) {
   document.getElementById('empty-detail').style.display = 'none';
-  document.getElementById('cand-card').style.display = '';
-  document.getElementById('events-card').style.display = '';
-  document.getElementById('screen-card').style.display = 'block';
-  document.getElementById('controls-card').style.display = 'block';
-  document.getElementById('exam-cam-card').style.display = 'block';
-  document.getElementById('chat-card').style.display = 'block';
+  document.getElementById('proctor-panel').style.display = 'flex';
 
-  document.getElementById('det-name').textContent = d.candidateName || '—';
-  document.getElementById('det-email').textContent = d.candidateEmail || '—';
-  document.getElementById('det-exam').textContent = d.examTitle || '';
+  // Header
+  document.getElementById('pc-name').textContent = d.candidateName || '—';
+  document.getElementById('pc-exam-sub').textContent = `${d.candidateEmail || ''} · ${d.examTitle || ''}`;
 
-  // Sync control state
+  // Control state
   _isPaused   = d.paused || false;
   _isMicMuted = d.micMuted || false;
   updateControlButtons();
-  // Show violation banner if there's a pending request
+
+  // Violation banner
   const vb = document.getElementById('violation-banner');
   if (vb) {
-    if (d.pendingViolation) {
-      showViolationRequest(d.pendingViolation.remark, d.pendingViolation.violationNum);
-    } else {
-      vb.style.display = 'none';
-    }
+    if (d.pendingViolation) showViolationRequest(d.pendingViolation.remark, d.pendingViolation.violationNum);
+    else vb.style.display = 'none';
   }
 
   applyDetailUpdate(d);
-  renderEvents(d.events || []);
+
+  // Render event log
+  const eventList = document.getElementById('events-list');
+  const events = d.events || [];
+  if (!events.length) {
+    eventList.innerHTML = '<div class="pc-event" style="justify-content:center;color:#484f58">No events yet</div>';
+  } else {
+    eventList.innerHTML = events.slice().reverse().map(e => eventHtml(e)).join('');
+  }
+  // Add "Exam started" if no events
+  if (!events.length) {
+    appendEvent({ event: 'exam_started', at: new Date().toISOString() });
+  }
 
   // Clear chat history for new session
   const chatBox = document.getElementById('exam-chat-messages');
-  if (chatBox) chatBox.innerHTML = '<div style="color:#bbb;font-size:12px;text-align:center">No messages yet</div>';
+  if (chatBox) chatBox.innerHTML = '<div class="pc-event" style="justify-content:center;color:#484f58">No messages yet</div>';
 }
 
 function applyDetailUpdate(d) {
   const qi = (d.questionIndex || 0) + 1;
   const qt = d.totalQuestions || 1;
   const pct = Math.round((qi / qt) * 100);
-  document.getElementById('det-qprog').textContent = `Q ${qi} of ${qt}`;
-  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('det-qprog').textContent = `Q ${qi} / ${qt}`;
+  const pf = document.getElementById('pc-prog-fill');
+  if (pf) pf.style.width = pct + '%';
 
   _detailTimeLeft = d.timeLeft || 0;
   renderDetailTime();
@@ -625,29 +704,48 @@ function renderEvents(events) {
 
 function appendEvent(ev) {
   const list = document.getElementById('events-list');
-  const empty = list.querySelector('[style*="color:#bbb"]');
-  if (empty) empty.remove();
+  if (!list) return;
+  // Remove "no events" placeholder
+  const ph = list.querySelector('.pc-event[style*="color:#484f58"]');
+  if (ph) ph.remove();
   const div = document.createElement('div');
   div.innerHTML = eventHtml(ev);
   list.insertBefore(div.firstChild, list.firstChild);
 }
 
+// Expand video pane to fullscreen overlay
+function expandVideo(type) {
+  const srcVid = document.getElementById(type === 'cam' ? 'exam-cam-video' : 'screen-video');
+  if (!srcVid || !srcVid.srcObject) return;
+  const overlay = document.createElement('div');
+  overlay.className = 'vid-overlay';
+  const bigVid = document.createElement('video');
+  bigVid.autoplay = true; bigVid.muted = true; bigVid.playsInline = true;
+  bigVid.srcObject = srcVid.srcObject;
+  bigVid.style.cssText = `max-width:92vw;max-height:88vh;border-radius:8px;${type==='cam'?'transform:scaleX(-1)':''}`;
+  const hint = document.createElement('div');
+  hint.className = 'vo-hint';
+  hint.textContent = 'Click anywhere to close';
+  overlay.appendChild(bigVid);
+  overlay.appendChild(hint);
+  overlay.onclick = () => { overlay.remove(); bigVid.srcObject = null; };
+  document.body.appendChild(overlay);
+}
+
 function eventHtml(e) {
-  const isFlag = /tab_switch|paste|fullscreen|copy|flag/i.test(e.event);
+  const isFlag = /tab_switch|paste|fullscreen|copy|flag|violation/i.test(e.event);
+  const isOk   = /start|resume|approved/i.test(e.event);
+  const dotCls = isFlag ? 'flag' : isOk ? 'ok' : 'normal';
+  const label  = e.event.replace(/_/g,' ');
   const t = e.at ? new Date(e.at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}) : '—';
-  return `<div class="event-item"><span class="event-dot ${isFlag?'flag':'normal'}"></span><span class="event-label">${esc(e.event.replace(/_/g,' '))}</span><span class="event-time">${t}</span></div>`;
+  return `<div class="pc-event"><span class="pc-event-dot ${dotCls}"></span><span class="pc-event-text">${esc(label)}</span><span class="pc-event-time">${t}</span></div>`;
 }
 
 function showEmptyDetail() {
   if (_screenActive || _adminPc) stopScreen();
   closeExamCam();
   document.getElementById('empty-detail').style.display = '';
-  document.getElementById('cand-card').style.display = 'none';
-  document.getElementById('events-card').style.display = 'none';
-  document.getElementById('screen-card').style.display = 'none';
-  document.getElementById('controls-card').style.display = 'none';
-  document.getElementById('exam-cam-card').style.display = 'none';
-  document.getElementById('chat-card').style.display = 'none';
+  document.getElementById('proctor-panel').style.display = 'none';
 }
 
 function requestScreen() {
@@ -665,16 +763,15 @@ function stopScreen() {
   _pendingAdminIce = [];
   _screenActive = false;
   const vid = document.getElementById('screen-video');
-  vid.srcObject = null;
-  vid.style.display = 'none';
-  document.getElementById('screen-placeholder').style.display = '';
-  document.getElementById('btn-req-screen').style.display = '';
-  document.getElementById('btn-stop-screen').style.display = 'none';
-  document.getElementById('btn-fullscreen').style.display = 'none';
-  document.getElementById('screen-ts').textContent = '';
-  const btn = document.getElementById('btn-req-screen');
-  btn.disabled = false;
-  btn.innerHTML = '<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> Request Screen View';
+  if (vid) { vid.srcObject = null; vid.classList.remove('live'); }
+  const ph  = document.getElementById('screen-placeholder');
+  if (ph)  ph.style.display = '';
+  const badge = document.getElementById('screen-live-badge');
+  if (badge) badge.style.display = 'none';
+  const stopBtn = document.getElementById('btn-stop-screen');
+  if (stopBtn) stopBtn.style.display = 'none';
+  const reqBtn = document.getElementById('btn-req-screen');
+  if (reqBtn) { reqBtn.disabled = false; reqBtn.textContent = '▶ Request Screen Share'; reqBtn.style.display = ''; }
 }
 
 async function handleRtcOffer(msg) {
@@ -687,12 +784,13 @@ async function handleRtcOffer(msg) {
   pc.ontrack = e => {
     const vid = document.getElementById('screen-video');
     vid.srcObject = e.streams[0];
-    vid.style.display = 'block';
+    vid.classList.add('live');
     document.getElementById('screen-placeholder').style.display = 'none';
     document.getElementById('btn-req-screen').style.display = 'none';
-    document.getElementById('btn-stop-screen').style.display = '';
-    document.getElementById('btn-fullscreen').style.display = '';
-    document.getElementById('screen-ts').textContent = 'Live — ' + new Date().toLocaleTimeString();
+    const stopBtn = document.getElementById('btn-stop-screen');
+    if (stopBtn) stopBtn.style.display = '';
+    const badge = document.getElementById('screen-live-badge');
+    if (badge) badge.style.display = '';
     _screenActive = true;
   };
 
@@ -1074,10 +1172,12 @@ async function handleExamCameraOffer(msg) {
     const vid = document.getElementById('exam-cam-video');
     if (vid) {
       vid.srcObject = e.streams[0];
-      vid.style.display = 'block';
+      vid.classList.add('live');
       document.getElementById('cam-placeholder').style.display = 'none';
-      document.getElementById('cam-status').textContent = 'Live';
-      document.getElementById('cam-status').style.color = '#16a34a';
+      const badge = document.getElementById('cam-status-badge');
+      if (badge) badge.style.display = '';
+      const statusEl = document.getElementById('cam-status');
+      if (statusEl) statusEl.style.display = 'none';
     }
   };
 
@@ -1126,14 +1226,13 @@ function updateControlButtons() {
   const pauseBtn = document.getElementById('btn-pause-exam');
   const muteBtn  = document.getElementById('btn-mute-mic');
   if (pauseBtn) {
-    pauseBtn.className = _isPaused ? 'btn-control btn-resume' : 'btn-control btn-pause';
-    pauseBtn.innerHTML = _isPaused ? '▶ Resume Exam' : '⏸ Pause Exam';
+    pauseBtn.className = `pc-ctrl-btn ${_isPaused ? 'pcb-resume' : 'pcb-pause'}`;
+    pauseBtn.innerHTML = _isPaused ? '▶ Resume' : '⏸ Pause';
     pauseBtn.onclick   = _isPaused ? resumeExam : pauseExam;
   }
   if (muteBtn) {
-    muteBtn.innerHTML = _isMicMuted ? '🎤 Unmute Mic' : '🎤 Mute Mic';
-    muteBtn.style.background = _isMicMuted ? '#fee2e2' : '';
-    muteBtn.style.color      = _isMicMuted ? '#991b1b' : '';
+    muteBtn.className = `pc-ctrl-btn ${_isMicMuted ? 'pcb-stop' : 'pcb-mute'}`;
+    muteBtn.innerHTML = _isMicMuted ? '🔇 Unmute Mic' : '🎤 Mute Mic';
   }
 }
 
@@ -1187,22 +1286,24 @@ function toggleMic() {
 
 // ── Exam chat ─────────────────────────────────────────────────────────────────
 function sendExamChat() {
-  const inp = document.getElementById('exam-chat-input');
+  // Support both old and new input IDs
+  const inp = document.getElementById('pc-chat-inp') || document.getElementById('exam-chat-input');
   if (!inp || !inp.value.trim()) return;
   const message = inp.value.trim();
-  send({ type: 'exam_chat', message });
-  appendExamChat('proctor', 'You', message);
-  inp.value = '';
+  if (send({ type: 'exam_chat', message })) {
+    appendExamChat('proctor', 'You', message);
+    inp.value = '';
+  }
 }
 
 function appendExamChat(who, name, message) {
   const box = document.getElementById('exam-chat-messages');
   if (!box) return;
-  const empty = box.querySelector('[style*="color:#bbb"]');
-  if (empty) empty.remove();
+  const ph = box.querySelector('.pc-event');
+  if (ph && ph.style.color === 'rgb(72, 79, 88)') ph.remove();
   const div = document.createElement('div');
-  div.className = `chat-msg ${who}`;
-  div.innerHTML = `<div style="font-size:10px;opacity:.7;margin-bottom:3px;font-weight:700">${esc(name)}</div>${esc(message)}`;
+  div.className = `pc-chat-msg ${who}`;
+  div.innerHTML = `<div style="font-size:9px;opacity:.6;margin-bottom:2px;font-weight:700">${esc(name)}</div>${esc(message)}`;
   box.appendChild(div);
   box.scrollTop = box.scrollHeight;
 }
