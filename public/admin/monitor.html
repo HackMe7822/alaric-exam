@@ -207,17 +207,36 @@
 .btn-mute   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 
 /* Waiting room */
-.waiting-card { display: flex; align-items: center; gap: 12px; background: #f9fafb; border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; }
-.waiting-avatar { width: 34px; height: 34px; border-radius: 50%; background: #fff3cd; display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; }
+.waiting-card { display: flex; align-items: center; gap: 10px; background: #fff; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+.waiting-avatar { width: 32px; height: 32px; border-radius: 50%; background: #e8f4fd; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
 .waiting-info { flex: 1; min-width: 0; }
 .waiting-name { font-size: 13px; font-weight: 700; color: #1b1a19; }
 .waiting-sub { font-size: 11px; color: #888; }
-.waiting-actions { display: flex; gap: 8px; flex-shrink: 0; }
-.waiting-camera-wrap { width: 90px; background: #111; border-radius: 6px; overflow: hidden; flex-shrink: 0; cursor: pointer; position: relative; }
-.waiting-camera-wrap video { width: 100%; height: 68px; object-fit: cover; display: block; transform: scaleX(-1); }
-.waiting-camera-wrap::after { content: '⛶'; position: absolute; bottom: 3px; right: 4px; font-size: 11px; color: rgba(255,255,255,.7); pointer-events: none; }
-.waiting-detail { display: none; flex-direction: column; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.waiting-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.waiting-camera-wrap { width: 80px; background: #111; border-radius: 5px; overflow: hidden; flex-shrink: 0; cursor: pointer; position: relative; }
+.waiting-camera-wrap video { width: 100%; height: 60px; object-fit: cover; display: block; transform: scaleX(-1); }
+.waiting-camera-wrap::after { content: '⛶'; position: absolute; bottom: 2px; right: 3px; font-size: 10px; color: rgba(255,255,255,.7); pointer-events: none; }
+.waiting-detail { display: none; flex-direction: column; }
 .waiting-detail.open { display: flex; }
+
+/* ID Verification panel — compact grid + sticky action buttons */
+.ver-panel { display: none; flex-direction: column; background: #f8fafc; }
+.ver-panel-hdr { display: flex; align-items: center; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); }
+.ver-panel-hdr span { font-size: 10px; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: .06em; }
+.ver-photos-scroll { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; max-height: 220px; overflow-y: auto; background: #f8fafc; }
+.ver-photo-item { cursor: pointer; }
+.ver-photo-item .vp-lbl { font-size: 9px; font-weight: 700; color: var(--gray); display: block; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ver-photo-item img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); background: #e9ecef; transition: opacity .15s; }
+.ver-photo-item img:hover { opacity: .85; }
+.ver-photo-item img.missing { opacity: .3; filter: grayscale(1); }
+.ver-actions { display: flex; border-top: 1px solid var(--border); }
+.ver-btn { flex: 1; padding: 10px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.ver-btn:hover { opacity: .9; }
+.ver-btn.approve { background: #22c55e; color: #fff; }
+.ver-btn.reject  { background: #ef4444; color: #fff; border-left: 1px solid rgba(255,255,255,.2); }
+
+/* Chat */
+.wdetail-chat { padding: 8px 14px; background: #fff; border-top: 1px solid var(--border); }
 .proctor-chat-area { background: #f0f4f8; border-radius: 6px; padding: 8px; max-height: 90px; overflow-y: auto; font-size: 12px; margin-bottom: 6px; }
 .pcm { padding: 3px 0; }
 .pcm.candidate { color: #333; }
@@ -867,41 +886,45 @@ function renderWaitingList(candidates) {
 
     const div = document.createElement('div');
     div.id = `wcard-${c.token}`;
+    div.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px';
     div.innerHTML = `
       <div class="waiting-card">
         <div class="waiting-avatar">👤</div>
         <div class="waiting-info">
           <div class="waiting-name">${esc(c.candidateName)}</div>
-          <div class="waiting-sub">${esc(c.examTitle || 'Exam')} · waiting ${waitStr}</div>
+          <div class="waiting-sub">${esc(c.examTitle || 'Exam')} · ⏱ ${waitStr}</div>
         </div>
-        ${joined
-          ? `<div class="waiting-camera-wrap" id="camwrap-${c.token}"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>`
-          : ''}
+        ${joined ? `<div class="waiting-camera-wrap" id="camwrap-${c.token}"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>` : ''}
         <div class="waiting-actions">
           ${!joined
             ? `<button class="btn btn-sm btn-primary" onclick="joinCandidate('${c.token}')">👁 Join & Verify</button>`
-            : `<button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="sendWaitingChat('${c.token}')">💬 Chat</button>
-               <button class="btn btn-sm btn-primary" onclick="startExam('${c.token}')">▶ Start Exam</button>
-               <button class="btn btn-sm btn-danger" onclick="rejectCandidate('${c.token}')">✕ Reject</button>`}
+            : `<button class="btn btn-sm" style="background:#0ea5e9;color:#fff;font-weight:600" onclick="startExam('${c.token}')">▶ Start Exam</button>
+               <button class="btn btn-sm btn-danger" onclick="rejectCandidate('${c.token}')">✕</button>`}
         </div>
       </div>
       <div class="waiting-detail ${joined ? 'open' : ''}" id="wdetail-${c.token}">
-        <!-- ID Verification photos panel -->
-        <div id="verpanel-${c.token}" style="display:none">
-          <div style="font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">ID Verification Photos</div>
-          <div id="verphotos-${c.token}" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:10px"></div>
-          <div style="display:flex;gap:8px;margin-bottom:10px">
-            <button class="btn btn-sm" style="background:#22c55e;color:#fff;font-weight:700;flex:1" onclick="approveVerification('${c.token}')">✅ Approve ID</button>
-            <button class="btn btn-sm btn-danger" style="flex:1" onclick="rejectVerification('${c.token}')">❌ Reject ID</button>
+        <!-- ID Verification panel: header + scrollable photos + sticky action buttons -->
+        <div class="ver-panel" id="verpanel-${c.token}">
+          <div class="ver-panel-hdr">
+            <span>🪪 ID Verification Photos</span>
+            <span id="verpanel-status-${c.token}" style="font-size:11px;color:var(--gray)">Loading…</span>
+          </div>
+          <div class="ver-photos-scroll" id="verphotos-${c.token}"></div>
+          <div class="ver-actions" id="ver-action-row-${c.token}">
+            <button class="ver-btn approve" onclick="approveVerification('${c.token}')">✅ Approve ID</button>
+            <button class="ver-btn reject"  onclick="rejectVerification('${c.token}')">❌ Reject ID</button>
           </div>
         </div>
-        <div class="proctor-chat-area" id="wchat-${c.token}">
-          <div class="pcm system">Chat with candidate</div>
-        </div>
-        <div class="proctor-chat-input-row">
-          <input class="proctor-chat-input" id="wchat-input-${c.token}" placeholder="Type a message to candidate…" maxlength="200"
-            onkeydown="if(event.key==='Enter')sendWaitingChatMsg('${c.token}')">
-          <button class="btn btn-sm btn-primary" onclick="sendWaitingChatMsg('${c.token}')">Send</button>
+        <!-- Chat -->
+        <div class="wdetail-chat">
+          <div class="proctor-chat-area" id="wchat-${c.token}">
+            <div class="pcm system">Chat with candidate</div>
+          </div>
+          <div class="proctor-chat-input-row">
+            <input class="proctor-chat-input" id="wchat-input-${c.token}" placeholder="Message candidate…" maxlength="200"
+              onkeydown="if(event.key==='Enter')sendWaitingChatMsg('${c.token}')">
+            <button class="btn btn-sm btn-primary" onclick="sendWaitingChatMsg('${c.token}')">Send</button>
+          </div>
         </div>
       </div>
     `;
@@ -1002,21 +1025,25 @@ async function pollVerifyStatus(token) {
 }
 
 function renderVerifyPhotos(token, sessionCode) {
-  const panel   = document.getElementById(`verpanel-${token}`);
-  const grid    = document.getElementById(`verphotos-${token}`);
+  const panel  = document.getElementById(`verpanel-${token}`);
+  const grid   = document.getElementById(`verphotos-${token}`);
+  const status = document.getElementById(`verpanel-status-${token}`);
   if (!panel || !grid) return;
-  panel.style.display = '';
+  panel.style.display = 'flex';
+
+  const totalRequired = _VERIFY_FIELDS.filter(f => f.field !== 'photo_id_back').length;
+  let loaded = 0;
 
   grid.innerHTML = _VERIFY_FIELDS.map(({ field, label }) => `
-    <div style="cursor:pointer" onclick="enlargePhoto('/api/verify/photo/${sessionCode}/${field}','${label}')" title="${label}">
-      <div style="font-size:9px;color:var(--gray);font-weight:700;margin-bottom:3px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap">${label}</div>
+    <div class="ver-photo-item" onclick="enlargePhoto('/api/verify/photo/${sessionCode}/${field}','${label}')" title="Click to enlarge · ${label}">
+      <span class="vp-lbl">${label}</span>
       <img src="/api/verify/photo/${sessionCode}/${field}"
-        onerror="this.parentElement.style.opacity='.3'"
-        style="width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:5px;border:1px solid var(--border);background:#f8f9fa">
+        onload="this.classList.remove('missing')"
+        onerror="this.classList.add('missing');this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22/>'">
     </div>
   `).join('');
 
-  // Store session code on the candidate object for approve/reject
+  if (status) status.textContent = `${_VERIFY_FIELDS.length} photos`;
   if (_waitingCandidates[token]) _waitingCandidates[token].verifyCode = sessionCode;
 }
 
@@ -1055,10 +1082,10 @@ async function approveVerification(token) {
   try {
     await fetch(`/api/verify/admin/${code}/approve`, { method: 'POST', credentials: 'include' });
     toast(`✅ ID approved for ${esc(_waitingCandidates[token]?.candidateName || 'candidate')}`);
-    // Update panel
-    const panel = document.getElementById(`verpanel-${token}`);
-    if (panel) panel.querySelector('div[style*="gap:8px"]').innerHTML =
-      `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;color:#15803d;width:100%">✅ ID Verification Approved</div>`;
+    // Replace action buttons with approved banner
+    const actionRow = document.getElementById(`ver-action-row-${token}`);
+    if (actionRow) actionRow.innerHTML =
+      `<div style="flex:1;padding:10px;background:#f0fdf4;color:#15803d;font-size:13px;font-weight:700;text-align:center">✅ ID Verification Approved</div>`;
   } catch(e) { toast('Approve failed', 'error'); }
 }
 
