@@ -52,13 +52,16 @@
 
 /* Split video area */
 #pc-videos { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; gap: 2px; background: #010409; }
-.pc-video-pane { position: relative; background: #0d1117; overflow: hidden; cursor: pointer; display: flex; align-items: center; justify-content: center; min-height: 180px; }
-.pc-video-pane video { width: 100%; height: 100%; object-fit: contain; display: none; }
+.pc-video-pane { position: relative; background: #0d1117; overflow: hidden; cursor: pointer; min-height: 200px; }
+/* Absolute positioning guarantees video fills the pane regardless of flex/grid height */
+.pc-video-pane video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
 .pc-video-pane video.live { display: block; }
-.pc-video-pane.cam-pane video { transform: scaleX(-1); }
+.pc-video-pane.cam-pane video { transform: scaleX(-1); object-fit: cover; }
+/* Screen share uses contain so full desktop is visible without cropping */
+#screen-pane video { object-fit: contain; background: #000; }
 .pc-vpane-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: flex; align-items: center; gap: 5px; }
 .pc-vpane-expand { position: absolute; top: 8px; right: 8px; z-index: 2; background: rgba(0,0,0,.65); color: rgba(255,255,255,.8); font-size: 14px; padding: 2px 7px; border-radius: 4px; cursor: pointer; }
-.pc-vpane-ph { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #484f58; font-size: 12px; text-align: center; padding: 20px; }
+.pc-vpane-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #484f58; font-size: 12px; text-align: center; padding: 20px; }
 .pc-vpane-ph svg { width: 36px; height: 36px; opacity: .4; }
 .pc-vpane-ph button { margin-top: 8px; background: #21262d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
 .pc-vpane-ph button:hover { background: #30363d; }
@@ -645,6 +648,13 @@ function selectSession(submissionId) {
   _selectedId = submissionId;
   document.querySelectorAll('.session-card').forEach(c => c.classList.toggle('active', c.dataset.id === String(submissionId)));
   send({ type: 'subscribe', submissionId });
+  // Auto-request screen share — in Electron kiosk this is auto-approved (no candidate prompt).
+  // Wait 1.5s so the WebRTC camera connection establishes first.
+  setTimeout(() => {
+    if (_selectedId === submissionId && !_screenActive) {
+      send({ type: 'request_screen' });
+    }
+  }, 1500);
 }
 
 function showDetail(d) {
