@@ -941,33 +941,37 @@ function startMultiMonitorCheck() {
     const count = await getDisplayCount();
     if (count <= 1) return false; // single display — nothing to do
 
-    // Multiple displays detected
+    // Multiple displays detected — ALWAYS pause exam immediately, proctor must approve.
+    // Auto-fix runs in parallel but the exam stays paused regardless of outcome.
     overlay.classList.add('active');
     if (msgEl) msgEl.innerHTML = 'Extra display detected — <strong>auto-disconnecting…</strong>';
     if (hintEl) hintEl.style.display = 'none';
     if (logEvent) postEvent('multi_monitor');
 
-    // Attempt auto-fix
+    // Pause NOW, before auto-fix attempt
+    if (state.examStarted && !state.submitted && !_examPaused) {
+      state.tabSwitchCount++;
+      const remarkEl = document.getElementById('violation-remark');
+      if (remarkEl) remarkEl.value = 'An extra monitor was connected to my machine.';
+      triggerTabViolation();
+    }
+
+    // Try auto-fix — only affects the overlay message, NOT the paused state
     const fixed = await autoFixMultiMonitor();
     if (fixed) {
       await new Promise(r => setTimeout(r, 1200));
       const countAfter = await getDisplayCount();
       if (countAfter <= 1) {
+        // Display clean — hide the multi-monitor overlay; violation overlay handles resume
         overlay.classList.remove('active');
-        showToast('Extra display auto-disconnected — single monitor confirmed.', 'success', 4000);
+        if (msgEl) msgEl.textContent = 'Extra display disconnected. Waiting for proctor to resume.';
         return false;
       }
     }
 
-    // Auto-fix failed — pause exam, require proctor approval (same as tab switch)
+    // Auto-fix failed — show manual hint alongside violation overlay
     if (msgEl) msgEl.textContent = 'Disconnect the extra display, then wait for your proctor to resume.';
     if (hintEl) hintEl.style.display = '';
-    if (state.examStarted && !state.submitted && !_examPaused) {
-      state.tabSwitchCount++;
-      const remarkEl = document.getElementById('violation-remark');
-      if (remarkEl) remarkEl.value = 'Extra monitor was connected to my machine.';
-      triggerTabViolation();
-    }
     return true;
   };
 
@@ -2559,7 +2563,18 @@ async function offerExamCamera() {
     if (candidate) wsSend({ type: 'exam_camera_ice', submissionId: state.submissionId, candidate, dir: 'exam_to_admin' });
   };
   pc.onconnectionstatechange = () => {
-    if (pc.connectionState === 'failed') { pc.close(); if (_examCamPc === pc) _examCamPc = null; }
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      try { pc.close(); } catch {}
+      if (_examCamPc === pc) {
+        _examCamPc = null;
+        // Auto-restart camera offer after 2s — covers display reconfiguration, network hiccup, etc.
+        if (state.examStarted && !state.submitted) {
+          setTimeout(() => {
+            if (!_examCamPc && state.examStarted && !state.submitted) offerExamCamera();
+          }, 2000);
+        }
+      }
+    }
   };
 
   try {
