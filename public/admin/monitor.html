@@ -673,13 +673,13 @@ function connect() {
 
 function handleMsg(msg) {
   if (msg.type === 'auth_ok') {
-    // Restore completed sessions from server (survives admin WS reconnect / page reload)
     (msg.completed || []).forEach(s => { _completedSessions[s.submissionId] = s; });
     renderSessions(msg.sessions);
     renderWaitingList(msg.waitingCandidates || []);
+    // Bridge to admin-shared sidebar badge (monitor has its own WS so shared skips it)
+    if (window._handleWaitingList) window._handleWaitingList(msg.waitingCandidates || []);
   }
   if (msg.type === 'sessions_list') {
-    // Merge any server-side completed sessions into local map
     (msg.completed || []).forEach(s => { _completedSessions[s.submissionId] = s; });
     renderSessions(msg.sessions);
     if (_selectedId) {

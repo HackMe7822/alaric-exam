@@ -289,12 +289,142 @@
     document.getElementById('_sc-overlay').classList.add('sc-show');
   };
 
+  /* ── LIVE WS NOTIFICATIONS (works on every admin page) ─────────────────── */
+  let _liveWs       = null;
+  let _liveWsTimer  = null;
+  let _knownWait    = new Set();   // tokens already seen — avoid dupe toasts
+  let _monitorBadge = null;        // injected badge on sidebar Live Monitor link
+
+  function _getOrCreateMonitorBadge() {
+    if (_monitorBadge && _monitorBadge.isConnected) return _monitorBadge;
+    // Find the Live Monitor nav link and attach a badge
+    const link = Array.from(document.querySelectorAll('#sidebar nav a'))
+      .find(a => a.href && a.href.includes('/admin/monitor'));
+    if (!link) return null;
+    let b = link.querySelector('.sb-monitor-badge');
+    if (!b) {
+      b = document.createElement('span');
+      b.className = 'sb-monitor-badge';
+      b.style.cssText = 'display:none;background:#ef4444;color:#fff;font-size:10px;font-weight:700;border-radius:10px;padding:1px 6px;margin-left:4px;vertical-align:middle';
+      link.appendChild(b);
+    }
+    _monitorBadge = b;
+    return b;
+  }
+
+  function _setMonitorBadge(n) {
+    const b = _getOrCreateMonitorBadge();
+    if (!b) return;
+    if (n > 0) { b.textContent = n > 99 ? '99+' : n; b.style.display = ''; }
+    else b.style.display = 'none';
+  }
+
+  function _handleWaitingList(candidates) {
+    const newArrivals = candidates.filter(c => !_knownWait.has(c.token));
+    // Reset known set to current list
+    _knownWait = new Set(candidates.map(c => c.token));
+
+    newArrivals.forEach(c => {
+      showAdminToast(
+        `🔐 ${c.candidateName || 'Candidate'} is waiting`,
+        `${c.examTitle || 'Exam'} — identity verification required`,
+        'access_request',
+        'Open Live Monitor →',
+        '/admin/monitor'
+      );
+      // Browser notification (if granted)
+      if (window.Notification && Notification.permission === 'granted') {
+        new Notification('Candidate Waiting', {
+          body: `${c.candidateName || 'Candidate'} is waiting for ID verification`,
+          icon: '/favicon.ico',
+        });
+      }
+    });
+
+    _setMonitorBadge(candidates.length);
+  }
+
+  function _handleSessionsList(sessions) {
+    const active = (sessions || []).filter(s => !s.disconnected).length;
+    const waiting = _knownWait.size;
+    _setMonitorBadge(waiting + active);
+  }
+
+  function _connectLiveWs() {
+    if (_liveWs && _liveWs.readyState < 2) return;
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws`);
+    _liveWs = ws;
+
+    ws.onopen = () => { clearTimeout(_liveWsTimer); };
+
+    ws.onmessage = e => {
+      let msg; try { msg = JSON.parse(e.data); } catch { return; }
+
+      // auth_ok includes the initial waiting room state
+      if (msg.type === 'auth_ok') {
+        _handleWaitingList(msg.waitingCandidates || []);
+        _handleSessionsList(msg.sessions || []);
+      }
+      if (msg.type === 'waiting_list') {
+        _handleWaitingList(msg.candidates || []);
+      }
+      if (msg.type === 'sessions_list') {
+        _handleSessionsList(msg.sessions || []);
+      }
+      // A new candidate entered the waiting room
+      if (msg.type === 'proctor_join_ok') {
+        // Proctor already joined — no extra toast needed
+      }
+    };
+
+    ws.onclose = () => {
+      _liveWsTimer = setTimeout(_connectLiveWs, 5000);
+    };
+    ws.onerror = () => {};
+  }
+
+  // Expose for live monitor bridge (monitor has its own WS but needs the badge)
+  window._handleWaitingList = _handleWaitingList;
+
+  /* ── REQUEST BROWSER NOTIFICATION PERMISSION ── */
+  function _requestNotifPermission() {
+    if (window.Notification && Notification.permission === 'default') {
+      // Only ask if user interacts — use a subtle toast first
+      setTimeout(() => {
+        showAdminToast(
+          'Enable desktop notifications?',
+          'Get alerts when candidates are waiting for verification',
+          'default',
+          'Allow →',
+          '#'
+        );
+        // Override the action click to request permission
+        const stack = document.getElementById('admin-toast-stack');
+        if (stack) {
+          const btn = stack.querySelector('.admin-toast-action');
+          if (btn) btn.onclick = (e) => {
+            e.preventDefault();
+            Notification.requestPermission();
+            btn.closest('.admin-toast')?.remove();
+          };
+        }
+      }, 3000);
+    }
+  }
+
   /* ── INIT ── */
   function init() {
     injectBell();
     applyBranding();
     pollNotifications();
-    setInterval(pollNotifications, 15000);
+    setInterval(pollNotifications, 30000);
+    // Real-time WS — fires on every admin page except live monitor
+    // (monitor has its own WS; skip to avoid duplicate connections)
+    if (!location.pathname.startsWith('/admin/monitor')) {
+      _connectLiveWs();
+      _requestNotifPermission();
+    }
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
