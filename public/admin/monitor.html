@@ -213,44 +213,87 @@
 .btn-stop   { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
 .btn-mute   { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
 
-/* Waiting room */
-.waiting-card { display: flex; align-items: center; gap: 10px; background: #fff; padding: 10px 14px; border-bottom: 1px solid var(--border); }
-.waiting-avatar { width: 32px; height: 32px; border-radius: 50%; background: #e8f4fd; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
-.waiting-info { flex: 1; min-width: 0; }
-.waiting-name { font-size: 13px; font-weight: 700; color: #1b1a19; }
-.waiting-sub { font-size: 11px; color: #888; }
-.waiting-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.waiting-camera-wrap { width: 80px; background: #111; border-radius: 5px; overflow: hidden; flex-shrink: 0; cursor: pointer; position: relative; }
-.waiting-camera-wrap video { width: 100%; height: 60px; object-fit: cover; display: block; transform: scaleX(-1); }
-.waiting-camera-wrap::after { content: '⛶'; position: absolute; bottom: 2px; right: 3px; font-size: 10px; color: rgba(255,255,255,.7); pointer-events: none; }
-.waiting-detail { display: none; flex-direction: column; }
-.waiting-detail.open { display: flex; }
+/* ── Waiting Room ─────────────────────────────────────────────────────────── */
+.wr-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 10px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 
-/* ID Verification panel — compact grid + sticky action buttons */
-.ver-panel { display: none; flex-direction: column; background: #f8fafc; }
-.ver-panel-hdr { display: flex; align-items: center; justify-content: space-between; padding: 7px 14px; border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); }
-.ver-panel-hdr span { font-size: 10px; font-weight: 700; color: var(--gray); text-transform: uppercase; letter-spacing: .06em; }
-.ver-photos-scroll { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 8px; max-height: 220px; overflow-y: auto; background: #f8fafc; }
-.ver-photo-item { cursor: pointer; }
-.ver-photo-item .vp-lbl { font-size: 9px; font-weight: 700; color: var(--gray); display: block; margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ver-photo-item img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); background: #e9ecef; transition: opacity .15s; }
-.ver-photo-item img:hover { opacity: .85; }
-.ver-photo-item img.missing { opacity: .3; filter: grayscale(1); }
-.ver-actions { display: flex; border-top: 1px solid var(--border); }
-.ver-btn { flex: 1; padding: 10px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; transition: opacity .15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
-.ver-btn:hover { opacity: .9; }
-.ver-btn.approve { background: #22c55e; color: #fff; }
-.ver-btn.reject  { background: #ef4444; color: #fff; border-left: 1px solid rgba(255,255,255,.2); }
+/* Dark candidate header */
+.wr-header { display: flex; align-items: center; gap: 12px; background: #1e293b; padding: 12px 16px; }
+.wr-avatar { width: 38px; height: 38px; border-radius: 50%; background: #334155; border: 2px solid #475569; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.wr-info { flex: 1; min-width: 0; }
+.wr-name { font-size: 14px; font-weight: 700; color: #f1f5f9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wr-sub  { font-size: 11px; color: #94a3b8; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wr-wait { font-size: 10px; font-weight: 700; color: #fbbf24; background: rgba(251,191,36,.12); border: 1px solid rgba(251,191,36,.28); border-radius: 12px; padding: 3px 9px; flex-shrink: 0; letter-spacing: .03em; }
+.wr-hdr-actions { display: flex; gap: 7px; flex-shrink: 0; }
+.wr-btn { display: inline-flex; align-items: center; gap: 5px; padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; transition: filter .15s, opacity .15s; white-space: nowrap; }
+.wr-btn:hover { filter: brightness(1.08); }
+.wr-btn-join   { background: #3b82f6; color: #fff; }
+.wr-btn-start  { background: #22c55e; color: #fff; }
+.wr-btn-reject { background: rgba(239,68,68,.14); color: #ef4444; border: 1px solid rgba(239,68,68,.3); }
 
-/* Chat */
-.wdetail-chat { padding: 8px 14px; background: #fff; border-top: 1px solid var(--border); }
-.proctor-chat-area { background: #f0f4f8; border-radius: 6px; padding: 8px; max-height: 90px; overflow-y: auto; font-size: 12px; margin-bottom: 6px; }
-.pcm { padding: 3px 0; }
-.pcm.candidate { color: #333; }
-.pcm.proctor { color: #0078d4; font-weight: 600; }
-.pcm.system { color: #888; font-style: italic; }
-.proctor-chat-input-row { display: flex; gap: 6px; }
-.proctor-chat-input { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; }
+/* Two-column body */
+.waiting-detail { display: none; }
+.waiting-detail.open { display: grid; grid-template-columns: 1fr 260px; }
+.wr-left  { padding: 14px 16px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+.wr-right { display: flex; flex-direction: column; background: #f8fafc; }
+
+/* Photo grid */
+.wr-sec-hdr { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #64748b; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.wr-photo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.wr-photo-item { cursor: pointer; }
+.wr-photo-item .vp-lbl { font-size: 9px; font-weight: 700; color: #64748b; display: block; margin-bottom: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-photo-item img { width: 100%; aspect-ratio: 4/3; object-fit: cover; border-radius: 5px; border: 1.5px solid #e2e8f0; background: #f1f5f9; transition: all .15s; display: block; }
+.wr-photo-item img:hover { transform: scale(1.04); border-color: #94a3b8; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.wr-photo-item img.missing { opacity: .25; filter: grayscale(1); }
+
+/* Verdict buttons */
+.wr-verdict { display: flex; gap: 8px; padding-top: 4px; }
+.wr-vbtn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 700; border: none; cursor: pointer; transition: filter .15s; }
+.wr-vbtn:hover { filter: brightness(.96); }
+.wr-vbtn.approve { background: #f0fdf4; color: #15803d; border: 1.5px solid #86efac; }
+.wr-vbtn.reject  { background: #fef2f2; color: #dc2626; border: 1.5px solid #fca5a5; }
+
+/* Camera pane */
+.wr-cam-wrap { background: #111827; position: relative; cursor: pointer; overflow: hidden; display: flex; align-items: center; justify-content: center; min-height: 140px; }
+.wr-cam-wrap video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+.wr-cam-ph { display: flex; flex-direction: column; align-items: center; gap: 6px; color: #6b7280; font-size: 11px; padding: 20px; text-align: center; }
+.wr-cam-label { position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.65); color: #fff; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 10px; display: flex; align-items: center; gap: 5px; }
+.wr-cam-expand { position: absolute; top: 7px; right: 7px; background: rgba(0,0,0,.55); color: rgba(255,255,255,.85); font-size: 13px; padding: 3px 7px; border-radius: 5px; cursor: pointer; }
+
+/* Chat pane */
+.wr-chat { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-top: 1px solid var(--border); min-height: 0; }
+.wr-chat-msgs { flex: 1; overflow-y: auto; max-height: 110px; display: flex; flex-direction: column; gap: 3px; }
+.wr-chat-msg { font-size: 11px; padding: 4px 0; line-height: 1.4; }
+.wr-chat-msg.candidate { color: #1e293b; }
+.wr-chat-msg.proctor   { color: #1d4ed8; font-weight: 600; }
+.wr-chat-msg.system    { color: #94a3b8; font-style: italic; }
+.wr-chat-row { display: flex; gap: 6px; }
+.wr-chat-inp { flex: 1; border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 12px; background: #fff; outline: none; transition: border-color .15s; }
+.wr-chat-inp:focus { border-color: #3b82f6; }
+
+/* Legacy aliases kept for any remaining JS refs */
+.ver-panel { display: none; flex-direction: column; }
+.ver-panel.open { display: flex; }
+.ver-photos-scroll { display: grid; grid-template-columns: repeat(4,1fr); gap:4px; }
+.ver-photo-item { cursor:pointer; }
+.ver-photo-item .vp-lbl { font-size:9px; font-weight:700; color:#666; display:block; margin-bottom:2px; }
+.ver-photo-item img { width:100%; aspect-ratio:4/3; object-fit:cover; border-radius:4px; border:1px solid var(--border); }
+.ver-photo-item img.missing { opacity:.3; filter:grayscale(1); }
+.ver-actions { display:flex; gap:8px; padding:10px 14px; }
+.ver-btn { flex:1; padding:9px; border:none; font-size:13px; font-weight:700; cursor:pointer; border-radius:8px; display:flex; align-items:center; justify-content:center; gap:6px; }
+.ver-btn.approve { background:#f0fdf4; color:#15803d; border:1.5px solid #86efac; }
+.ver-btn.reject  { background:#fef2f2; color:#dc2626; border:1.5px solid #fca5a5; }
+.waiting-card { display:flex; align-items:center; gap:10px; padding:10px 14px; }
+.waiting-camera-wrap { width:80px; background:#111; border-radius:5px; overflow:hidden; cursor:pointer; position:relative; }
+.waiting-camera-wrap video { width:100%; height:60px; object-fit:cover; display:block; transform:scaleX(-1); }
+.waiting-actions { display:flex; gap:6px; flex-shrink:0; }
+.wdetail-chat { padding:8px 14px; }
+.proctor-chat-area { background:#f0f4f8; border-radius:6px; padding:8px; max-height:90px; overflow-y:auto; font-size:12px; margin-bottom:6px; }
+.pcm { padding:3px 0; font-size:11px; }
+.pcm.candidate { color:#333; }
+.pcm.proctor { color:#0078d4; font-weight:600; }
+.pcm.system { color:#888; font-style:italic; }
+.proctor-chat-input-row { display:flex; gap:6px; }
+.proctor-chat-input { flex:1; border:1px solid var(--border); border-radius:6px; padding:6px 10px; font-size:12px; }
 </style>
 </head>
 <body>
@@ -291,15 +334,16 @@
   <div id="page">
 
     <!-- ── Waiting Room banner (Secure Browser candidates) ── -->
-    <div id="waiting-room-panel" class="card" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-        <h3 style="margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px">
-          🔐 Secure Browser — Waiting Room
-          <span id="waiting-count" style="background:#f59e0b;color:#000;font-size:11px;font-weight:800;border-radius:10px;padding:1px 7px">0</span>
-        </h3>
-        <span style="font-size:11px;color:#bbb">Candidates waiting for proctor verification</span>
+    <div id="waiting-room-panel" style="display:none;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex:1">
+          <span style="font-size:16px">🔐</span>
+          <span style="font-size:13px;font-weight:700;color:#1b1a19">Secure Browser — Waiting Room</span>
+          <span id="waiting-count" style="background:#f59e0b;color:#fff;font-size:10px;font-weight:800;border-radius:10px;padding:2px 8px;letter-spacing:.03em">0</span>
+        </div>
+        <span style="font-size:11px;color:#94a3b8">Candidates pending identity verification</span>
       </div>
-      <div id="waiting-list" style="display:flex;flex-direction:column;gap:8px"></div>
+      <div id="waiting-list"></div>
     </div>
 
     <div id="monitor-wrap">
@@ -934,47 +978,67 @@ function renderWaitingList(candidates) {
 
     const div = document.createElement('div');
     div.id = `wcard-${c.token}`;
-    div.style.cssText = 'background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px';
+    div.className = 'wr-card';
     div.innerHTML = `
-      <div class="waiting-card">
-        <div class="waiting-avatar">👤</div>
-        <div class="waiting-info">
-          <div class="waiting-name">${esc(c.candidateName)}</div>
-          <div class="waiting-sub">${esc(c.examTitle || 'Exam')} · ⏱ ${waitStr}</div>
+      <!-- Dark header bar -->
+      <div class="wr-header">
+        <div class="wr-avatar">👤</div>
+        <div class="wr-info">
+          <div class="wr-name">${esc(c.candidateName)}</div>
+          <div class="wr-sub">${esc(c.examTitle || 'Exam')}</div>
         </div>
-        ${joined ? `<div class="waiting-camera-wrap" id="camwrap-${c.token}"><video id="wcam-${c.token}" autoplay muted playsinline></video></div>` : ''}
-        <div class="waiting-actions">
-          ${!joined
-            ? `<button class="btn btn-sm btn-primary" onclick="joinCandidate('${c.token}')">👁 Join & Verify</button>`
-            : `<button class="btn btn-sm" style="background:#0ea5e9;color:#fff;font-weight:600" onclick="startExam('${c.token}')">▶ Start Exam</button>
-               <button class="btn btn-sm btn-danger" onclick="rejectCandidate('${c.token}')">✕</button>`}
+        <span class="wr-wait" id="wwait-${c.token}">⏱ ${waitStr}</span>
+        <div class="wr-hdr-actions" id="wactions-${c.token}">
+          <button class="wr-btn wr-btn-join" onclick="joinCandidate('${c.token}')">👁 Join &amp; Verify</button>
         </div>
       </div>
+
+      <!-- Expandable body (two-column grid) -->
       <div class="waiting-detail ${joined ? 'open' : ''}" id="wdetail-${c.token}">
-        <!-- ID Verification panel: header + scrollable photos + sticky action buttons -->
-        <div class="ver-panel" id="verpanel-${c.token}">
-          <div class="ver-panel-hdr">
-            <span>🪪 ID Verification Photos</span>
-            <span id="verpanel-status-${c.token}" style="font-size:11px;color:var(--gray)">Loading…</span>
+
+        <!-- LEFT: photos + verdict -->
+        <div class="wr-left">
+          <div id="verpanel-${c.token}" style="display:none">
+            <div class="wr-sec-hdr">
+              <span>🪪 ID Verification Photos</span>
+              <span id="verpanel-status-${c.token}" style="color:#94a3b8">Loading…</span>
+            </div>
+            <div class="wr-photo-grid" id="verphotos-${c.token}"></div>
+            <div class="wr-verdict" id="ver-action-row-${c.token}" style="margin-top:10px">
+              <button class="wr-vbtn approve" onclick="approveVerification('${c.token}')">✅ Approve ID</button>
+              <button class="wr-vbtn reject"  onclick="rejectVerification('${c.token}')">❌ Reject ID</button>
+            </div>
           </div>
-          <div class="ver-photos-scroll" id="verphotos-${c.token}"></div>
-          <div class="ver-actions" id="ver-action-row-${c.token}">
-            <button class="ver-btn approve" onclick="approveVerification('${c.token}')">✅ Approve ID</button>
-            <button class="ver-btn reject"  onclick="rejectVerification('${c.token}')">❌ Reject ID</button>
-          </div>
-        </div>
-        <!-- Chat -->
-        <div class="wdetail-chat">
-          <div class="proctor-chat-area" id="wchat-${c.token}">
-            <div class="pcm system">Chat with candidate</div>
-          </div>
-          <div class="proctor-chat-input-row">
-            <input class="proctor-chat-input" id="wchat-input-${c.token}" placeholder="Message candidate…" maxlength="200"
-              onkeydown="if(event.key==='Enter')sendWaitingChatMsg('${c.token}')">
-            <button class="btn btn-sm btn-primary" onclick="sendWaitingChatMsg('${c.token}')">Send</button>
+          <div id="ver-waiting-${c.token}" style="color:#94a3b8;font-size:12px;font-style:italic;padding:10px 0">
+            Waiting for candidate to submit verification photos…
           </div>
         </div>
-      </div>
+
+        <!-- RIGHT: live camera + chat -->
+        <div class="wr-right">
+          <div class="wr-cam-wrap" id="camwrap-${c.token}" ondblclick="enlargeWcam('${c.token}')">
+            <div class="wr-cam-ph" id="wcam-ph-${c.token}">
+              <svg width="28" height="28" fill="none" stroke="#6b7280" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+              <span>Camera connecting…</span>
+            </div>
+            <video id="wcam-${c.token}" autoplay muted playsinline style="display:none;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>
+            <div class="wr-cam-label"><span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;animation:livepulse 1.5s infinite"></span>Live</div>
+            <div class="wr-cam-expand" onclick="event.stopPropagation();enlargeWcam('${c.token}')">⛶</div>
+          </div>
+          <div class="wr-chat">
+            <div class="wr-sec-hdr" style="margin-bottom:6px">💬 Chat with Candidate</div>
+            <div class="wr-chat-msgs" id="wchat-${c.token}">
+              <span class="wr-chat-msg system">Chat active after joining</span>
+            </div>
+            <div class="wr-chat-row">
+              <input class="wr-chat-inp" id="wchat-input-${c.token}" placeholder="Message candidate…" maxlength="200"
+                onkeydown="if(event.key==='Enter')sendWaitingChatMsg('${c.token}')">
+              <button class="btn btn-sm btn-primary" onclick="sendWaitingChatMsg('${c.token}')">Send</button>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /waiting-detail -->
     `;
     list.appendChild(div);
   });
@@ -986,46 +1050,19 @@ function joinCandidate(token) {
   if (!_waitingCandidates[token]) _waitingCandidates[token] = {};
   _waitingCandidates[token]._joined = true;
 
-  // Update the existing card IN-PLACE instead of full re-render
-  // (full re-render would wipe chat history, photos panel, camera feed)
-  const card = document.getElementById(`wcard-${token}`);
-  if (card) {
-    // Show the camera wrap
-    const waitingCard = card.querySelector('.waiting-card');
-    if (waitingCard && !card.querySelector(`#wcam-${token}`)) {
-      const camWrap = document.createElement('div');
-      camWrap.className = 'waiting-camera-wrap';
-      camWrap.id        = `camwrap-${token}`;
-      camWrap.title     = 'Double-click to enlarge';
-      camWrap.ondblclick = () => enlargeWcam(token);
-      camWrap.innerHTML  = `<video id="wcam-${token}" autoplay muted playsinline></video>`;
-      const actionsDiv = waitingCard.querySelector('.waiting-actions');
-      if (actionsDiv) waitingCard.insertBefore(camWrap, actionsDiv);
-    }
-    // Switch action buttons to joined state
-    const actionsDiv = waitingCard?.querySelector('.waiting-actions');
-    if (actionsDiv) {
-      actionsDiv.innerHTML = `
-        <button class="btn btn-sm" style="background:#22c55e;color:#fff" onclick="sendWaitingChat('${token}')">💬 Chat</button>
-        <button class="btn btn-sm btn-primary" onclick="startExam('${token}')">▶ Start Exam</button>
-        <button class="btn btn-sm btn-danger" onclick="rejectCandidate('${token}')">✕ Reject</button>`;
-    }
-    // Open the detail panel (camera + chat + photos)
-    const detail = document.getElementById(`wdetail-${token}`);
-    if (detail) detail.classList.add('open');
-
-    // Ensure double-click on camera wrap works (covers both initial render and in-place paths)
-    const existingWrap = document.getElementById(`camwrap-${token}`);
-    if (existingWrap && !existingWrap.ondblclick) {
-      existingWrap.ondblclick = () => enlargeWcam(token);
-      existingWrap.title = 'Double-click to enlarge';
-    }
-  } else {
-    // Card doesn't exist yet (shouldn't happen) — fall back to full re-render
-    renderWaitingList(Object.values(_waitingCandidates));
+  // Update header action buttons in-place (preserves camera, chat, photos)
+  const actionsEl = document.getElementById(`wactions-${token}`);
+  if (actionsEl) {
+    actionsEl.innerHTML = `
+      <button class="wr-btn wr-btn-start" onclick="startExam('${token}')">▶ Start Exam</button>
+      <button class="wr-btn wr-btn-reject" onclick="rejectCandidate('${token}')">✕ Reject</button>`;
   }
 
-  toast(`👁 Joined — camera feed, chat and verification photos are below`);
+  // Expand the two-column body
+  const detail = document.getElementById(`wdetail-${token}`);
+  if (detail) detail.classList.add('open');
+
+  toast(`👁 Joined — reviewing camera feed and ID photos`);
   loadVerificationPhotos(token);
 }
 
@@ -1073,17 +1110,16 @@ async function pollVerifyStatus(token) {
 }
 
 function renderVerifyPhotos(token, sessionCode) {
-  const panel  = document.getElementById(`verpanel-${token}`);
-  const grid   = document.getElementById(`verphotos-${token}`);
-  const status = document.getElementById(`verpanel-status-${token}`);
+  const panel   = document.getElementById(`verpanel-${token}`);
+  const grid    = document.getElementById(`verphotos-${token}`);
+  const status  = document.getElementById(`verpanel-status-${token}`);
+  const waiting = document.getElementById(`ver-waiting-${token}`);
   if (!panel || !grid) return;
-  panel.style.display = 'flex';
-
-  const totalRequired = _VERIFY_FIELDS.filter(f => f.field !== 'photo_id_back').length;
-  let loaded = 0;
+  panel.style.display = 'block';
+  if (waiting) waiting.style.display = 'none';
 
   grid.innerHTML = _VERIFY_FIELDS.map(({ field, label }) => `
-    <div class="ver-photo-item" onclick="enlargePhoto('/api/verify/photo/${sessionCode}/${field}','${label}')" title="Click to enlarge · ${label}">
+    <div class="wr-photo-item" onclick="enlargePhoto('/api/verify/photo/${sessionCode}/${field}','${label}')" title="Click to enlarge · ${label}">
       <span class="vp-lbl">${label}</span>
       <img src="/api/verify/photo/${sessionCode}/${field}"
         onload="this.classList.remove('missing')"
@@ -1134,7 +1170,7 @@ async function approveVerification(token) {
     toast(`✅ ID approved — you can now start the exam`);
     const actionRow = document.getElementById(`ver-action-row-${token}`);
     if (actionRow) actionRow.innerHTML =
-      `<div style="flex:1;padding:10px;background:#f0fdf4;color:#15803d;font-size:13px;font-weight:700;text-align:center">✅ Approved — click ▶ Start Exam</div>`;
+      `<div style="flex:1;padding:9px;background:#f0fdf4;color:#15803d;font-size:13px;font-weight:700;text-align:center;border-radius:8px;border:1.5px solid #86efac">✅ ID Approved — click ▶ Start Exam</div>`;
   } catch(e) { toast('Approve failed', 'error'); }
 }
 
@@ -1191,8 +1227,11 @@ function sendWaitingChatMsg(token) {
 function appendWaitingChat(token, who, text) {
   const box = document.getElementById(`wchat-${token}`);
   if (!box) return;
+  // Remove "active after joining" placeholder on first real message
+  const ph = box.querySelector('.wr-chat-msg.system');
+  if (ph) ph.remove();
   const el = document.createElement('div');
-  el.className = 'pcm ' + who;
+  el.className = 'wr-chat-msg ' + who;
   el.textContent = text;
   box.appendChild(el);
   box.scrollTop = box.scrollHeight;
@@ -1209,7 +1248,13 @@ async function handleCameraOffer(msg) {
 
   pc.ontrack = e => {
     const vid = document.getElementById(`wcam-${token}`);
-    if (vid) { vid.srcObject = e.streams[0]; vid.play().catch(() => {}); }
+    if (vid) {
+      vid.srcObject = e.streams[0];
+      vid.play().catch(() => {});
+      vid.style.display = '';
+      const ph = document.getElementById(`wcam-ph-${token}`);
+      if (ph) ph.style.display = 'none';
+    }
   };
 
   pc.onicecandidate = ({ candidate }) => {
