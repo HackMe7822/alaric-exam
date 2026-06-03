@@ -199,6 +199,9 @@ function setupMonitor(wss) {
         const s = examSessions.get(ws._submissionId);
         // Only process if this WS is still the active one (not already replaced by reconnect)
         if (s && s.ws === ws) {
+          // If exam was explicitly submitted, the session was already removed in handleExamMsg.
+          // If it's still in examSessions here, the WS closed unexpectedly — start reconnect window.
+          if (s.ended) return; // already cleaned up by exam_submitted handler
           s.ws = null;
           s.disconnected = true;
           s.disconnectedAt = Date.now();

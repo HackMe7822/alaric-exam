@@ -944,9 +944,17 @@ function startMultiMonitorCheck() {
       }
     }
 
-    // Auto-fix failed — show manual instructions
-    if (msg) msg.textContent = 'Could not auto-disconnect. Please switch to single display manually.';
+    // Auto-fix failed — pause exam and require proctor approval, same as tab switch.
+    // The multi-monitor overlay remains visible on top; the violation overlay shows beneath it.
+    if (msg) msg.textContent = 'Disconnect the extra display, then wait for your proctor to resume your exam.';
     if (hint) hint.style.display = '';
+    if (state.examStarted && !state.submitted && !_examPaused) {
+      state.tabSwitchCount++;
+      // Pre-fill the violation remark so candidate doesn't have to type
+      const remarkEl = document.getElementById('violation-remark');
+      if (remarkEl) remarkEl.value = 'Extra monitor was connected to my machine.';
+      triggerTabViolation();
+    }
     return true;
   };
 
@@ -1961,9 +1969,10 @@ async function submitExam(isAuto, reason) {
     }
     resultData = data || {};
   }
-  // Notify monitor that exam is done — do this BEFORE showing result screen
-  // so the admin sees "Candidate submitted" even if result screen closes WS
+  // Notify monitor exam is done, then close WS so server immediately marks session ended
   wsSend({ type: 'exam_submitted', submissionId: state.submissionId, reason: isAuto ? (reason || 'auto') : 'submitted' });
+  // Give the message 300ms to arrive, then close WS — no need for 90-second cleanup timeout
+  setTimeout(() => { if (_monitorWs) { _monitorWs.close(); _monitorWs = null; } }, 300);
   showResultScreen(resultData, timeTaken, submitOk);
 }
 

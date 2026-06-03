@@ -583,9 +583,9 @@ function handleMsg(msg) {
     if (_sessions[msg.submissionId]) _sessions[msg.submissionId].disconnected = true;
     renderSessionCards();
     if (_selectedId === msg.submissionId) {
-      // Close stale WebRTC — they'll be re-established on reconnect
+      // Close stale WebRTC silently — re-established on reconnect, no WS send needed
       closeExamCam();
-      stopScreen();
+      stopScreen(true);
       const liveLabel = document.getElementById('pc-live-label');
       if (liveLabel) liveLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#f85149;flex-shrink:0;animation:none"></span><span style="color:#f85149;font-size:10px;font-weight:700;letter-spacing:.08em">RECONNECTING…</span>`;
       toast('⚠ Candidate connection dropped — waiting for reconnect (90 s)', 'warning');
@@ -598,7 +598,14 @@ function handleMsg(msg) {
       const liveLabel = document.getElementById('pc-live-label');
       if (liveLabel) liveLabel.innerHTML = `<span class="pc-live-dot"></span>LIVE`;
       toast('✅ Candidate reconnected', 'success');
+      // subscribe → server sends request_exam_camera → camera WebRTC re-establishes
       send({ type: 'subscribe', submissionId: _selectedId });
+      // Re-request screen share once camera connection has had time to set up
+      setTimeout(() => {
+        if (_selectedId === msg.submissionId && !_screenActive) {
+          send({ type: 'request_screen' });
+        }
+      }, 2500);
     }
   }
   if (msg.type === 'session_ended') {
@@ -898,13 +905,13 @@ function requestScreen() {
   toast('Screen share request sent to candidate');
 }
 
-function stopScreen() {
-  send({ type: 'stop_screen' });
-  if (_adminPc) { _adminPc.close(); _adminPc = null; }
+function stopScreen(silent = false) {
+  if (!silent) send({ type: 'stop_screen' });
+  if (_adminPc) { try { _adminPc.close(); } catch {} _adminPc = null; }
   _pendingAdminIce = [];
   _screenActive = false;
   const vid = document.getElementById('screen-video');
-  if (vid) { vid.srcObject = null; } // don't hide — video always rendered
+  if (vid) { vid.srcObject = null; }
   const ph  = document.getElementById('screen-placeholder');
   if (ph)  ph.style.display = '';
   const badge = document.getElementById('screen-live-badge');
