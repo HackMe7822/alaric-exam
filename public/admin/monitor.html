@@ -12,14 +12,26 @@
 /* ── Waiting-room banner ── */
 #waiting-room-panel { flex-shrink: 0; margin-bottom: 8px; }
 
-/* ── Main monitor split ── */
-#monitor-wrap { flex: 1; min-height: 0; display: flex; gap: 10px; overflow: hidden; }
+/* ── Main monitor — full width, no left column ── */
+#monitor-wrap { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+#session-list-col { display: none; } /* hidden — replaced by top session bar */
+#sessions-scroll  { display: none; }
 
-/* ── Session list (left column) ── */
-#session-list-col { width: 280px; flex-shrink: 0; display: flex; flex-direction: column; overflow: hidden; }
-#sessions-scroll { flex: 1; overflow-y: auto; }
+/* ── Session picker bar (above detail panel) ── */
+#session-bar { display: none; flex-shrink: 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; align-items: center; }
+#session-bar.visible { display: flex; }
+.session-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: #f8fafc; color: var(--text); transition: all .15s; white-space: nowrap; }
+.session-pill:hover { border-color: var(--primary); color: var(--primary); }
+.session-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.session-pill.disconnected { border-color: #fca5a5; background: #fef2f2; color: #dc2626; }
+.session-pill.completed { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
+.session-pill .sp-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.session-pill .sp-dot.live { background: #22c55e; animation: livepulse 1.5s infinite; }
+.session-pill .sp-dot.reconnecting { background: #f85149; }
+.session-pill .sp-dot.done { background: #94a3b8; }
+#session-bar-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
 
-/* ── Detail panel ── */
+/* ── Detail panel — now full width ── */
 #detail-col { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 
 /* ── Professional proctoring panel ── */
@@ -126,12 +138,9 @@
 #conn-status.connecting { background: #fff3cd; color: #856404; }
 .conn-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 
-/* ── Session cards ── */
-#session-list-header { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-#session-list-header h3 { font-size: 13px; font-weight: 700; margin: 0; }
-.session-card { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
-.session-card:hover { background: #f0f7ff; }
-.session-card.active { background: #e8f4fd; border-left: 3px solid var(--primary); }
+/* ── Session cards (kept for JS compat — rendered as pills now) ── */
+#session-list-header { display: none; }
+.session-card { display: none; }
 .sc-name { font-size: 13px; font-weight: 700; color: #1b1a19; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sc-exam { font-size: 11px; color: #888; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sc-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
@@ -346,26 +355,29 @@
       <div id="waiting-list"></div>
     </div>
 
-    <div id="monitor-wrap">
-      <!-- Session list -->
-      <div id="session-list-col" class="card" style="padding:0;overflow:hidden">
-        <div id="session-list-header">
-          <h3>Active Sessions <span id="session-count" style="color:#888;font-weight:400">(0)</span></h3>
-          <span style="font-size:11px;color:#bbb" id="last-update">—</span>
-        </div>
-        <div id="sessions-scroll">
-          <div class="sc-empty" id="sc-empty">No active exam sessions</div>
-        </div>
-      </div>
+    <!-- Hidden DOM kept for JS compat -->
+    <div id="session-list-col" style="display:none">
+      <div id="session-list-header"></div>
+      <div id="sessions-scroll"><div id="sc-empty"></div></div>
+    </div>
+    <span id="session-count" style="display:none">0</span>
+    <span id="last-update" style="display:none"></span>
 
-      <!-- Professional proctoring detail panel -->
+    <div id="monitor-wrap">
+      <!-- Professional proctoring detail panel — full width -->
       <div id="detail-col">
+
+        <!-- Session selector bar (shown when ≥1 session exists) -->
+        <div id="session-bar">
+          <span id="session-bar-label">Active Exams</span>
+          <div id="session-pills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+        </div>
 
         <!-- Empty state -->
         <div id="empty-detail">
           <svg fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24" style="opacity:.2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-          <h3>No session selected</h3>
-          <p>Select an active exam session from the left panel to begin monitoring the candidate.</p>
+          <h3>No active sessions</h3>
+          <p>Candidates will appear here once they start their exam through the Secure Browser.</p>
         </div>
 
         <!-- ── PROFESSIONAL PROCTORING PANEL ── -->
@@ -695,90 +707,51 @@ function renderSessions(sessions) {
 }
 
 function renderSessionCards() {
-  const list = Object.values(_sessions);
+  const live      = Object.values(_sessions);
   const completed = Object.values(_completedSessions);
-  document.getElementById('session-count').textContent = `(${list.length})`;
-  const scroll = document.getElementById('sessions-scroll');
-  const empty = document.getElementById('sc-empty');
+  const bar       = document.getElementById('session-bar');
+  const pills     = document.getElementById('session-pills');
 
-  if (!list.length && !completed.length) {
-    empty.style.display = '';
-    scroll.querySelectorAll('.session-card').forEach(c => c.remove());
+  if (!live.length && !completed.length) {
+    if (bar) bar.classList.remove('visible');
+    document.getElementById('empty-detail').style.display = '';
     return;
   }
-  empty.style.display = 'none';
 
-  // Render completed sessions (history, greyed out, at bottom of list)
-  completed.forEach(s => {
-    const id = `completed-${s.submissionId}`;
-    let card = scroll.querySelector(`[data-id="${id}"]`);
-    if (!card) {
-      card = document.createElement('div');
-      card.className = 'session-card';
-      card.dataset.id = id;
-      card.style.opacity = '.6';
-      card.onclick = () => {
-        // Show the completed session's last state in the panel
-        _selectedId = s.submissionId;
-        document.querySelectorAll('.session-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
-      };
-      scroll.insertBefore(card, scroll.firstChild); // completed at top so proctor sees them
-    }
-    if (_selectedId === s.submissionId) card.classList.add('active'); else card.classList.remove('active');
-    const ago = Math.round((Date.now() - s.endedAt) / 60000);
-    const agoStr = ago < 1 ? 'just now' : `${ago}m ago`;
-    card.innerHTML = `
-      <div class="sc-name">${esc(s.candidateName)}</div>
-      <div class="sc-exam">${esc(s.examTitle)}</div>
-      <div class="sc-meta">
-        <span class="sc-badge" style="background:#f1f5f9;color:#64748b">✓ Completed ${agoStr}</span>
-        ${s.flaggedCount > 0 ? `<span class="sc-badge flag">⚠ ${s.flaggedCount}</span>` : ''}
-      </div>
-    `;
-  });
+  if (bar) bar.classList.add('visible');
 
-  // Remove stale completed cards
-  scroll.querySelectorAll('[data-id^="completed-"]').forEach(card => {
-    const id = card.dataset.id.replace('completed-','');
-    if (!_completedSessions[id]) card.remove();
-  });
+  // Auto-select if exactly one live session and nothing currently selected
+  if (live.length === 1 && !_selectedId) {
+    selectSession(live[0].submissionId);
+    return; // selectSession will re-render
+  }
 
-  const existing = new Set(scroll.querySelectorAll('.session-card').values());
-  list.forEach(s => {
-    let card = scroll.querySelector(`[data-id="${s.submissionId}"]`);
-    if (!card) {
-      card = document.createElement('div');
-      card.className = 'session-card';
-      card.dataset.id = s.submissionId;
-      card.onclick = () => selectSession(s.submissionId);
-      scroll.appendChild(card);
-    }
-    if (_selectedId === s.submissionId) card.classList.add('active'); else card.classList.remove('active');
-    const t = s.timeLeft || 0;
-    const tm = `${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;
-    const timeCls = t < 300 ? 'urgent' : t < 600 ? 'low' : '';
-    card.innerHTML = `
-      <div class="sc-name">${esc(s.candidateName)}</div>
-      <div class="sc-exam">${esc(s.examTitle)}</div>
-      <div class="sc-meta">
-        ${s.disconnected
-          ? `<span class="sc-badge" style="background:#fde7e9;color:#a4262c;animation:pulse .9s infinite">⚡ Reconnecting…</span>`
-          : `<span class="sc-badge q">Q ${(s.questionIndex||0)+1}/${s.totalQuestions||'?'}</span>
-             <span class="sc-badge time ${timeCls}">⏱ ${tm}</span>`}
-        ${s.flaggedCount > 0 ? `<span class="sc-badge flag">⚠ ${s.flaggedCount} flag${s.flaggedCount>1?'s':''}</span>` : ''}
-      </div>
-    `;
-  });
+  // Rebuild pills
+  if (pills) {
+    pills.innerHTML = '';
+    live.forEach(s => {
+      const pill = document.createElement('button');
+      const dotCls = s.disconnected ? 'reconnecting' : 'live';
+      pill.className = `session-pill${s.disconnected ? ' disconnected' : ''}${_selectedId === s.submissionId ? ' active' : ''}`;
+      pill.innerHTML = `<span class="sp-dot ${dotCls}"></span>${esc(s.candidateName)} <span style="opacity:.6;font-size:10px;margin-left:2px">${esc(s.examTitle)}</span>`;
+      pill.onclick = () => selectSession(s.submissionId);
+      pills.appendChild(pill);
+    });
+    completed.forEach(s => {
+      const ago = Math.round((Date.now() - s.endedAt) / 60000);
+      const pill = document.createElement('button');
+      pill.className = `session-pill completed${_selectedId === s.submissionId ? ' active' : ''}`;
+      pill.innerHTML = `<span class="sp-dot done"></span>${esc(s.candidateName)} <span style="opacity:.6;font-size:10px;margin-left:2px">✓ ${ago < 1 ? 'just now' : ago + 'm ago'}</span>`;
+      pill.onclick = () => { _selectedId = s.submissionId; renderSessionCards(); };
+      pills.appendChild(pill);
+    });
+  }
 
-  // Remove cards for sessions that no longer exist
-  scroll.querySelectorAll('.session-card').forEach(card => {
-    if (!_sessions[card.dataset.id]) card.remove();
-  });
 }
 
 function selectSession(submissionId) {
   _selectedId = submissionId;
-  document.querySelectorAll('.session-card').forEach(c => c.classList.toggle('active', c.dataset.id === String(submissionId)));
+  renderSessionCards(); // re-render pills to update active state
   send({ type: 'subscribe', submissionId });
   // Auto-request screen share — in Electron kiosk this is auto-approved (no candidate prompt).
   // Wait 1.5s so the WebRTC camera connection establishes first.
