@@ -56,10 +56,23 @@
   .preview-placeholder .ph-icon { font-size: 2rem; }
   .retake-btn { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
 
-  .capture-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: 2px dashed var(--border); background: var(--bg); border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--primary); cursor: pointer; transition: all .15s; }
+  .btn-row { display: flex; gap: 8px; margin-bottom: 0; }
+  .capture-btn { flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 11px; border: 2px dashed var(--border); background: var(--bg); border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--primary); cursor: pointer; transition: all .15s; }
   .capture-btn:hover { border-color: var(--primary); background: #eff6ff; }
   .capture-btn.has-photo { border-style: solid; border-color: var(--success); color: var(--success); }
   .file-input { display: none; }
+
+  /* Webcam capture overlay */
+  .cam-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.9); z-index: 9999; flex-direction: column; align-items: center; justify-content: center; gap: 16px; }
+  .cam-overlay.open { display: flex; }
+  .cam-preview { width: min(90vw, 480px); aspect-ratio: 4/3; background: #000; border-radius: 12px; overflow: hidden; position: relative; }
+  .cam-preview video { width: 100%; height: 100%; object-fit: cover; }
+  .cam-preview .cam-flip { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,.6); color: #fff; border: none; border-radius: 6px; padding: 6px 10px; cursor: pointer; font-size: 18px; }
+  .cam-actions { display: flex; gap: 12px; }
+  .btn-capture-shot { padding: 14px 32px; background: var(--primary); color: #fff; border: none; border-radius: 50px; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .btn-capture-shot:hover { background: var(--primary-dark); }
+  .btn-cancel-cam { padding: 12px 24px; background: rgba(255,255,255,.1); color: #fff; border: 1px solid rgba(255,255,255,.3); border-radius: 50px; font-size: 14px; cursor: pointer; }
+  .cam-label-text { color: rgba(255,255,255,.8); font-size: 13px; text-align: center; }
 
   /* Instruction tip */
   .tip { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 10px 14px; font-size: 12px; color: #92400e; margin-top: 8px; line-height: 1.5; }
@@ -268,11 +281,16 @@ function buildPhotoCards() {
             <span>No photo yet</span>
           </div>
         </div>
-        <label class="capture-btn" id="btn-${def.field}" for="file-${def.field}">
-          📷 Take / Choose Photo
-        </label>
+        <div class="btn-row">
+          <button class="capture-btn" id="btn-${def.field}" onclick="openCamera('${def.field}', '${def.capture}')" type="button">
+            📷 Use Camera
+          </button>
+          <label class="capture-btn" for="file-${def.field}">
+            📁 Browse File
+          </label>
+        </div>
         <input type="file" id="file-${def.field}" class="file-input"
-          accept="image/*" capture="${def.capture}"
+          accept="image/*"
           onchange="handleFile('${def.field}', this)">
         <div class="tip">${TIPS[def.field]}</div>
       </div>`;
@@ -398,6 +416,85 @@ function retryVerification() {
   _capturedFiles = {};
   buildPhotoCards();
   show('photos');
+}
+</script>
+
+<!-- Webcam capture overlay -->
+<div class="cam-overlay" id="cam-overlay">
+  <div class="cam-label-text" id="cam-overlay-label">Position in frame, then click Capture</div>
+  <div class="cam-preview">
+    <video id="cam-preview-video" autoplay playsinline muted></video>
+    <button class="cam-flip" onclick="flipCamera()" title="Switch camera">🔄</button>
+  </div>
+  <div class="cam-actions">
+    <button class="btn-capture-shot" onclick="captureShot()">📸 Capture Photo</button>
+    <button class="btn-cancel-cam" onclick="closeCamera()">Cancel</button>
+  </div>
+</div>
+
+<script>
+let _camStream = null, _camField = null, _camFacing = 'user';
+
+async function openCamera(field, hint) {
+  _camField  = field;
+  _camFacing = hint === 'environment' ? 'environment' : 'user';
+  document.getElementById('cam-overlay').classList.add('open');
+  document.getElementById('cam-overlay-label').textContent =
+    hint === 'user' ? 'Face the camera clearly, then click Capture'
+                    : 'Point camera at your subject, then click Capture';
+  await startCamStream();
+}
+
+async function startCamStream() {
+  if (_camStream) _camStream.getTracks().forEach(t => t.stop());
+  try {
+    _camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: _camFacing, width: { ideal: 1280 }, height: { ideal: 960 } },
+      audio: false,
+    });
+    const vid = document.getElementById('cam-preview-video');
+    vid.srcObject = _camStream;
+    vid.style.transform = _camFacing === 'user' ? 'scaleX(-1)' : 'none';
+  } catch(e) {
+    alert('Camera unavailable: ' + e.message + '\n\nUse "Browse File" to select a photo instead.');
+    closeCamera();
+  }
+}
+
+function flipCamera() { _camFacing = _camFacing === 'user' ? 'environment' : 'user'; startCamStream(); }
+
+function captureShot() {
+  const vid = document.getElementById('cam-preview-video');
+  const canvas = document.createElement('canvas');
+  canvas.width = vid.videoWidth || 1280;
+  canvas.height = vid.videoHeight || 960;
+  const ctx = canvas.getContext('2d');
+  if (_camFacing === 'user') { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+  ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+  canvas.toBlob(blob => {
+    if (!blob) return;
+    const file = new File([blob], `${_camField}.jpg`, { type: 'image/jpeg' });
+    _capturedFiles[_camField] = file;
+    const preview = document.getElementById(`preview-${_camField}`);
+    const reader = new FileReader();
+    reader.onload = e => {
+      preview.innerHTML = `<img src="${e.target.result}" alt="Preview">
+        <button class="retake-btn" onclick="retakePhoto('${_camField}')">Retake</button>`;
+    };
+    reader.readAsDataURL(file);
+    const badge = document.getElementById(`badge-${_camField}`);
+    if (badge) { badge.className = 'badge badge-done'; badge.textContent = '✓ Captured'; }
+    const btn = document.getElementById(`btn-${_camField}`);
+    if (btn) { btn.classList.add('has-photo'); btn.textContent = '✓ Captured'; }
+    updateProgressBar();
+    updateSubmitButton();
+    closeCamera();
+  }, 'image/jpeg', 0.92);
+}
+
+function closeCamera() {
+  if (_camStream) { _camStream.getTracks().forEach(t => t.stop()); _camStream = null; }
+  document.getElementById('cam-overlay').classList.remove('open');
 }
 </script>
 </body>
