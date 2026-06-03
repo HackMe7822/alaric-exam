@@ -34,6 +34,7 @@ function sessionSnapshot() {
     paused: s.paused || false,
     micMuted: s.micMuted || false,
     pendingViolation: s.pendingViolation || null,
+    disconnected: s.disconnected || false,
   }));
 }
 
@@ -114,6 +115,24 @@ function setupMonitor(wss) {
         ws._role = 'exam';
         ws._submissionId = msg.submissionId;
 
+        // ── Reconnect: session still alive from brief disconnect (e.g. HDMI plug-in) ──
+        const existing = examSessions.get(msg.submissionId);
+        if (existing && existing.disconnected) {
+          clearTimeout(existing._cleanupTimer);
+          existing.ws = ws;
+          existing.disconnected = false;
+          existing.disconnectedAt = null;
+          existing.cameraRequested = false; // re-request camera on reconnect
+          existing.lastSeen = Date.now();
+          if (msg.questionIndex != null) existing.questionIndex = msg.questionIndex;
+          if (msg.timeLeft      != null) existing.timeLeft      = msg.timeLeft;
+          if (msg.answeredCount != null) existing.answeredCount  = msg.answeredCount;
+          ws.send(JSON.stringify({ type: 'registered' }));
+          sendToAdmins({ type: 'session_reconnected', submissionId: msg.submissionId });
+          broadcastSessions();
+          return;
+        }
+
         examSessions.set(msg.submissionId, {
           ws,
           candidateName: msg.candidateName || 'Unknown',
@@ -128,7 +147,8 @@ function setupMonitor(wss) {
           events: [],
           connectedAt: Date.now(),
           lastSeen: Date.now(),
-          cameraRequested: false, // reset so camera is re-requested on fresh connection
+          cameraRequested: false,
+          disconnected: false,
         });
 
         ws.send(JSON.stringify({ type: 'registered' }));
@@ -169,9 +189,28 @@ function setupMonitor(wss) {
 
     ws.on('close', () => {
       if (ws._role === 'exam' && ws._submissionId) {
-        examSessions.delete(ws._submissionId);
-        sendToAdmins({ type: 'session_ended', submissionId: ws._submissionId });
-        broadcastSessions();
+        const s = examSessions.get(ws._submissionId);
+        // Only process if this WS is still the active one (not already replaced by reconnect)
+        if (s && s.ws === ws) {
+          s.ws = null;
+          s.disconnected = true;
+          s.disconnectedAt = Date.now();
+          // Keep session alive for 90 s — allows candidate to reconnect after
+          // brief disconnect (HDMI plug-in, network hiccup, page reload).
+          // Only send session_ended + delete after the timeout if still disconnected.
+          clearTimeout(s._cleanupTimer);
+          s._cleanupTimer = setTimeout(() => {
+            const curr = examSessions.get(ws._submissionId);
+            if (curr && curr.disconnected) {
+              examSessions.delete(ws._submissionId);
+              sendToAdmins({ type: 'session_ended', submissionId: ws._submissionId });
+              broadcastSessions();
+            }
+          }, 90000);
+          // Tell admins the candidate is temporarily disconnected (do NOT delete session)
+          sendToAdmins({ type: 'session_disconnected', submissionId: ws._submissionId });
+          broadcastSessions();
+        }
       } else if (ws._role === 'admin') {
         adminClients.delete(ws);
       } else if (ws._role === 'waiting' && ws._waitToken) {
@@ -185,6 +224,7 @@ function setupMonitor(wss) {
 function handleExamMsg(ws, msg) {
   const session = examSessions.get(msg.submissionId);
   if (!session || session.ws !== ws) return;
+  session.lastSeen = Date.now();
 
   if (msg.type === 'exam_state') {
     if (msg.questionIndex != null) session.questionIndex = msg.questionIndex;

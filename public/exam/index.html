@@ -1093,14 +1093,34 @@ function setupSecurity() {
     }
   });
 
-  // Tab switch detection — pause exam and require proctor approval to resume
+  // Tab switch detection — pause exam and require proctor approval to resume.
+  // Suppressed when the focus loss is caused by a display change (HDMI plug-in):
+  // screen.isExtended becomes true at the same moment as the blur, so we skip
+  // the tab-switch and let the 3-second multi-monitor poll surface it instead.
+  let _displayChangeBlur = false;
   document.addEventListener('visibilitychange', () => {
     if (!state.examStarted || state.submitted || _examPaused) return;
     if (document.hidden) {
+      if (_displayChangeBlur || window.screen?.isExtended) {
+        _displayChangeBlur = false;
+        return; // display-caused blur — multi-monitor overlay handles it
+      }
       state.tabSwitchCount++;
       if (state.webcamStream) takeSnapshot('tab_switch');
       triggerTabViolation();
     }
+  });
+
+  // Electron dispatches this immediately when display-added fires in main process.
+  // Show the multi-monitor overlay right away instead of waiting for the 3-second poll.
+  window.addEventListener('alaric_display_added', () => {
+    if (!state.examStarted || state.submitted) return;
+    _displayChangeBlur = true; // suppress the blur that follows display hotplug
+    postEvent('multi_monitor');
+    const overlay = document.getElementById('overlay-multimonitor');
+    const msg     = document.getElementById('multimon-msg');
+    if (overlay) overlay.classList.add('active');
+    if (msg) msg.textContent = 'Extra display detected — please disconnect it to continue.';
   });
 }
 
