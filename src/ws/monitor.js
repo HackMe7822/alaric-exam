@@ -318,16 +318,19 @@ function handleExamMsg(ws, msg) {
 
   // ── Active exam camera (exam is caller, admin is answerer) ───────────────
   if (msg.type === 'exam_camera_offer') {
+    // Send to admin subscribed to this session (single-view OR multi-view)
     sendToAdmins(
       { type: 'exam_camera_offer', submissionId: msg.submissionId, offer: msg.offer },
-      info => info.subscribedTo === msg.submissionId
+      info => info.subscribedTo === msg.submissionId ||
+              (info.subscribedSet && info.subscribedSet.has(msg.submissionId))
     );
   }
 
   if (msg.type === 'exam_camera_ice' && msg.dir === 'exam_to_admin') {
     sendToAdmins(
-      { type: 'exam_camera_ice', candidate: msg.candidate, dir: 'exam_to_admin' },
-      info => info.subscribedTo === msg.submissionId
+      { type: 'exam_camera_ice', candidate: msg.candidate, dir: 'exam_to_admin', submissionId: msg.submissionId },
+      info => info.subscribedTo === msg.submissionId ||
+              (info.subscribedSet && info.subscribedSet.has(msg.submissionId))
     );
   }
 
@@ -371,7 +374,8 @@ function handleAdminMsg(ws, msg) {
   if (!info) return;
 
   if (msg.type === 'subscribe') {
-    info.subscribedTo = msg.submissionId || null;
+    info.subscribedTo  = msg.submissionId || null;
+    info.subscribedSet = null; // clear multi-subscribe when going single
     if (msg.submissionId) {
       const s = examSessions.get(msg.submissionId);
       if (s) {
@@ -393,15 +397,28 @@ function handleAdminMsg(ws, msg) {
           micMuted: s.micMuted || false,
           pendingViolation: s.pendingViolation || null,
         }));
-        // Request live camera feed from exam — only if not already streaming.
-        // s.cameraRequested flag prevents re-requesting every subscribe (which
-        // would tear down and restart WebRTC on every 10s session update).
-        if (s.ws.readyState === WebSocket.OPEN && !s.cameraRequested) {
+        if (s.ws && s.ws.readyState === WebSocket.OPEN && !s.cameraRequested) {
           s.cameraRequested = true;
           s.ws.send(JSON.stringify({ type: 'request_exam_camera' }));
         }
       }
     }
+  }
+
+  // ── Multi-subscribe: admin monitors several sessions simultaneously ──────
+  if (msg.type === 'subscribe_multi') {
+    const ids = Array.isArray(msg.submissionIds) ? msg.submissionIds : [];
+    info.subscribedTo  = ids[0] || null;  // primary for backwards-compat signals
+    info.subscribedSet = new Set(ids);
+    // Request camera from every subscribed exam
+    ids.forEach(subId => {
+      const s = examSessions.get(subId);
+      if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
+        s.cameraRequested = false; // force re-request for multi-view
+        s.cameraRequested = true;
+        s.ws.send(JSON.stringify({ type: 'request_exam_camera' }));
+      }
+    });
   }
 
   if (msg.type === 'request_screen') {
@@ -521,15 +538,18 @@ function handleAdminMsg(ws, msg) {
 
   // ── Active exam camera WebRTC (admin is answerer) ─────────────────────────
   if (msg.type === 'exam_camera_answer') {
-    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
-    if (s && s.ws.readyState === WebSocket.OPEN) {
+    // forSubId is set by multi-view; fall back to subscribedTo for single-view
+    const targetId = msg.forSubId || info.subscribedTo;
+    const s = targetId && examSessions.get(targetId);
+    if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'exam_camera_answer', answer: msg.answer }));
     }
   }
 
   if (msg.type === 'exam_camera_ice' && msg.dir === 'admin_to_exam') {
-    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
-    if (s && s.ws.readyState === WebSocket.OPEN) {
+    const targetId = msg.forSubId || info.subscribedTo;
+    const s = targetId && examSessions.get(targetId);
+    if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'exam_camera_ice', candidate: msg.candidate, dir: 'admin_to_exam' }));
     }
   }

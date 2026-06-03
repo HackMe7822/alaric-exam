@@ -20,16 +20,50 @@
 /* ── Session picker bar (above detail panel) ── */
 #session-bar { display: none; flex-shrink: 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; gap: 8px; flex-wrap: wrap; align-items: center; }
 #session-bar.visible { display: flex; }
-.session-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: #f8fafc; color: var(--text); transition: all .15s; white-space: nowrap; }
+.session-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: #f8fafc; color: var(--text); transition: all .15s; white-space: nowrap; user-select: none; }
 .session-pill:hover { border-color: var(--primary); color: var(--primary); }
 .session-pill.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.session-pill.checked { border-color: #7c3aed; background: #f5f3ff; color: #7c3aed; }
 .session-pill.disconnected { border-color: #fca5a5; background: #fef2f2; color: #dc2626; }
 .session-pill.completed { background: #f1f5f9; color: #64748b; border-color: #cbd5e1; }
 .session-pill .sp-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .session-pill .sp-dot.live { background: #22c55e; animation: livepulse 1.5s infinite; }
 .session-pill .sp-dot.reconnecting { background: #f85149; }
 .session-pill .sp-dot.done { background: #94a3b8; }
+.sp-checkbox { width: 13px; height: 13px; accent-color: #7c3aed; cursor: pointer; flex-shrink: 0; }
 #session-bar-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+#btn-multi-monitor { display: none; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; border: none; cursor: pointer; background: #7c3aed; color: #fff; margin-left: auto; white-space: nowrap; }
+#btn-multi-monitor.visible { display: inline-flex; }
+#btn-multi-monitor:hover { background: #6d28d9; }
+#btn-exit-multi { display: none; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; border: 1.5px solid var(--border); cursor: pointer; background: #fff; color: var(--text); }
+#btn-exit-multi.visible { display: inline-flex; }
+
+/* ── Multi-candidate grid view ── */
+#multi-view { display: none; flex: 1; overflow-y: auto; padding: 2px; }
+#multi-view.active { display: grid; gap: 8px; align-content: start; }
+#multi-view.mv-1 { grid-template-columns: 1fr; }
+#multi-view.mv-2 { grid-template-columns: 1fr 1fr; }
+#multi-view.mv-3 { grid-template-columns: 1fr 1fr 1fr; }
+#multi-view.mv-4 { grid-template-columns: 1fr 1fr; }
+#multi-view.mv-many { grid-template-columns: repeat(3, 1fr); }
+
+.mv-tile { background: #0d1117; border-radius: 8px; overflow: hidden; cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+.mv-tile:hover { border-color: #388bfd; }
+.mv-tile.mv-paused { border-color: #f0883e; }
+.mv-tile.mv-violation { border-color: #f85149; animation: violpulse 1s infinite; }
+.mv-cam { position: relative; aspect-ratio: 16/9; background: #010409; }
+.mv-cam video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+.mv-cam-ph { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #484f58; font-size: 11px; flex-direction: column; gap: 6px; }
+.mv-cam-ph svg { width: 28px; height: 28px; opacity: .4; }
+.mv-cam-badge { position: absolute; top: 6px; left: 8px; display: flex; gap: 5px; }
+.mv-cam-badge span { font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 8px; background: rgba(0,0,0,.65); color: #fff; display: flex; align-items: center; gap: 3px; }
+.mv-cam-flag { background: rgba(248,81,73,.8) !important; }
+.mv-info { padding: 8px 12px; background: #161b22; display: flex; align-items: center; gap: 8px; }
+.mv-info-name { font-size: 12px; font-weight: 700; color: #e6edf3; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mv-info-stats { display: flex; gap: 6px; flex-shrink: 0; }
+.mv-stat { font-size: 10px; color: #8b949e; display: flex; align-items: center; gap: 3px; }
+.mv-stat.warn { color: #f0883e; }
+.mv-stat.danger { color: #f85149; }
 
 /* ── Detail panel — now full width ── */
 #detail-col { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
@@ -483,7 +517,12 @@
         <div id="session-bar">
           <span id="session-bar-label">Active Exams</span>
           <div id="session-pills" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+          <button id="btn-multi-monitor" onclick="enterMultiView()">⊞ Monitor Selected (<span id="multi-sel-count">0</span>)</button>
+          <button id="btn-exit-multi" onclick="exitMultiView()">✕ Exit Multi-View</button>
         </div>
+
+        <!-- Multi-candidate grid view -->
+        <div id="multi-view"></div>
 
         <!-- Empty state -->
         <div id="empty-detail">
@@ -607,17 +646,23 @@
 let _ws = null;
 let _selectedId = null;
 let _sessions = {};
-let _completedSessions = {}; // history: submissionId -> {candidateName, examTitle, endedAt, reason}
+let _completedSessions = {};
 let _reconnectTimer = null;
 let _screenActive = false;
 let _timerInterval = null;
 let _detailTimeLeft = 0;
 let _adminPc = null;
 let _pendingAdminIce = [];
-let _waitingCandidates = {};      // token -> info
-let _camPcs = {};                 // token -> RTCPeerConnection (camera answerer)
-let _camIce = {};                 // token -> pending ICE[]
-let _watchingToken = null;        // Token of candidate proctor has joined
+let _waitingCandidates = {};
+let _camPcs = {};
+let _camIce = {};
+let _watchingToken = null;
+
+// ── Multi-view state ───────────────────────────────────────────────────────────
+let _multiSelected  = new Set();  // submissionIds checked for grid view
+let _multiViewActive = false;
+let _multiCamPcs    = {};         // submissionId -> RTCPeerConnection (cam in grid)
+let _multiCamIces   = {};         // submissionId -> pending ICE[]
 
 const _RTC_CONFIG = {
   iceServers: [
@@ -782,12 +827,26 @@ function handleMsg(msg) {
   if (msg.type === 'camera_ice' && msg.dir === 'candidate_to_admin') {
     handleCameraIce(msg);
   }
-  // Active exam camera
+  // Active exam camera — route to multi-view or single-view
   if (msg.type === 'exam_camera_offer') {
-    handleExamCameraOffer(msg);
+    if (_multiViewActive && _multiSelected.has(msg.submissionId)) {
+      handleMultiCameraOffer(msg);
+    } else if (msg.submissionId === _selectedId) {
+      handleExamCameraOffer(msg);
+    }
   }
   if (msg.type === 'exam_camera_ice' && msg.dir === 'exam_to_admin') {
-    handleExamCameraIce(msg);
+    const forSub = msg.forSubId || msg.submissionId;
+    if (_multiViewActive && forSub && _multiCamPcs[forSub]) {
+      if (!_multiCamPcs[forSub].remoteDescription) {
+        if (!_multiCamIces[forSub]) _multiCamIces[forSub] = [];
+        _multiCamIces[forSub].push(msg.candidate);
+      } else {
+        _multiCamPcs[forSub].addIceCandidate(new RTCIceCandidate(msg.candidate)).catch(() => {});
+      }
+    } else {
+      handleExamCameraIce(msg);
+    }
   }
   // Exam chat reply
   if (msg.type === 'exam_chat_reply') {
@@ -841,46 +900,209 @@ function renderSessionCards() {
 
   if (!live.length && !completed.length) {
     if (bar) bar.classList.remove('visible');
-    document.getElementById('empty-detail').style.display = '';
+    if (!_multiViewActive) document.getElementById('empty-detail').style.display = '';
     return;
   }
-
   if (bar) bar.classList.add('visible');
 
-  // Rebuild pills (no auto-select — proctor chooses who to monitor)
+  // Refresh multi-view tiles if active (stats update every 10s)
+  if (_multiViewActive) _refreshMultiViewStats();
+
+  // Rebuild pills with checkboxes for live sessions
   if (pills) {
     pills.innerHTML = '';
     live.forEach(s => {
-      const pill = document.createElement('button');
-      const dotCls = s.disconnected ? 'reconnecting' : 'live';
-      pill.className = `session-pill${s.disconnected ? ' disconnected' : ''}${_selectedId === s.submissionId ? ' active' : ''}`;
-      pill.innerHTML = `<span class="sp-dot ${dotCls}"></span>${esc(s.candidateName)} <span style="opacity:.6;font-size:10px;margin-left:2px">${esc(s.examTitle)}</span>`;
-      pill.onclick = () => selectSession(s.submissionId);
+      const isChecked = _multiSelected.has(s.submissionId);
+      const dotCls    = s.disconnected ? 'reconnecting' : 'live';
+      const pill = document.createElement('div');
+      pill.className = `session-pill${s.disconnected ? ' disconnected' : ''}${_selectedId === s.submissionId && !_multiViewActive ? ' active' : ''}${isChecked ? ' checked' : ''}`;
+      pill.dataset.id = s.submissionId;
+      pill.innerHTML = `
+        <label style="display:flex;align-items:center;padding:2px 0" onclick="event.stopPropagation()">
+          <input type="checkbox" class="sp-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleMultiSelect('${s.submissionId}',this.checked)">
+        </label>
+        <span class="sp-dot ${dotCls}"></span>
+        <span style="cursor:pointer" onclick="selectSession('${s.submissionId}')">${esc(s.candidateName)} <span style="opacity:.55;font-size:10px">${esc(s.examTitle)}</span></span>`;
       pills.appendChild(pill);
     });
     completed.forEach(s => {
-      const ago = Math.round((Date.now() - s.endedAt) / 60000);
-      const pill = document.createElement('button');
-      pill.className = `session-pill completed${_selectedId === s.submissionId ? ' active' : ''}`;
-      pill.innerHTML = `<span class="sp-dot done"></span>${esc(s.candidateName)} <span style="opacity:.6;font-size:10px;margin-left:2px">✓ ${ago < 1 ? 'just now' : ago + 'm ago'}</span>`;
-      pill.onclick = () => { _selectedId = s.submissionId; renderSessionCards(); };
+      const ago  = Math.round((Date.now() - s.endedAt) / 60000);
+      const pill = document.createElement('div');
+      pill.className = `session-pill completed${_selectedId === s.submissionId && !_multiViewActive ? ' active' : ''}`;
+      pill.innerHTML = `<span class="sp-dot done"></span><span style="cursor:pointer" onclick="_selectedId='${s.submissionId}';renderSessionCards()">${esc(s.candidateName)} <span style="opacity:.55;font-size:10px">✓ ${ago < 1 ? 'just now' : ago + 'm ago'}</span></span>`;
       pills.appendChild(pill);
     });
   }
 
+  // Show/hide multi-monitor button
+  const mbtn = document.getElementById('btn-multi-monitor');
+  const mcount = document.getElementById('multi-sel-count');
+  const exitBtn = document.getElementById('btn-exit-multi');
+  if (mbtn) {
+    if (_multiSelected.size > 1 && !_multiViewActive) mbtn.classList.add('visible');
+    else mbtn.classList.remove('visible');
+  }
+  if (mcount) mcount.textContent = _multiSelected.size;
+  if (exitBtn) {
+    if (_multiViewActive) exitBtn.classList.add('visible');
+    else exitBtn.classList.remove('visible');
+  }
+}
+
+function toggleMultiSelect(submissionId, checked) {
+  if (checked) _multiSelected.add(submissionId);
+  else _multiSelected.delete(submissionId);
+  renderSessionCards();
 }
 
 function selectSession(submissionId) {
+  if (_multiViewActive) exitMultiView();
   _selectedId = submissionId;
-  renderSessionCards(); // re-render pills to update active state
+  renderSessionCards();
+  // Show single-view panel
+  document.getElementById('empty-detail').style.display = 'none';
+  document.getElementById('proctor-panel').style.display = 'flex';
   send({ type: 'subscribe', submissionId });
-  // Auto-request screen share — in Electron kiosk this is auto-approved (no candidate prompt).
-  // Wait 1.5s so the WebRTC camera connection establishes first.
   setTimeout(() => {
-    if (_selectedId === submissionId && !_screenActive) {
-      send({ type: 'request_screen' });
-    }
+    if (_selectedId === submissionId && !_screenActive) send({ type: 'request_screen' });
   }, 1500);
+}
+
+// ── Multi-view ─────────────────────────────────────────────────────────────────
+function enterMultiView() {
+  if (_multiSelected.size < 1) { toast('Select at least one candidate using the checkboxes', 'warning'); return; }
+  _multiViewActive = true;
+  _selectedId = null;
+
+  // Hide single panels, show grid
+  document.getElementById('empty-detail').style.display = 'none';
+  document.getElementById('proctor-panel').style.display = 'none';
+  const mv = document.getElementById('multi-view');
+  mv.className = 'active ' + _mvGridClass(_multiSelected.size);
+  mv.innerHTML = '';
+
+  // Build grid tiles
+  _multiSelected.forEach(subId => {
+    const s = _sessions[subId]; if (!s) return;
+    const tile = _buildMvTile(subId, s);
+    mv.appendChild(tile);
+  });
+
+  // Subscribe to all selected sessions for camera feeds
+  send({ type: 'subscribe_multi', submissionIds: Array.from(_multiSelected) });
+
+  renderSessionCards();
+  toast(`⊞ Multi-view active — monitoring ${_multiSelected.size} candidates`);
+}
+
+function exitMultiView() {
+  _multiViewActive = false;
+  // Close all multi-view camera connections
+  Object.values(_multiCamPcs).forEach(pc => { try { pc.close(); } catch {} });
+  _multiCamPcs = {};
+  _multiCamIces = {};
+  const mv = document.getElementById('multi-view');
+  mv.className = ''; mv.innerHTML = '';
+  document.getElementById('empty-detail').style.display = '';
+  document.getElementById('btn-exit-multi').classList.remove('visible');
+  renderSessionCards();
+}
+
+function _mvGridClass(n) {
+  if (n <= 1) return 'mv-1';
+  if (n === 2) return 'mv-2';
+  if (n === 3) return 'mv-3';
+  if (n === 4) return 'mv-4';
+  return 'mv-many';
+}
+
+function _buildMvTile(subId, s) {
+  const tile = document.createElement('div');
+  tile.className = 'mv-tile';
+  tile.id = `mv-tile-${subId}`;
+  tile.onclick = () => { _multiSelected.clear(); exitMultiView(); selectSession(subId); };
+  tile.title = 'Click to open full monitor view';
+
+  const t = s.timeLeft || 0;
+  const tm = `${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;
+
+  tile.innerHTML = `
+    <div class="mv-cam" id="mv-cam-${subId}">
+      <div class="mv-cam-ph" id="mv-ph-${subId}">
+        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
+        <span>Connecting camera…</span>
+      </div>
+      <video id="mv-vid-${subId}" autoplay muted playsinline style="display:none;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)"></video>
+      <div class="mv-cam-badge">
+        <span id="mv-live-${subId}" style="display:none"><span style="width:5px;height:5px;border-radius:50%;background:#22c55e;display:inline-block;animation:livepulse 1.5s infinite"></span>Live</span>
+        ${s.flaggedCount > 0 ? `<span class="mv-cam-flag">⚠ ${s.flaggedCount}</span>` : ''}
+      </div>
+    </div>
+    <div class="mv-info">
+      <div class="mv-info-name">${esc(s.candidateName)}</div>
+      <div class="mv-info-stats">
+        <span class="mv-stat">⏱ <span id="mv-time-${subId}">${tm}</span></span>
+        <span class="mv-stat">Q <span id="mv-q-${subId}">${(s.questionIndex||0)+1}/${s.totalQuestions||'?'}</span></span>
+        <span class="mv-stat${(s.flaggedCount||0)>0?' danger':''}">⚠ <span id="mv-flags-${subId}">${s.flaggedCount||0}</span></span>
+        ${s.paused ? `<span class="mv-stat warn">⏸ Paused</span>` : ''}
+      </div>
+    </div>`;
+  return tile;
+}
+
+function _refreshMultiViewStats() {
+  _multiSelected.forEach(subId => {
+    const s = _sessions[subId]; if (!s) return;
+    const t = s.timeLeft || 0;
+    const tm = `${String(Math.floor(t/60)).padStart(2,'0')}:${String(t%60).padStart(2,'0')}`;
+    const tEl = document.getElementById(`mv-time-${subId}`);
+    const qEl = document.getElementById(`mv-q-${subId}`);
+    const fEl = document.getElementById(`mv-flags-${subId}`);
+    if (tEl) tEl.textContent = tm;
+    if (qEl) qEl.textContent = `${(s.questionIndex||0)+1}/${s.totalQuestions||'?'}`;
+    if (fEl) fEl.textContent = s.flaggedCount||0;
+    // Update tile border for paused/violation state
+    const tile = document.getElementById(`mv-tile-${subId}`);
+    if (tile) {
+      tile.classList.toggle('mv-paused', !!s.paused);
+      tile.classList.toggle('mv-violation', !!s.pendingViolation);
+    }
+  });
+}
+
+async function handleMultiCameraOffer(msg) {
+  const subId = msg.submissionId;
+  if (_multiCamPcs[subId]) { try { _multiCamPcs[subId].close(); } catch {} }
+  _multiCamIces[subId] = [];
+  const pc = new RTCPeerConnection(_RTC_CONFIG);
+  _multiCamPcs[subId] = pc;
+  pc.ontrack = e => {
+    const vid = document.getElementById(`mv-vid-${subId}`);
+    const ph  = document.getElementById(`mv-ph-${subId}`);
+    const lv  = document.getElementById(`mv-live-${subId}`);
+    if (vid) { vid.srcObject = e.streams[0]; vid.play().catch(() => {}); vid.style.display = ''; }
+    if (ph)  ph.style.display = 'none';
+    if (lv)  lv.style.display = '';
+  };
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) send({ type: 'exam_camera_ice', candidate, dir: 'admin_to_exam', forSubId: subId });
+  };
+  pc.onconnectionstatechange = () => {
+    if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') {
+      try { pc.close(); } catch {}
+      delete _multiCamPcs[subId];
+    }
+  };
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+    for (const c of (_multiCamIces[subId] || [])) {
+      try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+    }
+    _multiCamIces[subId] = [];
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    send({ type: 'exam_camera_answer', answer: pc.localDescription, forSubId: subId });
+  } catch(e) {}
 }
 
 function showDetail(d) {
