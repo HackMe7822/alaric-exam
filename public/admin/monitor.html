@@ -47,12 +47,16 @@
 #pc-progress { height: 3px; background: #21262d; flex-shrink: 0; }
 #pc-prog-fill { height: 100%; background: #3fb950; transition: width .5s; }
 
-/* Violation banner */
-#violation-banner { background: #3d1f1f; border-bottom: 1px solid #f85149; padding: 10px 16px; display: none; flex-shrink: 0; }
+/* Violation banner — always above videos, never hidden */
+#violation-banner { background: #3d1f1f; border-bottom: 2px solid #f85149; padding: 10px 16px; display: none; flex-shrink: 0; z-index: 5; }
+#violation-banner.active { display: block; }
+/* Pulse the border when visible to attract attention */
+@keyframes violpulse { 0%,100%{border-color:#f85149}50%{border-color:#ff7b72} }
+#violation-banner.active { animation: violpulse 1.2s ease-in-out infinite; }
 
-/* Split video area */
-#pc-videos { flex: 1; display: grid; grid-template-columns: 1fr 1fr; min-height: 0; gap: 2px; background: #010409; }
-.pc-video-pane { position: relative; background: #0d1117; overflow: hidden; cursor: pointer; min-height: 200px; }
+/* Split video area — FIXED height so controls + activity log are always visible */
+#pc-videos { height: clamp(180px, 38vh, 340px); flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: #010409; }
+.pc-video-pane { position: relative; background: #0d1117; overflow: hidden; cursor: pointer; min-height: 0; }
 /* Video always in DOM and rendered — display:none causes black frame in Electron
    when srcObject/play() are called while hidden. Use placeholder overlay instead. */
 .pc-video-pane video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
@@ -83,8 +87,8 @@
 #pc-chat-send { background: #388bfd; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 700; cursor: pointer; }
 #pc-chat-send:hover { background: #58a6ff; }
 
-/* Bottom: activity + chat messages */
-#pc-bottom { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #21262d; background: #0d1117; min-height: 0; max-height: 200px; flex-shrink: 0; }
+/* Bottom: activity + chat messages — flex:1 fills remaining space after fixed-height videos */
+#pc-bottom { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid #21262d; background: #0d1117; flex: 1; min-height: 120px; }
 .pc-bottom-pane { display: flex; flex-direction: column; overflow: hidden; }
 .pc-bottom-pane:first-child { border-right: 1px solid #21262d; }
 .pc-pane-hdr { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #8b949e; padding: 6px 12px; border-bottom: 1px solid #21262d; flex-shrink: 0; }
@@ -332,6 +336,8 @@
                 <div id="pc-exam-sub">—</div>
               </div>
               <div id="pc-live-label"><span class="pc-live-dot"></span>LIVE</div>
+              <!-- Violation alert badge — shown when violation banner is active -->
+              <div id="pc-viol-alert" style="display:none;background:#f85149;color:#fff;font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;animation:violpulse 1s infinite;cursor:pointer" onclick="document.getElementById('violation-banner').scrollIntoView({behavior:'smooth'})">🚨 VIOLATION — ACTION NEEDED</div>
             </div>
             <div id="pc-stats">
               <div class="pcs"><span class="pcs-lbl">Time Left</span><span class="pcs-val" id="det-time">—</span></div>
@@ -675,8 +681,13 @@ function showDetail(d) {
   // Violation banner
   const vb = document.getElementById('violation-banner');
   if (vb) {
-    if (d.pendingViolation) showViolationRequest(d.pendingViolation.remark, d.pendingViolation.violationNum);
-    else vb.style.display = 'none';
+    if (d.pendingViolation) {
+      showViolationRequest(d.pendingViolation.remark, d.pendingViolation.violationNum);
+    } else {
+      vb.classList.remove('active');
+      const alert = document.getElementById('pc-viol-alert');
+      if (alert) alert.style.display = 'none';
+    }
   }
 
   applyDetailUpdate(d);
@@ -1296,13 +1307,19 @@ function showViolationRequest(remark, num) {
   if (!banner) return;
   document.getElementById('viol-num').textContent = num || '?';
   document.getElementById('viol-remark').textContent = remark || '(No explanation provided)';
-  banner.style.display = '';
+  banner.classList.add('active');
+  const alert = document.getElementById('pc-viol-alert');
+  if (alert) alert.style.display = '';
+  // Scroll banner into view in case panel is long
+  banner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function approveResume() {
   resumeExam();
   const banner = document.getElementById('violation-banner');
-  if (banner) banner.style.display = 'none';
+  if (banner) banner.classList.remove('active');
+  const alert = document.getElementById('pc-viol-alert');
+  if (alert) alert.style.display = 'none';
 }
 
 function pauseExam() {

@@ -291,6 +291,7 @@ function handleAdminMsg(ws, msg) {
           connectedAt: s.connectedAt,
           paused: s.paused || false,
           micMuted: s.micMuted || false,
+          pendingViolation: s.pendingViolation || null,
         }));
         // Request live camera feed from exam — only if not already streaming.
         // s.cameraRequested flag prevents re-requesting every subscribe (which
