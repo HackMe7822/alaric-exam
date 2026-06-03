@@ -906,8 +906,20 @@ document.getElementById('btn-go-fullscreen').addEventListener('click', () => {
 // ============================================================
 // MULTI-MONITOR
 // ============================================================
+
+// Reliable display count — prefers Electron IPC (screen.getAllDisplays().length)
+// because window.screen.isExtended is undefined in many Electron versions.
+async function getDisplayCount() {
+  if (window.AlaricProctor?.getDisplayCount) {
+    try { return await window.AlaricProctor.getDisplayCount(); } catch {}
+  }
+  // Fallback: Screen API (needs window-management permission in Chrome, may be undefined)
+  if (window.screen?.isExtended === true) return 2;
+  if (window.screen?.isExtended === false) return 1;
+  return 1; // assume single if unknown
+}
+
 async function autoFixMultiMonitor() {
-  // Try Electron IPC first (works silently in Secure Browser)
   if (window.AlaricProctor?.fixMultiMonitor) {
     try {
       const r = await window.AlaricProctor.fixMultiMonitor();
@@ -917,40 +929,41 @@ async function autoFixMultiMonitor() {
   return false;
 }
 
+// Module-level so alaric_display_added handler can call it directly
+let _multiCheckNow = null;
+
 function startMultiMonitorCheck() {
-  const overlay  = document.getElementById('overlay-multimonitor');
-  const msg      = document.getElementById('multimon-msg');
-  const hint     = document.getElementById('multimon-hint');
+  const overlay = document.getElementById('overlay-multimonitor');
+  const msgEl   = document.getElementById('multimon-msg');
+  const hintEl  = document.getElementById('multimon-hint');
 
   const checkNow = async (logEvent) => {
-    if (!window.screen) return false;
-    const extended = window.screen.isExtended;
-    if (!extended) return false;
+    const count = await getDisplayCount();
+    if (count <= 1) return false; // single display — nothing to do
 
-    // Show overlay and attempt auto-fix immediately
+    // Multiple displays detected
     overlay.classList.add('active');
-    if (msg) msg.innerHTML = 'Extra display detected — <strong>auto-disconnecting…</strong>';
-    if (hint) hint.style.display = 'none';
+    if (msgEl) msgEl.innerHTML = 'Extra display detected — <strong>auto-disconnecting…</strong>';
+    if (hintEl) hintEl.style.display = 'none';
     if (logEvent) postEvent('multi_monitor');
 
+    // Attempt auto-fix
     const fixed = await autoFixMultiMonitor();
     if (fixed) {
-      // Wait briefly for screen state to update, then check again
-      await new Promise(r => setTimeout(r, 1000));
-      if (!window.screen.isExtended) {
+      await new Promise(r => setTimeout(r, 1200));
+      const countAfter = await getDisplayCount();
+      if (countAfter <= 1) {
         overlay.classList.remove('active');
         showToast('Extra display auto-disconnected — single monitor confirmed.', 'success', 4000);
         return false;
       }
     }
 
-    // Auto-fix failed — pause exam and require proctor approval, same as tab switch.
-    // The multi-monitor overlay remains visible on top; the violation overlay shows beneath it.
-    if (msg) msg.textContent = 'Disconnect the extra display, then wait for your proctor to resume your exam.';
-    if (hint) hint.style.display = '';
+    // Auto-fix failed — pause exam, require proctor approval (same as tab switch)
+    if (msgEl) msgEl.textContent = 'Disconnect the extra display, then wait for your proctor to resume.';
+    if (hintEl) hintEl.style.display = '';
     if (state.examStarted && !state.submitted && !_examPaused) {
       state.tabSwitchCount++;
-      // Pre-fill the violation remark so candidate doesn't have to type
       const remarkEl = document.getElementById('violation-remark');
       if (remarkEl) remarkEl.value = 'Extra monitor was connected to my machine.';
       triggerTabViolation();
@@ -958,26 +971,25 @@ function startMultiMonitorCheck() {
     return true;
   };
 
-  // Initial check
+  _multiCheckNow = checkNow; // expose for alaric_display_added
+
+  // Initial check on exam load
   checkNow(false);
 
-  // Poll every 3 seconds — catches monitors plugged in mid-exam
+  // Poll every 3 seconds during active exam
   setInterval(async () => {
     if (!state.examStarted || state.submitted) return;
     await checkNow(true);
   }, 3000);
-
-  window.addEventListener('focus', () => {
-    if (state.examStarted && !state.submitted) checkNow(true);
-  });
 }
 
 document.getElementById('btn-recheck-multimon').addEventListener('click', async () => {
-  if (window.screen && !window.screen.isExtended) {
+  const count = await getDisplayCount();
+  if (count <= 1) {
     document.getElementById('overlay-multimonitor').classList.remove('active');
     showToast('Single display confirmed. You may continue.', 'success', 3000);
   } else {
-    showToast('Multiple displays still detected. Please enable mirroring first.', 'danger', 4000);
+    showToast('Multiple displays still detected. Disconnect the extra one first.', 'danger', 4000);
   }
 });
 
@@ -1125,15 +1137,12 @@ function setupSecurity() {
   });
 
   // Electron dispatches this immediately when display-added fires in main process.
-  // Show the multi-monitor overlay right away instead of waiting for the 3-second poll.
+  // Run the full checkNow flow (auto-fix + pause if needed) right away instead of
+  // waiting for the 3-second poll. _multiCheckNow is set by startMultiMonitorCheck().
   window.addEventListener('alaric_display_added', () => {
     if (!state.examStarted || state.submitted) return;
-    _displayChangeBlur = true; // suppress the blur that follows display hotplug
-    postEvent('multi_monitor');
-    const overlay = document.getElementById('overlay-multimonitor');
-    const msg     = document.getElementById('multimon-msg');
-    if (overlay) overlay.classList.add('active');
-    if (msg) msg.textContent = 'Extra display detected — please disconnect it to continue.';
+    _displayChangeBlur = true; // suppress the blur event that follows hotplug
+    if (_multiCheckNow) _multiCheckNow(true);
   });
 }
 
@@ -2332,7 +2341,7 @@ async function startScreenShare() {
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') stopScreenShare();
+      if (pc.connectionState === 'failed' || pc.connectionState === 'disconnected') stopScreenShare(true);
     };
 
     // Create offer and send via WebSocket
@@ -2340,8 +2349,11 @@ async function startScreenShare() {
     await pc.setLocalDescription(offer);
     wsSend({ type: 'rtc_offer', submissionId: state.submissionId, offer: pc.localDescription });
 
-    // Stop sharing when candidate stops via browser UI
-    stream.getVideoTracks()[0].addEventListener('ended', stopScreenShare);
+    // Track ended: either candidate stopped via browser UI, or display reconfigured.
+    // Pass autoRestart=true — if it was a display change (Electron), re-sharing
+    // automatically restores the proctor's view. If candidate stopped intentionally,
+    // the proctor can re-request manually.
+    stream.getVideoTracks()[0].addEventListener('ended', () => stopScreenShare(true));
 
     showMonitoringIndicator();
   } catch(e) {
@@ -2372,12 +2384,18 @@ async function handleRtcIce(candidate) {
   try { await _screenPc.addIceCandidate(new RTCIceCandidate(candidate)); } catch(e) {}
 }
 
-function stopScreenShare() {
+function stopScreenShare(autoRestart = false) {
   if (_screenPc) { try { _screenPc.close(); } catch(e) {} _screenPc = null; }
   if (_screenStream) { _screenStream.getTracks().forEach(t => t.stop()); _screenStream = null; }
   _pendingExamIce = [];
   document.getElementById('_monitor-indicator')?.remove();
   wsSend({ type: 'exam_state', submissionId: state.submissionId, event: 'screen_share_ended', timeLeft: state.timeLeft });
+  // If screen share ended due to display reconfiguration (not admin stop), auto-restart after 2s
+  if (autoRestart && state.examStarted && !state.submitted) {
+    setTimeout(() => {
+      if (!_screenStream && !_screenPc && state.examStarted && !state.submitted) startScreenShare();
+    }, 2000);
+  }
 }
 
 function showMonitoringIndicator() {
