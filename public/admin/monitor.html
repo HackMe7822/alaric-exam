@@ -483,6 +483,7 @@
 let _ws = null;
 let _selectedId = null;
 let _sessions = {};
+let _completedSessions = {}; // history: submissionId -> {candidateName, examTitle, endedAt, reason}
 let _reconnectTimer = null;
 let _screenActive = false;
 let _timerInterval = null;
@@ -567,11 +568,12 @@ function handleMsg(msg) {
     }
   }
   if (msg.type === 'session_disconnected') {
-    // Candidate WS dropped (HDMI, network hiccup, etc.) — keep session in list
     if (_sessions[msg.submissionId]) _sessions[msg.submissionId].disconnected = true;
     renderSessionCards();
     if (_selectedId === msg.submissionId) {
-      // Show disconnected state in the live header — but keep panel open
+      // Close stale WebRTC — they'll be re-established on reconnect
+      closeExamCam();
+      stopScreen();
       const liveLabel = document.getElementById('pc-live-label');
       if (liveLabel) liveLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#f85149;flex-shrink:0;animation:none"></span><span style="color:#f85149;font-size:10px;font-weight:700;letter-spacing:.08em">RECONNECTING…</span>`;
       toast('⚠ Candidate connection dropped — waiting for reconnect (90 s)', 'warning');
@@ -584,18 +586,37 @@ function handleMsg(msg) {
       const liveLabel = document.getElementById('pc-live-label');
       if (liveLabel) liveLabel.innerHTML = `<span class="pc-live-dot"></span>LIVE`;
       toast('✅ Candidate reconnected', 'success');
-      // Re-request camera since WebRTC connections were torn down
       send({ type: 'subscribe', submissionId: _selectedId });
     }
   }
   if (msg.type === 'session_ended') {
-    delete _sessions[msg.submissionId];
-    if (_selectedId === msg.submissionId) {
-      _selectedId = null;
-      showEmptyDetail();
-      toast('Session ended — candidate submitted or exam timed out', 'warning');
+    const s = _sessions[msg.submissionId];
+    const reason = msg.reason || 'disconnected';
+    const isSubmit = reason === 'submitted' || reason === 'auto' || reason === 'time_up' || reason === 'proctor_stop';
+    // Move to completed history (keep in list with "Completed" badge)
+    if (s) {
+      _completedSessions[msg.submissionId] = {
+        submissionId: msg.submissionId,
+        candidateName: msg.candidateName || s.candidateName,
+        examTitle: s.examTitle,
+        flaggedCount: s.flaggedCount || 0,
+        tabSwitches: s.tabSwitches || 0,
+        endedAt: Date.now(),
+        reason,
+      };
     }
+    delete _sessions[msg.submissionId];
     renderSessionCards();
+    if (_selectedId === msg.submissionId) {
+      // Keep panel open but update header to show completed state
+      const liveLabel = document.getElementById('pc-live-label');
+      if (liveLabel) liveLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#8b949e;flex-shrink:0;animation:none"></span><span style="color:#8b949e;font-size:10px;font-weight:700;letter-spacing:.08em">COMPLETED</span>`;
+      const msg2 = isSubmit ? '📋 Candidate submitted exam' : '⚠ Candidate session ended';
+      toast(msg2, isSubmit ? 'success' : 'warning');
+      appendEvent({ event: isSubmit ? 'exam_submitted' : 'session_ended', at: new Date().toISOString() });
+      // Disable controls since exam is over
+      document.querySelectorAll('#pc-controls .pc-ctrl-btn').forEach(b => b.disabled = true);
+    }
   }
   if (msg.type === 'session_detail') {
     showDetail(msg);
@@ -675,17 +696,52 @@ function renderSessions(sessions) {
 
 function renderSessionCards() {
   const list = Object.values(_sessions);
+  const completed = Object.values(_completedSessions);
   document.getElementById('session-count').textContent = `(${list.length})`;
   const scroll = document.getElementById('sessions-scroll');
   const empty = document.getElementById('sc-empty');
 
-  if (!list.length) {
+  if (!list.length && !completed.length) {
     empty.style.display = '';
-    // Remove all cards
     scroll.querySelectorAll('.session-card').forEach(c => c.remove());
     return;
   }
   empty.style.display = 'none';
+
+  // Render completed sessions (history, greyed out, at bottom of list)
+  completed.forEach(s => {
+    const id = `completed-${s.submissionId}`;
+    let card = scroll.querySelector(`[data-id="${id}"]`);
+    if (!card) {
+      card = document.createElement('div');
+      card.className = 'session-card';
+      card.dataset.id = id;
+      card.style.opacity = '.6';
+      card.onclick = () => {
+        // Show the completed session's last state in the panel
+        _selectedId = s.submissionId;
+        document.querySelectorAll('.session-card').forEach(c => c.classList.toggle('active', c.dataset.id === id));
+      };
+      scroll.insertBefore(card, scroll.firstChild); // completed at top so proctor sees them
+    }
+    if (_selectedId === s.submissionId) card.classList.add('active'); else card.classList.remove('active');
+    const ago = Math.round((Date.now() - s.endedAt) / 60000);
+    const agoStr = ago < 1 ? 'just now' : `${ago}m ago`;
+    card.innerHTML = `
+      <div class="sc-name">${esc(s.candidateName)}</div>
+      <div class="sc-exam">${esc(s.examTitle)}</div>
+      <div class="sc-meta">
+        <span class="sc-badge" style="background:#f1f5f9;color:#64748b">✓ Completed ${agoStr}</span>
+        ${s.flaggedCount > 0 ? `<span class="sc-badge flag">⚠ ${s.flaggedCount}</span>` : ''}
+      </div>
+    `;
+  });
+
+  // Remove stale completed cards
+  scroll.querySelectorAll('[data-id^="completed-"]').forEach(card => {
+    const id = card.dataset.id.replace('completed-','');
+    if (!_completedSessions[id]) card.remove();
+  });
 
   const existing = new Set(scroll.querySelectorAll('.session-card').values());
   list.forEach(s => {

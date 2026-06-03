@@ -861,6 +861,11 @@ function stopHeartbeat() { clearInterval(_heartbeatInterval); _heartbeatInterval
 
 // Tab close — beacon marks exam as cancelled
 window.addEventListener('beforeunload', () => {
+  if (state.submissionId) {
+    // Notify proctor monitor that this session is ending (submitted or abandoned)
+    const reason = state.submitted ? 'submitted' : 'tab_close';
+    wsSend({ type: 'exam_submitted', submissionId: state.submissionId, reason });
+  }
   if (state.examStarted && !state.submitted && state.submissionId) {
     navigator.sendBeacon(
       `/exam/${state.token}/abandon`,
@@ -1956,6 +1961,9 @@ async function submitExam(isAuto, reason) {
     }
     resultData = data || {};
   }
+  // Notify monitor that exam is done — do this BEFORE showing result screen
+  // so the admin sees "Candidate submitted" even if result screen closes WS
+  wsSend({ type: 'exam_submitted', submissionId: state.submissionId, reason: isAuto ? (reason || 'auto') : 'submitted' });
   showResultScreen(resultData, timeTaken, submitOk);
 }
 

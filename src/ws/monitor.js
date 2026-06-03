@@ -128,6 +128,13 @@ function setupMonitor(wss) {
           if (msg.timeLeft      != null) existing.timeLeft      = msg.timeLeft;
           if (msg.answeredCount != null) existing.answeredCount  = msg.answeredCount;
           ws.send(JSON.stringify({ type: 'registered' }));
+          // Re-sync paused state — the exam page may have missed pause_exam if the WS
+          // dropped between the admin clicking Pause and the message being delivered.
+          if (existing.paused) {
+            setTimeout(() => {
+              if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'pause_exam' }));
+            }, 300);
+          }
           sendToAdmins({ type: 'session_reconnected', submissionId: msg.submissionId });
           broadcastSessions();
           return;
@@ -289,6 +296,26 @@ function handleExamMsg(ws, msg) {
       { type: 'exam_camera_ice', candidate: msg.candidate, dir: 'exam_to_admin' },
       info => info.subscribedTo === msg.submissionId
     );
+  }
+
+  // ── Candidate explicitly submitted / closed exam ─────────────────────────
+  if (msg.type === 'exam_submitted') {
+    session.ended = true;
+    session.endedAt = Date.now();
+    session.endReason = msg.reason || 'submitted';
+    // Immediately clean up — no 90-second wait needed
+    clearTimeout(session._cleanupTimer);
+    sendToAdmins({
+      type: 'session_ended',
+      submissionId: msg.submissionId,
+      reason: session.endReason,
+      candidateName: session.candidateName,
+    });
+    // Move to history — keep snapshot but remove live ws reference
+    session.ws = null;
+    examSessions.delete(msg.submissionId);
+    broadcastSessions();
+    return;
   }
 
   // ── Exam chat reply (exam → admin) ───────────────────────────────────────
