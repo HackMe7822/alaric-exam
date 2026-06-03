@@ -414,7 +414,6 @@ function handleAdminMsg(ws, msg) {
     ids.forEach(subId => {
       const s = examSessions.get(subId);
       if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
-        s.cameraRequested = false; // force re-request for multi-view
         s.cameraRequested = true;
         s.ws.send(JSON.stringify({ type: 'request_exam_camera' }));
       }
