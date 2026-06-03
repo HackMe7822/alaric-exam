@@ -3,9 +3,29 @@ const jwt = require('jsonwebtoken');
 const { getDb } = require('../../database/index');
 
 // In-memory state — resets on server restart (acceptable; sessions are live only)
-const examSessions     = new Map();  // submissionId -> SessionInfo
-const adminClients     = new Map();  // ws -> AdminInfo
-const waitingCandidates = new Map(); // token -> WaitingInfo  (Secure Browser waiting room)
+const examSessions      = new Map();  // submissionId -> SessionInfo (live)
+const completedSessions = new Map();  // submissionId -> CompletedInfo (keeps last 50)
+const adminClients      = new Map();  // ws -> AdminInfo
+const waitingCandidates = new Map();  // token -> WaitingInfo
+
+const MAX_COMPLETED = 50; // keep last N completed sessions across restarts
+
+function addCompleted(submissionId, s, reason) {
+  completedSessions.set(submissionId, {
+    submissionId,
+    candidateName: s.candidateName,
+    examTitle:     s.examTitle,
+    flaggedCount:  s.flaggedCount || 0,
+    tabSwitches:   s.tabSwitches  || 0,
+    endedAt:       Date.now(),
+    reason:        reason || 'unknown',
+  });
+  // Trim oldest entries when over limit
+  if (completedSessions.size > MAX_COMPLETED) {
+    const oldest = completedSessions.keys().next().value;
+    completedSessions.delete(oldest);
+  }
+}
 
 function parseCookies(header) {
   const out = {};
@@ -45,8 +65,12 @@ function sendToAdmins(data, filter) {
   });
 }
 
+function completedSnapshot() {
+  return Array.from(completedSessions.values());
+}
+
 function broadcastSessions() {
-  sendToAdmins({ type: 'sessions_list', sessions: sessionSnapshot() });
+  sendToAdmins({ type: 'sessions_list', sessions: sessionSnapshot(), completed: completedSnapshot() });
 }
 
 // ── Waiting room helpers ──────────────────────────────────────────────────────
@@ -95,7 +119,7 @@ function setupMonitor(wss) {
         if (user && ['exam_manager', 'super_admin'].includes(user.role)) {
           ws._role = 'admin';
           adminClients.set(ws, { userId: user.id, userName: user.full_name || user.username, subscribedTo: null });
-          ws.send(JSON.stringify({ type: 'auth_ok', sessions: sessionSnapshot(), waitingCandidates: waitingSnapshot() }));
+          ws.send(JSON.stringify({ type: 'auth_ok', sessions: sessionSnapshot(), completed: completedSnapshot(), waitingCandidates: waitingSnapshot() }));
         }
       } catch(e) {}
     }
@@ -205,18 +229,24 @@ function setupMonitor(wss) {
           s.ws = null;
           s.disconnected = true;
           s.disconnectedAt = Date.now();
-          // Keep session alive for 90 s — allows candidate to reconnect after
+          // Keep session alive for 30 s — allows candidate to reconnect after
           // brief disconnect (HDMI plug-in, network hiccup, page reload).
           // Only send session_ended + delete after the timeout if still disconnected.
           clearTimeout(s._cleanupTimer);
           s._cleanupTimer = setTimeout(() => {
             const curr = examSessions.get(ws._submissionId);
             if (curr && curr.disconnected) {
+              addCompleted(ws._submissionId, curr, 'disconnected');
               examSessions.delete(ws._submissionId);
-              sendToAdmins({ type: 'session_ended', submissionId: ws._submissionId });
+              sendToAdmins({
+                type: 'session_ended',
+                submissionId: ws._submissionId,
+                candidateName: curr.candidateName,
+                reason: 'disconnected',
+              });
               broadcastSessions();
             }
-          }, 90000);
+          }, 30000);
           // Tell admins the candidate is temporarily disconnected (do NOT delete session)
           sendToAdmins({ type: 'session_disconnected', submissionId: ws._submissionId });
           broadcastSessions();
@@ -305,16 +335,16 @@ function handleExamMsg(ws, msg) {
   if (msg.type === 'exam_submitted') {
     session.ended = true;
     session.endedAt = Date.now();
-    session.endReason = msg.reason || 'submitted';
-    // Immediately clean up — no 90-second wait needed
+    const endReason = msg.reason || 'submitted';
+    session.endReason = endReason;
     clearTimeout(session._cleanupTimer);
+    addCompleted(msg.submissionId, session, endReason);
     sendToAdmins({
       type: 'session_ended',
       submissionId: msg.submissionId,
-      reason: session.endReason,
+      reason: endReason,
       candidateName: session.candidateName,
     });
-    // Move to history — keep snapshot but remove live ws reference
     session.ws = null;
     examSessions.delete(msg.submissionId);
     broadcastSessions();

@@ -561,10 +561,14 @@ function connect() {
 
 function handleMsg(msg) {
   if (msg.type === 'auth_ok') {
+    // Restore completed sessions from server (survives admin WS reconnect / page reload)
+    (msg.completed || []).forEach(s => { _completedSessions[s.submissionId] = s; });
     renderSessions(msg.sessions);
     renderWaitingList(msg.waitingCandidates || []);
   }
   if (msg.type === 'sessions_list') {
+    // Merge any server-side completed sessions into local map
+    (msg.completed || []).forEach(s => { _completedSessions[s.submissionId] = s; });
     renderSessions(msg.sessions);
     if (_selectedId) {
       const s = _sessions[_selectedId];
@@ -612,18 +616,16 @@ function handleMsg(msg) {
     const s = _sessions[msg.submissionId];
     const reason = msg.reason || 'disconnected';
     const isSubmit = reason === 'submitted' || reason === 'auto' || reason === 'time_up' || reason === 'proctor_stop';
-    // Move to completed history (keep in list with "Completed" badge)
-    if (s) {
-      _completedSessions[msg.submissionId] = {
-        submissionId: msg.submissionId,
-        candidateName: msg.candidateName || s.candidateName,
-        examTitle: s.examTitle,
-        flaggedCount: s.flaggedCount || 0,
-        tabSwitches: s.tabSwitches || 0,
-        endedAt: Date.now(),
-        reason,
-      };
-    }
+    // Always populate completed (server now sends candidateName; s used as fallback)
+    _completedSessions[msg.submissionId] = {
+      submissionId:  msg.submissionId,
+      candidateName: msg.candidateName || s?.candidateName || '—',
+      examTitle:     s?.examTitle || '—',
+      flaggedCount:  s?.flaggedCount || 0,
+      tabSwitches:   s?.tabSwitches  || 0,
+      endedAt:       Date.now(),
+      reason,
+    };
     delete _sessions[msg.submissionId];
     renderSessionCards();
     if (_selectedId === msg.submissionId) {
