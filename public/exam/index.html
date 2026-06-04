@@ -956,30 +956,19 @@ function startMultiMonitorCheck() {
     if (hintEl) hintEl.style.display = 'none';
     if (logEvent) postEvent('multi_monitor');
 
-    // Pause NOW, before auto-fix attempt
+    // Pause exam and require proctor approval.
+    // Do NOT auto-disconnect (DisplaySwitch /internal) — that sets Windows to
+    // "PC screen only" mode which makes subsequent connections undetectable.
+    // Candidate must physically disconnect the monitor themselves.
+    if (msgEl) msgEl.textContent = 'Extra display detected. Please physically disconnect it, then request resume from your proctor.';
+    if (hintEl) hintEl.style.display = '';
+
     if (state.examStarted && !state.submitted && !_examPaused) {
       state.tabSwitchCount++;
       const remarkEl = document.getElementById('violation-remark');
       if (remarkEl) remarkEl.value = 'An extra monitor was connected to my machine.';
       triggerTabViolation('multi_monitor');
     }
-
-    // Try auto-fix — only affects the overlay message, NOT the paused state
-    const fixed = await autoFixMultiMonitor();
-    if (fixed) {
-      await new Promise(r => setTimeout(r, 1200));
-      const countAfter = await getDisplayCount();
-      if (countAfter <= 1) {
-        // Display clean — hide the multi-monitor overlay; violation overlay handles resume
-        overlay.classList.remove('active');
-        if (msgEl) msgEl.textContent = 'Extra display disconnected. Waiting for proctor to resume.';
-        return false;
-      }
-    }
-
-    // Auto-fix failed — show manual hint alongside violation overlay
-    if (msgEl) msgEl.textContent = 'Disconnect the extra display, then wait for your proctor to resume.';
-    if (hintEl) hintEl.style.display = '';
     return true;
   };
 
@@ -1148,35 +1137,30 @@ function setupSecurity() {
     }
   });
 
-  // Electron fires this IMMEDIATELY when a display is added — before DisplaySwitch runs.
-  // DO NOT call checkNow/getDisplayCount here: by the time the IPC round-trip completes,
-  // DisplaySwitch /internal may have already removed the extra monitor so count returns 1.
-  // Instead use e.detail.count which was captured in main.js BEFORE auto-disconnect ran.
+  // Electron fires this immediately when a display is added (from preload or main).
+  // No auto-disconnect — DisplaySwitch /internal sets Windows to "PC screen only"
+  // which makes subsequent monitor connections undetectable. Candidate must physically
+  // disconnect the monitor themselves.
   window.addEventListener('alaric_display_added', (e) => {
     if (!state.examStarted || state.submitted) return;
-    _displayChangeBlur = true; // suppress the blur that follows hotplug
+    _displayChangeBlur = true; // suppress the blur event that follows hotplug
 
     const count = (e.detail && e.detail.count) ? e.detail.count : 2;
-    if (count <= 1) return; // should never happen but guard anyway
+    if (count <= 1) return;
 
     postEvent('multi_monitor');
     const overlay = document.getElementById('overlay-multimonitor');
     const msgEl   = document.getElementById('multimon-msg');
     if (overlay) overlay.classList.add('active');
-    if (msgEl) msgEl.innerHTML = 'Extra display detected — <strong>auto-disconnecting…</strong>';
+    if (msgEl) msgEl.textContent = 'Extra display detected. Please physically disconnect it, then request resume from your proctor.';
 
-    // Pause exam and require proctor approval regardless of whether auto-fix succeeds
     if (!_examPaused) {
       state.tabSwitchCount++;
       const remarkEl = document.getElementById('violation-remark');
       if (remarkEl) remarkEl.value = 'An extra monitor was connected to my machine.';
       triggerTabViolation('multi_monitor');
     }
-
-    // Try auto-fix async — only updates overlay message, exam stays paused either way
-    autoFixMultiMonitor().then(fixed => {
-      if (fixed && msgEl) msgEl.textContent = 'Extra display disconnected. Wait for your proctor to resume.';
-    });
+    // No autoFixMultiMonitor() — do not call DisplaySwitch /internal
   });
 }
 
@@ -2788,15 +2772,11 @@ if (window.AlaricProctor && typeof window.AlaricProctor.onSecurityEvent === 'fun
       const remarkEl = document.getElementById('violation-remark');
       if (remarkEl) remarkEl.value = 'An extra monitor was connected to my machine.';
       triggerTabViolation('multi_monitor');
-      // Also show multi-monitor overlay for context
+      // Show multi-monitor overlay — no auto-disconnect (see alaric_display_added handler)
       const overlay = document.getElementById('overlay-multimonitor');
       const msgEl   = document.getElementById('multimon-msg');
       if (overlay) overlay.classList.add('active');
-      if (msgEl) msgEl.textContent = 'Extra display detected. Disconnect it and wait for proctor to resume.';
-      // Try to auto-disconnect in background
-      autoFixMultiMonitor().then(fixed => {
-        if (fixed && msgEl) msgEl.textContent = 'Extra display disconnected. Waiting for proctor to resume.';
-      });
+      if (msgEl) msgEl.textContent = 'Extra display detected. Please physically disconnect it, then request resume from your proctor.';
       return;
     }
 
