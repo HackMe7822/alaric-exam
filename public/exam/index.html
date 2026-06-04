@@ -1170,8 +1170,9 @@ async function postEvent(eventType) {
     submission_id: state.submissionId,
     event_type: eventType
   });
-  // Auto-submit only as hard safety fallback (>10 unreviewed violations)
-  if (eventType === 'tab_switch' && state.tabSwitchCount > 10) {
+  // Safety fallback — triggerTabViolation handles this first, but catch it here too
+  if ((eventType === 'tab_switch' || eventType === 'multi_monitor') &&
+      state.tabSwitchCount >= (state.maxTabSwitches || 3)) {
     autoSubmit('violation_limit');
   }
 }
@@ -2632,6 +2633,11 @@ async function handleExamCameraIce(candidate) {
 function triggerTabViolation(reason) {
   _examPaused = true;
   const isMultiMon = reason === 'multi_monitor';
+  // Restore any elements hidden by a previous limit-reached termination overlay
+  const prevTextarea = document.querySelector('#overlay-violation textarea');
+  if (prevTextarea) prevTextarea.style.display = '';
+  const prevExplain = document.querySelectorAll('#overlay-violation > .overlay-card > p')[1];
+  if (prevExplain) prevExplain.style.display = '';
   sendMonitorState(isMultiMon ? 'multi_monitor' : 'tab_switch');
   postEvent(isMultiMon ? 'multi_monitor' : 'tab_switch');
 
@@ -2657,12 +2663,30 @@ function triggerTabViolation(reason) {
   }
 
   document.getElementById('violation-count').textContent = state.tabSwitchCount;
+
+  // ── Auto-terminate when violation limit is reached ────────────────────────
+  const limit = state.maxTabSwitches || 3;
+  if (state.tabSwitchCount >= limit) {
+    // Update overlay to show termination message instead of resume form
+    if (titleEl) { titleEl.textContent = 'Exam Terminated'; titleEl.style.color = '#dc2626'; }
+    if (msgEl) msgEl.innerHTML = `You have reached the maximum allowed violations (<strong>${limit}</strong>). Your exam is being submitted automatically.`;
+    if (explainEl) explainEl.style.display = 'none';
+    const form = document.querySelector('#overlay-violation textarea');
+    if (form) form.style.display = 'none';
+    const btn2 = document.getElementById('btn-req-resume');
+    if (btn2) btn2.style.display = 'none';
+    document.getElementById('overlay-violation').classList.add('active');
+    sendMonitorState('violation_limit');
+    setTimeout(() => autoSubmit('violation_limit'), 4000);
+    return;
+  }
+
   // For tab switch: always clear the remark so old multi-monitor text doesn't persist.
   // For multi-monitor: keep the pre-filled explanation (set by caller before invoking this).
   document.getElementById('violation-remark').value = isMultiMon ? (remarkEl?.value || '') : '';
   document.getElementById('violation-wait-msg').style.display = 'none';
   const btn = document.getElementById('btn-req-resume');
-  if (btn) { btn.disabled = false; btn.textContent = 'Send & Request Resume'; }
+  if (btn) { btn.disabled = false; btn.style.display = ''; btn.textContent = 'Send & Request Resume'; }
   document.getElementById('overlay-violation').classList.add('active');
 }
 
