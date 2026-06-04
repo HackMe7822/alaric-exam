@@ -2703,9 +2703,11 @@ function handlePauseExam() {
 
 function handleResumeExam() {
   _examPaused = false;
-  // Close both overlays (proctor pause AND tab violation)
+  _displayChangeBlur = false; // reset so next monitor hotplug is detected cleanly
+  // Close ALL overlays — multimonitor overlay must also clear so second connection fires fresh
   document.getElementById('overlay-paused').classList.remove('active');
   document.getElementById('overlay-violation').classList.remove('active');
+  document.getElementById('overlay-multimonitor').classList.remove('active');
   sendMonitorState('exam_resumed');
 }
 
