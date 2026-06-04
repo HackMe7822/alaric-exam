@@ -1416,7 +1416,7 @@ function selectWaitingCandidate(token) {
   _refreshDetailHeader(token);
 
   // Show detail drawer
-  document.getElementById('wr-detail-panel').style.display = '';
+  document.getElementById('wr-detail-panel').style.display = 'block';
 
   // Point shared camera video at this candidate's stream
   const poolVid = document.getElementById(`wcam-${token}`);
