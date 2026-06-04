@@ -41,6 +41,7 @@ router.get('/:id', auth, (req, res) => {
   try { sub.events = db.prepare('SELECT id, event_type, created_at FROM exam_events WHERE submission_id=? ORDER BY created_at ASC').all(sub.id); } catch(e) { sub.events = []; }
   try { sub.recordings = db.prepare('SELECT type, file_path, created_at FROM recordings WHERE submission_id=?').all(sub.id); } catch(e) { sub.recordings = []; }
   try { sub.chats = db.prepare('SELECT sender, sender_name, message, sent_at FROM exam_chats WHERE submission_id=? ORDER BY sent_at ASC').all(sub.id); } catch(e) { sub.chats = []; }
+  try { sub.callRecording = db.prepare('SELECT id, file_path, created_at FROM call_recordings WHERE submission_id=? ORDER BY id DESC LIMIT 1').get(sub.id) || null; } catch(e) { sub.callRecording = null; }
   res.json(sub);
 });
 
@@ -56,6 +57,32 @@ router.get('/:id/recording/:type', auth, requireRole('exam_manager', 'super_admi
   if (!fs.existsSync(abs)) return res.status(404).json({ error: 'File missing' });
   const stat = fs.statSync(abs);
   res.setHeader('Content-Type', 'video/webm');
+  res.setHeader('Accept-Ranges', 'bytes');
+  const range = req.headers.range;
+  if (range) {
+    const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(startStr, 10);
+    const end = endStr ? parseInt(endStr, 10) : stat.size - 1;
+    res.setHeader('Content-Range', `bytes ${start}-${end}/${stat.size}`);
+    res.setHeader('Content-Length', end - start + 1);
+    res.status(206);
+    fs.createReadStream(abs, { start, end }).pipe(res);
+  } else {
+    res.setHeader('Content-Length', stat.size);
+    fs.createReadStream(abs).pipe(res);
+  }
+});
+
+// GET /api/submissions/:id/call-recording — stream proctor-candidate call audio
+router.get('/:id/call-recording', auth, requireRole('exam_manager', 'super_admin'), (req, res) => {
+  const db = getDb();
+  const id = parseInt(req.params.id);
+  const rec = db.prepare('SELECT file_path FROM call_recordings WHERE submission_id=? ORDER BY id DESC LIMIT 1').get(id);
+  if (!rec) return res.status(404).json({ error: 'No call recording found' });
+  const abs = path.join(__dirname, '..', '..', rec.file_path);
+  if (!fs.existsSync(abs)) return res.status(404).json({ error: 'File missing' });
+  const stat = fs.statSync(abs);
+  res.setHeader('Content-Type', 'audio/webm');
   res.setHeader('Accept-Ranges', 'bytes');
   const range = req.headers.range;
   if (range) {

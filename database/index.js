@@ -134,6 +134,17 @@ function initDb() {
     updated_at TEXT DEFAULT (datetime('now'))
   )`); } catch(e) {}
   try { d.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_recordings_sub_type ON recordings(submission_id, type)`); } catch(e) {}
+  // JS migration: call recordings table (proctor-candidate audio during exam)
+  // Separate table — avoids altering CHECK constraint on recordings table
+  try { d.exec(`CREATE TABLE IF NOT EXISTS call_recordings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submission_id INTEGER NOT NULL REFERENCES submissions(id) ON DELETE CASCADE,
+    session_type TEXT NOT NULL DEFAULT 'exam',
+    file_path TEXT NOT NULL,
+    duration_seconds INTEGER,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+  )`); } catch(e) {}
   // JS migration: recycle bin tables
   try { d.exec(`CREATE TABLE IF NOT EXISTS deleted_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -2836,6 +2836,8 @@ if (window.AlaricProctor && typeof window.AlaricProctor.onSecurityEvent === 'fun
 // ── Proctor ↔ Candidate audio call ───────────────────────────────────────────
 let _proctorCallPc   = null;
 let _proctorCallIces = [];
+let _callRecorder    = null; // MediaRecorder for proctor-candidate call audio
+let _callAudioCtx    = null;
 
 async function handleProctorCallOffer(msg) {
   endProctorCallOnExam(); // close any existing call first
@@ -2875,6 +2877,34 @@ async function handleProctorCallOffer(msg) {
       document.body.appendChild(audio);
     }
     showToast('📞 Your proctor is speaking — you can hear them now', 'info', 5000);
+
+    // Record the call: mix proctor's voice + candidate's mic → upload as call recording
+    if (state.submissionId && state.token) {
+      try {
+        const ctx = new AudioContext();
+        const dest = ctx.createMediaStreamDestination();
+        // Proctor's incoming voice
+        const proctorSrc = ctx.createMediaStreamSource(e.streams[0]);
+        proctorSrc.connect(dest);
+        // Candidate's own mic (if available)
+        if (_micStream) {
+          const micSrc = ctx.createMediaStreamSource(_micStream);
+          micSrc.connect(dest);
+        }
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+        const callRec = new MediaRecorder(dest.stream, { mimeType });
+        callRec.ondataavailable = ({ data }) => {
+          if (!data || data.size < 100) return;
+          const fd = new FormData();
+          fd.append('chunk', data, 'call.webm');
+          fd.append('submission_id', state.submissionId);
+          fetch(`/exam/${state.token}/call-chunk`, { method: 'POST', body: fd }).catch(() => {});
+        };
+        callRec.start(10000); // flush every 10s
+        _callRecorder = callRec;
+        _callAudioCtx = ctx;
+      } catch(e) { console.warn('[callRec]', e.message); }
+    }
   };
 
   pc.onicecandidate = ({ candidate }) => {
@@ -2900,6 +2930,12 @@ async function handleProctorCallIce(candidate) {
 
 function endProctorCallOnExam() {
   if (_proctorCallPc) { try { _proctorCallPc.close(); } catch {} _proctorCallPc = null; }
+  // Stop and flush call recorder
+  if (_callRecorder && _callRecorder.state !== 'inactive') {
+    try { _callRecorder.stop(); } catch {}
+  }
+  _callRecorder = null;
+  if (_callAudioCtx) { try { _callAudioCtx.close(); } catch {} _callAudioCtx = null; }
   document.getElementById('_proctor-call-overlay')?.remove();
   document.getElementById('_proctor-call-audio')?.remove();
 }

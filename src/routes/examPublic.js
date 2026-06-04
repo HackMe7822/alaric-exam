@@ -233,6 +233,30 @@ router.post('/:token/recording-chunk', recUpload.single('chunk'), (req, res) => 
   res.json({ ok: true });
 });
 
+// POST /exam/:token/call-chunk — upload proctor-candidate call audio chunk (from exam page)
+router.post('/:token/call-chunk', recUpload.single('chunk'), (req, res) => {
+  const db = getDb();
+  const { submission_id } = req.body;
+  if (!req.file?.buffer?.length) return res.json({ ok: true });
+  const sub = db.prepare('SELECT s.* FROM submissions s JOIN exam_links el ON el.id=s.link_id WHERE s.id=? AND el.token=?')
+    .get(parseInt(submission_id), req.params.token);
+  if (!sub) return res.status(403).json({ error: 'Forbidden' });
+
+  const dir = path.join(__dirname, '..', '..', 'uploads', 'call_recordings');
+  fs.mkdirSync(dir, { recursive: true });
+  const relPath = `uploads/call_recordings/${sub.id}-call.webm`;
+  const absPath = path.join(__dirname, '..', '..', relPath);
+  fs.appendFileSync(absPath, req.file.buffer);
+
+  const existing = db.prepare('SELECT id FROM call_recordings WHERE submission_id=?').get(sub.id);
+  if (existing) {
+    db.prepare(`UPDATE call_recordings SET updated_at=datetime('now') WHERE id=?`).run(existing.id);
+  } else {
+    db.prepare('INSERT INTO call_recordings(submission_id, file_path) VALUES(?,?)').run(sub.id, relPath);
+  }
+  res.json({ ok: true });
+});
+
 // POST /exam/:token/upload-file
 router.post('/:token/upload-file', fileUpload.single('file'), (req, res) => {
   const db = getDb();

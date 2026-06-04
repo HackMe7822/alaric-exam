@@ -416,9 +416,12 @@ async function openDetail(id) {
   const dlBtns     = document.getElementById('dm-download-btns');
   // Reset
   vidWebcam.src = ''; vidScreen.src = '';
+  document.getElementById('dm-call-audio-wrap')?.remove();
   recWebcam.style.display = 'none'; recScreen.style.display = 'none';
   dlBtns.innerHTML = '';
-  if (recordings.length) {
+  const callRec = detail.callRecording;
+  const totalRec = recordings.length + (callRec ? 1 : 0);
+  if (totalRec > 0) {
     recEmpty.style.display  = 'none';
     recWrap.style.display   = '';
     recordings.forEach(r => {
@@ -426,14 +429,28 @@ async function openDetail(id) {
       const label = r.type === 'webcam' ? '📷 Webcam' : '🖥 Screen';
       if (r.type === 'webcam') { recWebcam.style.display = ''; vidWebcam.src = url; }
       if (r.type === 'screen') { recScreen.style.display = ''; vidScreen.src = url; }
-      // Download button
       dlBtns.innerHTML += `<a href="${url}" download="${r.type}-${id}.webm"
         class="btn btn-outline btn-sm" style="display:inline-flex;align-items:center;gap:5px">
         ⬇ Download ${label} Recording</a>`;
     });
-    // Update recordings tab label
+    if (callRec) {
+      const callUrl = `/api/submissions/${id}/call-recording`;
+      dlBtns.innerHTML += `<a href="${callUrl}" download="proctor-call-${id}.webm"
+        class="btn btn-outline btn-sm" style="display:inline-flex;align-items:center;gap:5px">
+        ⬇ Download 📞 Proctor Call</a>`;
+      // Show audio player for call recording
+      const callDiv = document.getElementById('dm-rec-webcam').parentNode;
+      if (callDiv && !document.getElementById('dm-call-audio-wrap')) {
+        const wrap = document.createElement('div');
+        wrap.id = 'dm-call-audio-wrap';
+        wrap.style.cssText = 'grid-column:1/-1;margin-top:12px';
+        wrap.innerHTML = `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--gray);margin-bottom:6px">📞 Proctor ↔ Candidate Call Recording</div>
+          <audio controls style="width:100%;border-radius:8px" src="${callUrl}"></audio>`;
+        document.getElementById('dm-videos-grid').appendChild(wrap);
+      }
+    }
     const tabRec = document.getElementById('tab-recordings');
-    if (tabRec) tabRec.textContent = `📹 Recordings (${recordings.length})`;
+    if (tabRec) tabRec.textContent = `📹 Recordings (${totalRec})`;
   } else {
     recEmpty.style.display  = '';
     recWrap.style.display   = 'none';
