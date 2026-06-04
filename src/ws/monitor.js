@@ -568,7 +568,7 @@ function handleAdminMsg(ws, msg) {
     }
   }
 
-  // ── Proctor ↔ Candidate audio/video call ──────────────────────────────────
+  // ── Proctor ↔ Candidate audio/video call (during exam) ───────────────────
   if (msg.type === 'proctor_call_offer') {
     const s = info.subscribedTo && examSessions.get(info.subscribedTo);
     if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
@@ -585,6 +585,26 @@ function handleAdminMsg(ws, msg) {
     const s = info.subscribedTo && examSessions.get(info.subscribedTo);
     if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'proctor_call_end' }));
+    }
+  }
+
+  // ── Proctor ↔ Waiting-room candidate call (before exam starts) ────────────
+  if (msg.type === 'proctor_wr_call_offer') {
+    const c = msg.token && waitingCandidates.get(msg.token);
+    if (c && c.ws && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'proctor_wr_call_offer', offer: msg.offer }));
+    }
+  }
+  if (msg.type === 'proctor_wr_call_ice' && msg.dir === 'admin_to_waiting') {
+    const c = msg.token && waitingCandidates.get(msg.token);
+    if (c && c.ws && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'proctor_wr_call_ice', candidate: msg.candidate, dir: 'admin_to_waiting' }));
+    }
+  }
+  if (msg.type === 'proctor_wr_call_end') {
+    const c = msg.token && waitingCandidates.get(msg.token);
+    if (c && c.ws && c.ws.readyState === WebSocket.OPEN) {
+      c.ws.send(JSON.stringify({ type: 'proctor_wr_call_end' }));
     }
   }
 }
@@ -614,6 +634,20 @@ function handleWaitingMsg(ws, msg) {
   if (msg.type === 'candidate_chat') {
     sendToAdmins(
       { type: 'candidate_chat', token: ws._waitToken, message: msg.message, candidateName: c.candidateName },
+      info => info.watchingToken === ws._waitToken
+    );
+  }
+
+  // Waiting-room proctor call answer/ICE (candidate → admin)
+  if (msg.type === 'proctor_wr_call_answer') {
+    sendToAdmins(
+      { type: 'proctor_wr_call_answer', token: ws._waitToken, answer: msg.answer },
+      info => info.watchingToken === ws._waitToken
+    );
+  }
+  if (msg.type === 'proctor_wr_call_ice' && msg.dir === 'waiting_to_admin') {
+    sendToAdmins(
+      { type: 'proctor_wr_call_ice', token: ws._waitToken, candidate: msg.candidate, dir: 'waiting_to_admin' },
       info => info.watchingToken === ws._waitToken
     );
   }

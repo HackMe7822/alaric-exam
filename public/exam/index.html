@@ -2581,6 +2581,16 @@ async function offerExamCamera() {
     } catch(e) { console.warn('[examCam] Could not capture webcam for monitoring:', e.message); }
   }
 
+  // Ensure mic is ready — request it here so browser prompts BEFORE the offer is created.
+  // initMicStream() is async and may not have resolved yet when request_exam_camera arrives.
+  if (!_micStream) {
+    try {
+      _micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch(e) {
+      console.warn('[examCam] Mic unavailable — audio will not be sent to proctor:', e.message);
+    }
+  }
+
   const tracks = [];
   if (camStream) camStream.getVideoTracks().forEach(t => tracks.push(t));
   if (_micStream) _micStream.getAudioTracks().forEach(t => tracks.push(t));

@@ -449,7 +449,9 @@
             <div class="wr-det-sub" id="wr-det-sub">—</div>
           </div>
           <span id="wr-det-wait" style="font-size:10px;font-weight:700;color:#fbbf24;background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.28);border-radius:12px;padding:3px 9px">⏱ —</span>
-          <div style="display:flex;gap:7px;margin-left:8px" id="wr-det-actions"></div>
+          <!-- 📞 Call button — proctor speaks to candidate before exam starts -->
+          <button id="btn-wr-call" class="wr-btn" style="background:#21262d;color:#58a6ff;border:1px solid #30363d" onclick="startWrProctorCall()">📞 Call</button>
+          <div style="display:flex;gap:7px;margin-left:4px" id="wr-det-actions"></div>
         </div>
 
         <!-- Two-column body -->
@@ -864,9 +866,12 @@ function handleMsg(msg) {
   if (msg.type === 'exam_chat_reply') {
     appendExamChat('candidate', msg.candidateName, msg.message);
   }
-  // Proctor ↔ Candidate audio/video call
+  // Proctor ↔ Candidate audio/video call (during exam)
   if (msg.type === 'proctor_call_answer') handleProctorCallAnswer(msg);
   if (msg.type === 'proctor_call_ice' && msg.dir === 'exam_to_admin') handleProctorCallIce(msg);
+  // Proctor ↔ Waiting-room candidate call (before exam)
+  if (msg.type === 'proctor_wr_call_answer') handleWrCallAnswer(msg);
+  if (msg.type === 'proctor_wr_call_ice' && msg.dir === 'waiting_to_admin') handleWrCallIce(msg);
   // Violation resume request
   // Verification photos submitted — refresh photos panel for that candidate
   if (msg.type === 'verify_status_update') {
@@ -1759,12 +1764,11 @@ async function handleExamCameraOffer(msg) {
       if (badge) badge.style.display = '';
       const statusEl = document.getElementById('cam-status');
       if (statusEl) statusEl.style.display = 'none';
-      // Show unmute button — browser requires user gesture to play audio
+      // Always show unmute button — mic is always included in exam camera stream.
+      // ontrack may fire for video before audio track is added to the stream object,
+      // so don't rely on getAudioTracks().length here.
       const unmuteBtn = document.getElementById('btn-unmute-cam');
-      if (unmuteBtn) {
-        const hasAudio = e.streams[0].getAudioTracks().length > 0;
-        unmuteBtn.style.display = hasAudio ? '' : 'none';
-      }
+      if (unmuteBtn) unmuteBtn.style.display = '';
     }
   };
 
@@ -1949,6 +1953,65 @@ setInterval(() => {
     renderDetailTime();
   }
 }, 1000);
+
+// ── Proctor ↔ Waiting-room candidate call (before exam) ───────────────────────
+let _wrCallPc     = null;
+let _wrCallStream = null;
+let _wrCallActive = false;
+let _wrCallIcePending = [];
+
+async function startWrProctorCall() {
+  if (_wrCallActive) { endWrProctorCall(); return; }
+  const token = _selectedWaitToken;
+  if (!token) { toast('Select a candidate first', 'warning'); return; }
+  try {
+    _wrCallStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) { toast('Microphone access denied — check browser permissions', 'error'); return; }
+
+  _wrCallPc = new RTCPeerConnection(_RTC_CONFIG);
+  _wrCallStream.getTracks().forEach(t => _wrCallPc.addTrack(t, _wrCallStream));
+
+  _wrCallPc.onicecandidate = ({ candidate }) => {
+    if (candidate) send({ type: 'proctor_wr_call_ice', token, candidate, dir: 'admin_to_waiting' });
+  };
+  _wrCallPc.onconnectionstatechange = () => {
+    if (_wrCallPc?.connectionState === 'failed') endWrProctorCall();
+  };
+
+  try {
+    const offer = await _wrCallPc.createOffer();
+    await _wrCallPc.setLocalDescription(offer);
+    send({ type: 'proctor_wr_call_offer', token, offer: _wrCallPc.localDescription });
+    _wrCallActive = true;
+    const btn = document.getElementById('btn-wr-call');
+    if (btn) { btn.innerHTML = '🔴 End Call'; btn.style.background = '#3d1f1f'; btn.style.color = '#f85149'; }
+    toast('📞 Calling candidate in waiting room — they can hear you now');
+  } catch(e) { endWrProctorCall(); toast('Call failed: ' + e.message, 'error'); }
+}
+
+function endWrProctorCall() {
+  if (_wrCallPc) { try { _wrCallPc.close(); } catch {} _wrCallPc = null; }
+  if (_wrCallStream) { _wrCallStream.getTracks().forEach(t => t.stop()); _wrCallStream = null; }
+  _wrCallIcePending = [];
+  _wrCallActive = false;
+  send({ type: 'proctor_wr_call_end', token: _selectedWaitToken });
+  const btn = document.getElementById('btn-wr-call');
+  if (btn) { btn.innerHTML = '📞 Call'; btn.style.background = '#21262d'; btn.style.color = '#58a6ff'; }
+}
+
+async function handleWrCallAnswer(msg) {
+  if (!_wrCallPc) return;
+  try {
+    await _wrCallPc.setRemoteDescription(new RTCSessionDescription(msg.answer));
+    for (const c of _wrCallIcePending) { try { await _wrCallPc.addIceCandidate(new RTCIceCandidate(c)); } catch {} }
+    _wrCallIcePending = [];
+  } catch(e) {}
+}
+
+async function handleWrCallIce(msg) {
+  if (!_wrCallPc || !_wrCallPc.remoteDescription) { _wrCallIcePending.push(msg.candidate); return; }
+  try { await _wrCallPc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
+}
 
 // ── Proctor ↔ Candidate audio/video call ──────────────────────────────────────
 let _proctorCallPc     = null;
