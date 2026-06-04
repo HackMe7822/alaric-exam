@@ -743,7 +743,7 @@ function handleMsg(msg) {
   if (msg.type === 'session_disconnected') {
     if (_sessions[msg.submissionId]) _sessions[msg.submissionId].disconnected = true;
     renderSessionCards();
-    if (_selectedId === msg.submissionId) {
+    if (_selectedId == msg.submissionId) {
       // Close stale WebRTC silently — re-established on reconnect, no WS send needed
       closeExamCam();
       stopScreen(true);
@@ -755,7 +755,7 @@ function handleMsg(msg) {
   if (msg.type === 'session_reconnected') {
     if (_sessions[msg.submissionId]) _sessions[msg.submissionId].disconnected = false;
     renderSessionCards();
-    if (_selectedId === msg.submissionId) {
+    if (_selectedId == msg.submissionId) {
       const liveLabel = document.getElementById('pc-live-label');
       if (liveLabel) liveLabel.innerHTML = `<span class="pc-live-dot"></span>LIVE`;
       toast('✅ Candidate reconnected', 'success');
@@ -763,7 +763,7 @@ function handleMsg(msg) {
       send({ type: 'subscribe', submissionId: _selectedId });
       // Re-request screen share once camera connection has had time to set up
       setTimeout(() => {
-        if (_selectedId === msg.submissionId && !_screenActive) {
+        if (_selectedId == msg.submissionId && !_screenActive) {
           send({ type: 'request_screen' });
         }
       }, 2500);
@@ -785,7 +785,7 @@ function handleMsg(msg) {
     };
     delete _sessions[msg.submissionId];
     renderSessionCards();
-    if (_selectedId === msg.submissionId) {
+    if (_selectedId == msg.submissionId) {
       // Keep panel open but update header to show completed state
       const liveLabel = document.getElementById('pc-live-label');
       if (liveLabel) liveLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#8b949e;flex-shrink:0;animation:none"></span><span style="color:#8b949e;font-size:10px;font-weight:700;letter-spacing:.08em">COMPLETED</span>`;
@@ -800,12 +800,12 @@ function handleMsg(msg) {
     showDetail(msg);
   }
   if (msg.type === 'detail_update') {
-    if (msg.submissionId === _selectedId) applyDetailUpdate(msg);
+    if (msg.submissionId == _selectedId) applyDetailUpdate(msg);
     if (_sessions[msg.submissionId]) Object.assign(_sessions[msg.submissionId], msg);
     renderSessionCards();
   }
   if (msg.type === 'rtc_offer') {
-    if (msg.submissionId === _selectedId) handleRtcOffer(msg);
+    if (msg.submissionId == _selectedId) handleRtcOffer(msg);
   }
   if (msg.type === 'rtc_ice' && msg.dir === 'exam_to_admin') {
     handleAdminRtcIce(msg);
@@ -828,16 +828,20 @@ function handleMsg(msg) {
     handleCameraIce(msg);
   }
   // Active exam camera — route to multi-view or single-view
+  // Use == (not ===) to handle number/string mismatch across WS boundaries
   if (msg.type === 'exam_camera_offer') {
-    if (_multiViewActive && _multiSelected.has(msg.submissionId)) {
+    // eslint-disable-next-line eqeqeq
+    if (_multiViewActive && [..._multiSelected].some(id => id == msg.submissionId)) {
       handleMultiCameraOffer(msg);
-    } else if (msg.submissionId === _selectedId) {
+    // eslint-disable-next-line eqeqeq
+    } else if (msg.submissionId == _selectedId) {
       handleExamCameraOffer(msg);
     }
   }
   if (msg.type === 'exam_camera_ice' && msg.dir === 'exam_to_admin') {
     const forSub = msg.forSubId || msg.submissionId;
-    if (_multiViewActive && forSub && _multiCamPcs[forSub]) {
+    // eslint-disable-next-line eqeqeq
+    if (_multiViewActive && forSub && Object.keys(_multiCamPcs).some(k => k == forSub)) {
       if (!_multiCamPcs[forSub].remoteDescription) {
         if (!_multiCamIces[forSub]) _multiCamIces[forSub] = [];
         _multiCamIces[forSub].push(msg.candidate);
@@ -869,7 +873,7 @@ function handleMsg(msg) {
       }
     }
   }
-  if (msg.type === 'resume_request' && msg.submissionId === _selectedId) {
+  if (msg.type === 'resume_request' && msg.submissionId == _selectedId) {
     showViolationRequest(msg.remark, msg.violationNum);
     toast(`⚠ ${msg.candidateName} requesting resume after violation #${msg.violationNum}`, 'warning');
   }
@@ -919,17 +923,17 @@ function renderSessionCards() {
       pill.dataset.id = s.submissionId;
       pill.innerHTML = `
         <label style="display:flex;align-items:center;padding:2px 0" onclick="event.stopPropagation()">
-          <input type="checkbox" class="sp-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleMultiSelect('${s.submissionId}',this.checked)">
+          <input type="checkbox" class="sp-checkbox" ${isChecked ? 'checked' : ''} onchange="toggleMultiSelect(${s.submissionId},this.checked)">
         </label>
         <span class="sp-dot ${dotCls}"></span>
-        <span style="cursor:pointer" onclick="selectSession('${s.submissionId}')">${esc(s.candidateName)} <span style="opacity:.55;font-size:10px">${esc(s.examTitle)}</span></span>`;
+        <span style="cursor:pointer" onclick="selectSession(${s.submissionId})">${esc(s.candidateName)} <span style="opacity:.55;font-size:10px">${esc(s.examTitle)}</span></span>`;
       pills.appendChild(pill);
     });
     completed.forEach(s => {
       const ago  = Math.round((Date.now() - s.endedAt) / 60000);
       const pill = document.createElement('div');
       pill.className = `session-pill completed${_selectedId === s.submissionId && !_multiViewActive ? ' active' : ''}`;
-      pill.innerHTML = `<span class="sp-dot done"></span><span style="cursor:pointer" onclick="_selectedId='${s.submissionId}';renderSessionCards()">${esc(s.candidateName)} <span style="opacity:.55;font-size:10px">✓ ${ago < 1 ? 'just now' : ago + 'm ago'}</span></span>`;
+      pill.innerHTML = `<span class="sp-dot done"></span><span style="cursor:pointer" onclick="_selectedId=${s.submissionId};renderSessionCards()">${esc(s.candidateName)} <span style="opacity:.55;font-size:10px">✓ ${ago < 1 ? 'just now' : ago + 'm ago'}</span></span>`;
       pills.appendChild(pill);
     });
   }

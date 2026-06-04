@@ -286,7 +286,7 @@ function handleExamMsg(ws, msg) {
         timeLeft: session.timeLeft, answeredCount: session.answeredCount,
         tabSwitches: session.tabSwitches, flaggedCount: session.flaggedCount,
         event: msg.event || null },
-      info => info.subscribedTo === msg.submissionId
+      info => info.subscribedTo == msg.submissionId
     );
   }
 
@@ -294,14 +294,14 @@ function handleExamMsg(ws, msg) {
   if (msg.type === 'rtc_offer') {
     sendToAdmins(
       { type: 'rtc_offer', submissionId: msg.submissionId, offer: msg.offer },
-      info => info.subscribedTo === msg.submissionId
+      info => info.subscribedTo == msg.submissionId
     );
   }
 
   if (msg.type === 'rtc_ice' && msg.dir === 'exam_to_admin') {
     sendToAdmins(
       { type: 'rtc_ice', candidate: msg.candidate, dir: 'exam_to_admin' },
-      info => info.subscribedTo === msg.submissionId
+      info => info.subscribedTo == msg.submissionId
     );
   }
 
@@ -311,7 +311,7 @@ function handleExamMsg(ws, msg) {
     sendToAdmins(
       { type: 'resume_request', submissionId: msg.submissionId,
         candidateName: session.candidateName, remark: msg.remark, violationNum: msg.violationNum },
-      info => info.subscribedTo === msg.submissionId
+      info => info.subscribedTo == msg.submissionId
     );
     broadcastSessions();
   }
@@ -321,7 +321,7 @@ function handleExamMsg(ws, msg) {
     // Send to admin subscribed to this session (single-view OR multi-view)
     sendToAdmins(
       { type: 'exam_camera_offer', submissionId: msg.submissionId, offer: msg.offer },
-      info => info.subscribedTo === msg.submissionId ||
+      info => info.subscribedTo == msg.submissionId ||
               (info.subscribedSet && info.subscribedSet.has(msg.submissionId))
     );
   }
@@ -329,7 +329,7 @@ function handleExamMsg(ws, msg) {
   if (msg.type === 'exam_camera_ice' && msg.dir === 'exam_to_admin') {
     sendToAdmins(
       { type: 'exam_camera_ice', candidate: msg.candidate, dir: 'exam_to_admin', submissionId: msg.submissionId },
-      info => info.subscribedTo === msg.submissionId ||
+      info => info.subscribedTo == msg.submissionId ||
               (info.subscribedSet && info.subscribedSet.has(msg.submissionId))
     );
   }
@@ -358,7 +358,7 @@ function handleExamMsg(ws, msg) {
   if (msg.type === 'exam_chat_reply') {
     sendToAdmins(
       { type: 'exam_chat_reply', submissionId: msg.submissionId, message: msg.message, candidateName: session.candidateName },
-      info => info.subscribedTo === msg.submissionId
+      info => info.subscribedTo == msg.submissionId
     );
     // Persist to DB
     try {
@@ -374,7 +374,9 @@ function handleAdminMsg(ws, msg) {
   if (!info) return;
 
   if (msg.type === 'subscribe') {
-    info.subscribedTo  = msg.submissionId || null;
+    // Normalise to the same type as examSessions keys (which come from the exam's state.submissionId)
+    // Use loose lookup so string '123' finds numeric key 123 and vice versa
+    info.subscribedTo  = msg.submissionId != null ? msg.submissionId : null;
     info.subscribedSet = null; // clear multi-subscribe when going single
     if (msg.submissionId) {
       const s = examSessions.get(msg.submissionId);
