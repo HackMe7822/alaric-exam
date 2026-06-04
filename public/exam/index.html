@@ -2779,6 +2779,25 @@ if (window.AlaricProctor && typeof window.AlaricProctor.onSecurityEvent === 'fun
       return;
     }
 
+    // Multi-monitor detected via IPC security-event — guaranteed delivery path
+    // (the alaric_display_added CustomEvent races with DisplaySwitch; this does not)
+    if (eventType === 'multi_monitor' && !_examPaused) {
+      state.tabSwitchCount++;
+      const remarkEl = document.getElementById('violation-remark');
+      if (remarkEl) remarkEl.value = 'An extra monitor was connected to my machine.';
+      triggerTabViolation('multi_monitor');
+      // Also show multi-monitor overlay for context
+      const overlay = document.getElementById('overlay-multimonitor');
+      const msgEl   = document.getElementById('multimon-msg');
+      if (overlay) overlay.classList.add('active');
+      if (msgEl) msgEl.textContent = 'Extra display detected. Disconnect it and wait for proctor to resume.';
+      // Try to auto-disconnect in background
+      autoFixMultiMonitor().then(fixed => {
+        if (fixed && msgEl) msgEl.textContent = 'Extra display disconnected. Waiting for proctor to resume.';
+      });
+      return;
+    }
+
     if (ev.severity === 'critical') {
       showToast(`⚠ Security alert: ${label}`, 'danger', 5000);
     }

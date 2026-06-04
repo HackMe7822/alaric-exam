@@ -1753,22 +1753,49 @@ async function handleExamCameraOffer(msg) {
   _examCamPc = pc;
 
   pc.ontrack = e => {
-    const vid = document.getElementById('exam-cam-video');
-    if (vid) {
-      vid.srcObject = e.streams[0];
-      vid.muted = true; // start muted to satisfy autoplay policy
-      vid.play().catch(() => {});
-      const ph = document.getElementById('cam-placeholder');
-      if (ph) ph.style.display = 'none';
-      const badge = document.getElementById('cam-status-badge');
-      if (badge) badge.style.display = '';
-      const statusEl = document.getElementById('cam-status');
-      if (statusEl) statusEl.style.display = 'none';
-      // Always show unmute button — mic is always included in exam camera stream.
-      // ontrack may fire for video before audio track is added to the stream object,
-      // so don't rely on getAudioTracks().length here.
-      const unmuteBtn = document.getElementById('btn-unmute-cam');
-      if (unmuteBtn) unmuteBtn.style.display = '';
+    if (e.track.kind === 'video') {
+      // Video → muted video element (autoplay requires muted for video)
+      const vid = document.getElementById('exam-cam-video');
+      if (vid) {
+        const vStream = new MediaStream([e.track]);
+        vid.srcObject = vStream;
+        vid.muted = true;
+        vid.play().catch(() => {});
+        const ph = document.getElementById('cam-placeholder');
+        if (ph) ph.style.display = 'none';
+        const badge = document.getElementById('cam-status-badge');
+        if (badge) badge.style.display = '';
+        const statusEl = document.getElementById('cam-status');
+        if (statusEl) statusEl.style.display = 'none';
+      }
+    }
+    if (e.track.kind === 'audio') {
+      // Audio → separate <audio> element — no muted restriction, plays immediately
+      let aud = document.getElementById('candidate-audio-el');
+      if (!aud) {
+        aud = document.createElement('audio');
+        aud.id = 'candidate-audio-el';
+        aud.autoplay = true;
+        document.body.appendChild(aud);
+      }
+      aud.srcObject = new MediaStream([e.track]);
+      aud.play().then(() => {
+        // Audio is playing — hide unmute button, show volume indicator
+        const btn = document.getElementById('btn-unmute-cam');
+        if (btn) { btn.innerHTML = '🔊 Audio On'; btn.style.background = '#0d2e1a'; btn.style.color = '#3fb950'; btn.onclick = null; btn.style.cursor = 'default'; }
+      }).catch(() => {
+        // Autoplay blocked — show click-to-enable button
+        const btn = document.getElementById('btn-unmute-cam');
+        if (btn) {
+          btn.style.display = '';
+          btn.innerHTML = '🔊 Enable Audio';
+          btn.onclick = () => {
+            aud.play().then(() => {
+              btn.innerHTML = '🔊 Audio On'; btn.style.background = '#0d2e1a'; btn.style.color = '#3fb950'; btn.onclick = null; btn.style.cursor = 'default';
+            });
+          };
+        }
+      });
     }
   };
 
@@ -1806,6 +1833,8 @@ function closeExamCam() {
   _examCamIce = [];
   const vid   = document.getElementById('exam-cam-video');
   if (vid) { vid.srcObject = null; vid.muted = true; }
+  const aud   = document.getElementById('candidate-audio-el');
+  if (aud)  { aud.srcObject = null; aud.remove(); }
   const ph    = document.getElementById('cam-placeholder');
   if (ph)  ph.style.display = '';
   const badge = document.getElementById('cam-status-badge');
@@ -1817,15 +1846,14 @@ function closeExamCam() {
 }
 
 function enableCandidateAudio() {
-  const vid = document.getElementById('exam-cam-video');
-  if (!vid) return;
-  vid.muted = false;
-  vid.play().then(() => {
-    toast('🔊 Candidate audio enabled — you can now hear them');
+  const aud = document.getElementById('candidate-audio-el');
+  if (!aud) { toast('No audio stream yet — wait for camera to connect', 'warning'); return; }
+  aud.play().then(() => {
+    toast('🔊 Candidate audio enabled');
     const btn = document.getElementById('btn-unmute-cam');
-    if (btn) btn.style.display = 'none';
-  }).catch(e => {
-    toast('Audio blocked by browser — try clicking directly on the video first', 'warning');
+    if (btn) { btn.innerHTML = '🔊 Audio On'; btn.style.background = '#0d2e1a'; btn.style.color = '#3fb950'; btn.onclick = null; btn.style.cursor = 'default'; }
+  }).catch(() => {
+    toast('Audio still blocked — try clicking somewhere on the page first', 'warning');
   });
 }
 
