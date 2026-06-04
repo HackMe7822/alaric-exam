@@ -418,6 +418,12 @@
   <div id="topbar">
     <h1>Live Monitor</h1>
     <div class="topbar-actions">
+      <!-- Audio unlock button — Chrome requires a user gesture before playing audio -->
+      <button id="btn-audio-unlock" onclick="unlockAudio(this)"
+        style="display:inline-flex;align-items:center;gap:6px;background:#fef3c7;color:#92400e;border:1px solid #fde68a;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:700;cursor:pointer"
+        title="Chrome requires a click to enable audio — click to hear candidate mic">
+        🔇 Click to enable audio
+      </button>
       <span id="conn-status" class="connecting"><span class="conn-dot"></span><span id="conn-label">Connecting…</span></span>
       <button class="btn btn-ghost btn-sm" id="logoutBtn">Sign Out</button>
     </div>
@@ -655,6 +661,40 @@ let _selectedId = null;
 let _sessions = {};
 let _completedSessions = {};
 let _reconnectTimer = null;
+
+// ── Audio Context — plays candidate mic without browser autoplay restrictions ──
+// Chrome blocks audio until user gesture. We create AudioContext on first click,
+// then pipe all incoming WebRTC audio tracks through it.
+let _audioCtx         = null;
+let _pendingAudioTrack = null; // audio track that arrived before context was created
+
+function unlockAudio(btn) {
+  if (!_audioCtx) {
+    _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  if (_pendingAudioTrack) {
+    _connectAudioTrack(_pendingAudioTrack);
+    _pendingAudioTrack = null;
+  }
+  if (btn) {
+    btn.textContent = '🔊 Audio On';
+    btn.style.background = '#d1fae5'; btn.style.color = '#065f46';
+    btn.style.borderColor = '#6ee7b7'; btn.onclick = null; btn.style.cursor = 'default';
+  }
+}
+
+function _connectAudioTrack(track) {
+  if (!_audioCtx) { _pendingAudioTrack = track; return; }
+  try {
+    const stream = new MediaStream([track]);
+    const source = _audioCtx.createMediaStreamSource(stream);
+    source.connect(_audioCtx.destination);
+    // Show "Audio On" in the unmute button
+    const btn = document.getElementById('btn-unmute-cam');
+    if (btn) { btn.innerHTML = '🔊 Audio On'; btn.style.background = '#0d2e1a'; btn.style.color = '#3fb950'; btn.onclick = null; btn.style.cursor = 'default'; }
+  } catch(e) { console.warn('[audio]', e); }
+}
 let _screenActive = false;
 let _timerInterval = null;
 let _detailTimeLeft = 0;
@@ -1845,32 +1885,9 @@ async function handleExamCameraOffer(msg) {
       }
     }
     if (e.track.kind === 'audio') {
-      // Audio → separate <audio> element — no muted restriction, plays immediately
-      let aud = document.getElementById('candidate-audio-el');
-      if (!aud) {
-        aud = document.createElement('audio');
-        aud.id = 'candidate-audio-el';
-        aud.autoplay = true;
-        document.body.appendChild(aud);
-      }
-      aud.srcObject = new MediaStream([e.track]);
-      aud.play().then(() => {
-        // Audio is playing — hide unmute button, show volume indicator
-        const btn = document.getElementById('btn-unmute-cam');
-        if (btn) { btn.innerHTML = '🔊 Audio On'; btn.style.background = '#0d2e1a'; btn.style.color = '#3fb950'; btn.onclick = null; btn.style.cursor = 'default'; }
-      }).catch(() => {
-        // Autoplay blocked — show click-to-enable button
-        const btn = document.getElementById('btn-unmute-cam');
-        if (btn) {
-          btn.style.display = '';
-          btn.innerHTML = '🔊 Enable Audio';
-          btn.onclick = () => {
-            aud.play().then(() => {
-              btn.innerHTML = '🔊 Audio On'; btn.style.background = '#0d2e1a'; btn.style.color = '#3fb950'; btn.onclick = null; btn.style.cursor = 'default';
-            });
-          };
-        }
-      });
+      // Route through AudioContext — works reliably after user has clicked the
+      // "Click to enable audio" button in the topbar. No <audio>/<video> element needed.
+      _connectAudioTrack(e.track);
     }
   };
 
@@ -1908,8 +1925,7 @@ function closeExamCam() {
   _examCamIce = [];
   const vid   = document.getElementById('exam-cam-video');
   if (vid) { vid.srcObject = null; vid.muted = true; }
-  const aud   = document.getElementById('candidate-audio-el');
-  if (aud)  { aud.srcObject = null; aud.remove(); }
+  // AudioContext nodes are garbage-collected when tracks end; no explicit cleanup needed
   const ph    = document.getElementById('cam-placeholder');
   if (ph)  ph.style.display = '';
   const badge = document.getElementById('cam-status-badge');
@@ -1921,15 +1937,10 @@ function closeExamCam() {
 }
 
 function enableCandidateAudio() {
-  const aud = document.getElementById('candidate-audio-el');
-  if (!aud) { toast('No audio stream yet — wait for camera to connect', 'warning'); return; }
-  aud.play().then(() => {
-    toast('🔊 Candidate audio enabled');
-    const btn = document.getElementById('btn-unmute-cam');
-    if (btn) { btn.innerHTML = '🔊 Audio On'; btn.style.background = '#0d2e1a'; btn.style.color = '#3fb950'; btn.onclick = null; btn.style.cursor = 'default'; }
-  }).catch(() => {
-    toast('Audio still blocked — try clicking somewhere on the page first', 'warning');
-  });
+  // Fallback button click — same as unlockAudio (in case audio arrived before context)
+  const unlockBtn = document.getElementById('btn-audio-unlock');
+  unlockAudio(unlockBtn);
+  toast('🔊 Candidate audio enabled');
 }
 
 // ── Admin controls ─────────────────────────────────────────────────────────────
