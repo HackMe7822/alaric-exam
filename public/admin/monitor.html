@@ -574,7 +574,7 @@
             <div class="pc-video-pane cam-pane" id="cam-pane" ondblclick="expandVideo('cam')" title="Double-click to expand">
               <div class="pc-vpane-label">📷 Webcam <span id="cam-status-badge" class="pc-live-badge" style="display:none">Live</span></div>
               <div class="pc-vpane-expand">⛶</div>
-              <video id="exam-cam-video" autoplay playsinline muted></video>
+              <video id="exam-cam-video" autoplay playsinline></video><!-- NOT muted: admin hears candidate -->
               <div class="pc-vpane-ph" id="cam-placeholder">
                 <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
                 <span id="cam-status">Connecting to camera…</span>
@@ -598,6 +598,7 @@
             <button class="pc-ctrl-btn pcb-pause" id="btn-pause-exam" onclick="pauseExam()">⏸ Pause</button>
             <button class="pc-ctrl-btn pcb-stop"  onclick="stopExam()">⏹ Stop &amp; Submit</button>
             <button class="pc-ctrl-btn pcb-mute"  id="btn-mute-mic"  onclick="toggleMic()">🎤 Mute Mic</button>
+            <button class="pc-ctrl-btn" style="background:#21262d;color:#58a6ff" id="btn-proctor-call" onclick="startProctorCall()">📞 Call</button>
             <button class="pc-ctrl-btn" style="background:#21262d;color:#e6edf3" id="btn-stop-screen" onclick="stopScreen()" style="display:none">⏹ Stop Screen</button>
             <div id="pc-chat-row">
               <input id="pc-chat-inp" id="exam-chat-input" placeholder="Message candidate…" maxlength="200"
@@ -786,14 +787,23 @@ function handleMsg(msg) {
     delete _sessions[msg.submissionId];
     renderSessionCards();
     if (_selectedId == msg.submissionId) {
-      // Keep panel open but update header to show completed state
       const liveLabel = document.getElementById('pc-live-label');
       if (liveLabel) liveLabel.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#8b949e;flex-shrink:0;animation:none"></span><span style="color:#8b949e;font-size:10px;font-weight:700;letter-spacing:.08em">COMPLETED</span>`;
-      const msg2 = isSubmit ? '📋 Candidate submitted exam' : '⚠ Candidate session ended';
+      const msg2 = isSubmit ? '📋 Candidate submitted — session closed' : '⚠ Candidate session ended';
       toast(msg2, isSubmit ? 'success' : 'warning');
       appendEvent({ event: isSubmit ? 'exam_submitted' : 'session_ended', at: new Date().toISOString() });
-      // Disable controls since exam is over
+      // Disable controls and tear down WebRTC — exam is over
       document.querySelectorAll('#pc-controls .pc-ctrl-btn').forEach(b => b.disabled = true);
+      closeExamCam();
+      stopScreen(true);
+      endProctorCall();
+      // Return to empty state after 3 seconds
+      setTimeout(() => {
+        if (_selectedId == msg.submissionId) {
+          _selectedId = null;
+          showEmptyDetail();
+        }
+      }, 3000);
     }
   }
   if (msg.type === 'session_detail') {
@@ -856,6 +866,9 @@ function handleMsg(msg) {
   if (msg.type === 'exam_chat_reply') {
     appendExamChat('candidate', msg.candidateName, msg.message);
   }
+  // Proctor ↔ Candidate audio/video call
+  if (msg.type === 'proctor_call_answer') handleProctorCallAnswer(msg);
+  if (msg.type === 'proctor_call_ice' && msg.dir === 'exam_to_admin') handleProctorCallIce(msg);
   // Violation resume request
   // Verification photos submitted — refresh photos panel for that candidate
   if (msg.type === 'verify_status_update') {
@@ -1905,6 +1918,75 @@ setInterval(() => {
     renderDetailTime();
   }
 }, 1000);
+
+// ── Proctor ↔ Candidate audio/video call ──────────────────────────────────────
+let _proctorCallPc     = null;
+let _proctorCallStream = null;
+let _proctorCallActive = false;
+let _proctorCallIcePending = [];
+
+async function startProctorCall() {
+  if (_proctorCallActive) { endProctorCall(); return; }
+  if (!_selectedId) { toast('Select a session first', 'warning'); return; }
+  try {
+    _proctorCallStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+  } catch(e) {
+    toast('Microphone access denied — check browser permissions', 'error'); return;
+  }
+
+  _proctorCallPc = new RTCPeerConnection(_RTC_CONFIG);
+  _proctorCallStream.getTracks().forEach(t => _proctorCallPc.addTrack(t, _proctorCallStream));
+
+  _proctorCallPc.onicecandidate = ({ candidate }) => {
+    if (candidate) send({ type: 'proctor_call_ice', candidate, dir: 'admin_to_exam' });
+  };
+  _proctorCallPc.onconnectionstatechange = () => {
+    if (_proctorCallPc?.connectionState === 'failed') endProctorCall();
+  };
+  // Show proctor's own mic level (optional visual feedback)
+  _proctorCallPc.ontrack = () => {}; // answer may include candidate audio if bidirectional
+
+  try {
+    const offer = await _proctorCallPc.createOffer();
+    await _proctorCallPc.setLocalDescription(offer);
+    send({ type: 'proctor_call_offer', offer: _proctorCallPc.localDescription });
+    _proctorCallActive = true;
+    const btn = document.getElementById('btn-proctor-call');
+    if (btn) { btn.innerHTML = '🔴 End Call'; btn.style.background = '#3d1f1f'; btn.style.color = '#f85149'; }
+    toast('📞 Calling candidate — they can hear you now');
+  } catch(e) {
+    endProctorCall();
+    toast('Call failed — ' + e.message, 'error');
+  }
+}
+
+function endProctorCall() {
+  if (_proctorCallPc) { try { _proctorCallPc.close(); } catch {} _proctorCallPc = null; }
+  if (_proctorCallStream) { _proctorCallStream.getTracks().forEach(t => t.stop()); _proctorCallStream = null; }
+  _proctorCallIcePending = [];
+  _proctorCallActive = false;
+  send({ type: 'proctor_call_end' });
+  const btn = document.getElementById('btn-proctor-call');
+  if (btn) { btn.innerHTML = '📞 Call'; btn.style.background = '#21262d'; btn.style.color = '#58a6ff'; }
+}
+
+async function handleProctorCallAnswer(msg) {
+  if (!_proctorCallPc) return;
+  try {
+    await _proctorCallPc.setRemoteDescription(new RTCSessionDescription(msg.answer));
+    for (const c of _proctorCallIcePending) {
+      try { await _proctorCallPc.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+    }
+    _proctorCallIcePending = [];
+  } catch(e) {}
+}
+
+async function handleProctorCallIce(msg) {
+  if (!_proctorCallPc || !_proctorCallPc.remoteDescription) {
+    _proctorCallIcePending.push(msg.candidate); return;
+  }
+  try { await _proctorCallPc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
+}
 
 // Boot
 loadMe();

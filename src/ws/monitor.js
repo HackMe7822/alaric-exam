@@ -360,12 +360,25 @@ function handleExamMsg(ws, msg) {
       { type: 'exam_chat_reply', submissionId: msg.submissionId, message: msg.message, candidateName: session.candidateName },
       info => info.subscribedTo == msg.submissionId
     );
-    // Persist to DB
     try {
       const db = getDb();
       const sub = db.prepare('SELECT id FROM submissions WHERE id=? LIMIT 1').get(parseInt(msg.submissionId));
       if (sub) db.prepare('INSERT INTO exam_chats(submission_id, sender, sender_name, message) VALUES(?,?,?,?)').run(sub.id, 'candidate', session.candidateName, msg.message);
     } catch(e) {}
+  }
+
+  // ── Proctor call answer + ICE (exam → admin) ──────────────────────────────
+  if (msg.type === 'proctor_call_answer') {
+    sendToAdmins(
+      { type: 'proctor_call_answer', answer: msg.answer },
+      info => info.subscribedTo == msg.submissionId
+    );
+  }
+  if (msg.type === 'proctor_call_ice' && msg.dir === 'exam_to_admin') {
+    sendToAdmins(
+      { type: 'proctor_call_ice', candidate: msg.candidate, dir: 'exam_to_admin' },
+      info => info.subscribedTo == msg.submissionId
+    );
   }
 }
 
@@ -552,6 +565,26 @@ function handleAdminMsg(ws, msg) {
     const s = targetId && examSessions.get(targetId);
     if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'exam_camera_ice', candidate: msg.candidate, dir: 'admin_to_exam' }));
+    }
+  }
+
+  // ── Proctor ↔ Candidate audio/video call ──────────────────────────────────
+  if (msg.type === 'proctor_call_offer') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'proctor_call_offer', offer: msg.offer }));
+    }
+  }
+  if (msg.type === 'proctor_call_ice' && msg.dir === 'admin_to_exam') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'proctor_call_ice', candidate: msg.candidate, dir: 'admin_to_exam' }));
+    }
+  }
+  if (msg.type === 'proctor_call_end') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws && s.ws.readyState === WebSocket.OPEN) {
+      s.ws.send(JSON.stringify({ type: 'proctor_call_end' }));
     }
   }
 }

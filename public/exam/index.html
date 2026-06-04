@@ -953,7 +953,7 @@ function startMultiMonitorCheck() {
       state.tabSwitchCount++;
       const remarkEl = document.getElementById('violation-remark');
       if (remarkEl) remarkEl.value = 'An extra monitor was connected to my machine.';
-      triggerTabViolation();
+      triggerTabViolation('multi_monitor');
     }
 
     // Try auto-fix — only affects the overlay message, NOT the paused state
@@ -2239,11 +2239,14 @@ function startMonitorWs() {
     if (msg.type === 'request_exam_camera') offerExamCamera();
     if (msg.type === 'exam_camera_answer')  handleExamCameraAnswer(msg.answer);
     if (msg.type === 'exam_camera_ice' && msg.dir === 'admin_to_exam') handleExamCameraIce(msg.candidate);
-    if (msg.type === 'pause_exam')   handlePauseExam();
-    if (msg.type === 'resume_exam')  handleResumeExam();
-    if (msg.type === 'stop_exam')    handleStopExam();
-    if (msg.type === 'exam_chat')    handleExamChat(msg.message, msg.proctorName);
-    if (msg.type === 'mute_mic')     handleMuteMic(msg.muted);
+    if (msg.type === 'pause_exam')        handlePauseExam();
+    if (msg.type === 'resume_exam')       handleResumeExam();
+    if (msg.type === 'stop_exam')         handleStopExam();
+    if (msg.type === 'exam_chat')         handleExamChat(msg.message, msg.proctorName);
+    if (msg.type === 'mute_mic')          handleMuteMic(msg.muted);
+    if (msg.type === 'proctor_call_offer') handleProctorCallOffer(msg);
+    if (msg.type === 'proctor_call_ice' && msg.dir === 'admin_to_exam') handleProctorCallIce(msg.candidate);
+    if (msg.type === 'proctor_call_end')  endProctorCallOnExam();
   };
 
   ws.onclose = () => {
@@ -2604,12 +2607,35 @@ async function handleExamCameraIce(candidate) {
 }
 
 // ── Tab violation (pause + require proctor approval) ─────────────────────────
-function triggerTabViolation() {
+function triggerTabViolation(reason) {
   _examPaused = true;
-  sendMonitorState('tab_switch');
-  postEvent('tab_switch');
+  const isMultiMon = reason === 'multi_monitor';
+  sendMonitorState(isMultiMon ? 'multi_monitor' : 'tab_switch');
+  postEvent(isMultiMon ? 'multi_monitor' : 'tab_switch');
+
+  // Update overlay text to match the actual violation type
+  const titleEl = document.querySelector('#overlay-violation h3');
+  const msgEl   = document.querySelector('#overlay-violation > .overlay-card > p');
+  const explainEl = document.querySelectorAll('#overlay-violation > .overlay-card > p')[1];
+  const remarkEl  = document.getElementById('violation-remark');
+  if (isMultiMon) {
+    if (titleEl) { titleEl.textContent = 'Extra Display Detected'; titleEl.style.color = '#d97706'; }
+    if (msgEl) msgEl.innerHTML = `An extra monitor was connected to your machine. <strong>This is violation #<span id="violation-count">1</span></strong>. Your proctor has been notified and your exam is now paused.`;
+    if (explainEl) explainEl.textContent = 'Disconnect the extra display, then explain below and request your proctor to resume.';
+    if (remarkEl) remarkEl.placeholder = 'Explain why an extra monitor was connected…';
+    const icon = document.querySelector('#overlay-violation .ov-icon');
+    if (icon) icon.textContent = '🖥';
+  } else {
+    if (titleEl) { titleEl.textContent = 'Tab Switch Detected'; titleEl.style.color = '#dc2626'; }
+    if (msgEl) msgEl.innerHTML = `You left the exam screen. <strong>This is violation #<span id="violation-count">1</span></strong>. Your proctor has been notified and your exam is now paused.`;
+    if (explainEl) explainEl.textContent = 'Please explain why you left the exam below, then request your proctor to resume. You cannot continue until your proctor approves.';
+    if (remarkEl) remarkEl.placeholder = 'Explain why you left the exam…';
+    const icon = document.querySelector('#overlay-violation .ov-icon');
+    if (icon) icon.textContent = '🚨';
+  }
+
   document.getElementById('violation-count').textContent = state.tabSwitchCount;
-  document.getElementById('violation-remark').value = '';
+  document.getElementById('violation-remark').value = remarkEl?.value || '';
   document.getElementById('violation-wait-msg').style.display = 'none';
   const btn = document.getElementById('btn-req-resume');
   if (btn) { btn.disabled = false; btn.textContent = 'Send & Request Resume'; }
@@ -2719,6 +2745,77 @@ if (window.AlaricProctor && typeof window.AlaricProctor.onSecurityEvent === 'fun
     sendMonitorState(eventType);
     _origPostEvent(eventType);
   });
+}
+
+// ── Proctor ↔ Candidate audio call ───────────────────────────────────────────
+let _proctorCallPc   = null;
+let _proctorCallIces = [];
+
+async function handleProctorCallOffer(msg) {
+  endProctorCallOnExam(); // close any existing call first
+  _proctorCallIces = [];
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+    ]
+  });
+  _proctorCallPc = pc;
+
+  pc.ontrack = e => {
+    // Show proctor audio overlay — candidate hears proctor
+    let overlay = document.getElementById('_proctor-call-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = '_proctor-call-overlay';
+      overlay.style.cssText = 'position:fixed;bottom:130px;right:16px;width:220px;z-index:2000;background:#1e293b;border-radius:10px;overflow:hidden;border:2px solid #3b82f6;box-shadow:0 4px 20px rgba(0,0,0,.5)';
+      overlay.innerHTML = `
+        <div style="background:#1d4ed8;padding:6px 12px;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:space-between">
+          <span>📞 Proctor Speaking</span>
+          <button onclick="endProctorCallOnExam()" style="background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:15px;line-height:1">×</button>
+        </div>
+        <div style="padding:10px 12px;display:flex;align-items:center;gap:8px">
+          <span style="font-size:1.5rem">🎙</span>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#f1f5f9">Proctor is on a call</div>
+            <div style="font-size:10px;color:#94a3b8">You can hear and respond verbally</div>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      // Hidden audio element to play proctor's voice
+      const audio = document.createElement('audio');
+      audio.id = '_proctor-call-audio'; audio.autoplay = true;
+      audio.srcObject = e.streams[0];
+      document.body.appendChild(audio);
+    }
+    showToast('📞 Your proctor is speaking — you can hear them now', 'info', 5000);
+  };
+
+  pc.onicecandidate = ({ candidate }) => {
+    if (candidate) wsSend({ type: 'proctor_call_ice', submissionId: state.submissionId, candidate, dir: 'exam_to_admin' });
+  };
+
+  try {
+    await pc.setRemoteDescription(new RTCSessionDescription(msg.offer));
+    for (const c of _proctorCallIces) { try { await pc.addIceCandidate(new RTCIceCandidate(c)); } catch {} }
+    _proctorCallIces = [];
+    const answer = await pc.createAnswer();
+    await pc.setLocalDescription(answer);
+    wsSend({ type: 'proctor_call_answer', submissionId: state.submissionId, answer: pc.localDescription });
+  } catch(e) { endProctorCallOnExam(); }
+}
+
+async function handleProctorCallIce(candidate) {
+  if (!_proctorCallPc || !_proctorCallPc.remoteDescription) {
+    _proctorCallIces.push(candidate); return;
+  }
+  try { await _proctorCallPc.addIceCandidate(new RTCIceCandidate(candidate)); } catch {}
+}
+
+function endProctorCallOnExam() {
+  if (_proctorCallPc) { try { _proctorCallPc.close(); } catch {} _proctorCallPc = null; }
+  document.getElementById('_proctor-call-overlay')?.remove();
+  document.getElementById('_proctor-call-audio')?.remove();
 }
 
 // ============================================================
