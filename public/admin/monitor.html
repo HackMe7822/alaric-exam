@@ -111,6 +111,8 @@
 #screen-pane video { object-fit: contain; background: #000; }
 .pc-vpane-label { position: absolute; top: 8px; left: 8px; z-index: 2; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 4px; display: flex; align-items: center; gap: 5px; }
 .pc-vpane-expand { position: absolute; top: 8px; right: 8px; z-index: 2; background: rgba(0,0,0,.65); color: rgba(255,255,255,.8); font-size: 14px; padding: 2px 7px; border-radius: 4px; cursor: pointer; }
+#btn-unmute-cam { display:none; position:absolute; bottom:8px; left:50%; transform:translateX(-50%); z-index:3; background:#1d4ed8; color:#fff; border:none; border-radius:20px; padding:5px 14px; font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap; }
+#btn-unmute-cam:hover { background:#2563eb; }
 .pc-vpane-ph { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; color: #484f58; font-size: 12px; text-align: center; padding: 20px; }
 .pc-vpane-ph svg { width: 36px; height: 36px; opacity: .4; }
 .pc-vpane-ph button { margin-top: 8px; background: #21262d; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; }
@@ -574,7 +576,9 @@
             <div class="pc-video-pane cam-pane" id="cam-pane" ondblclick="expandVideo('cam')" title="Double-click to expand">
               <div class="pc-vpane-label">📷 Webcam <span id="cam-status-badge" class="pc-live-badge" style="display:none">Live</span></div>
               <div class="pc-vpane-expand">⛶</div>
-              <video id="exam-cam-video" autoplay playsinline></video><!-- NOT muted: admin hears candidate -->
+              <video id="exam-cam-video" autoplay playsinline muted></video>
+              <!-- Unmute button: browser blocks autoplay audio until user interacts -->
+              <button id="btn-unmute-cam" onclick="enableCandidateAudio()" title="Click to hear candidate">🔊 Enable Audio</button>
               <div class="pc-vpane-ph" id="cam-placeholder">
                 <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z"/></svg>
                 <span id="cam-status">Connecting to camera…</span>
@@ -1747,14 +1751,20 @@ async function handleExamCameraOffer(msg) {
     const vid = document.getElementById('exam-cam-video');
     if (vid) {
       vid.srcObject = e.streams[0];
+      vid.muted = true; // start muted to satisfy autoplay policy
       vid.play().catch(() => {});
-      // Hide placeholder — video element is always rendered (no display:none toggle)
       const ph = document.getElementById('cam-placeholder');
       if (ph) ph.style.display = 'none';
       const badge = document.getElementById('cam-status-badge');
       if (badge) badge.style.display = '';
       const statusEl = document.getElementById('cam-status');
       if (statusEl) statusEl.style.display = 'none';
+      // Show unmute button — browser requires user gesture to play audio
+      const unmuteBtn = document.getElementById('btn-unmute-cam');
+      if (unmuteBtn) {
+        const hasAudio = e.streams[0].getAudioTracks().length > 0;
+        unmuteBtn.style.display = hasAudio ? '' : 'none';
+      }
     }
   };
 
@@ -1791,13 +1801,28 @@ function closeExamCam() {
   if (_examCamPc) { try { _examCamPc.close(); } catch {} _examCamPc = null; }
   _examCamIce = [];
   const vid   = document.getElementById('exam-cam-video');
-  if (vid) vid.srcObject = null;
+  if (vid) { vid.srcObject = null; vid.muted = true; }
   const ph    = document.getElementById('cam-placeholder');
   if (ph)  ph.style.display = '';
   const badge = document.getElementById('cam-status-badge');
   if (badge) badge.style.display = 'none';
   const cs    = document.getElementById('cam-status');
   if (cs) { cs.textContent = 'Connecting…'; cs.style.display = ''; cs.style.color = ''; }
+  const unmuteBtn = document.getElementById('btn-unmute-cam');
+  if (unmuteBtn) unmuteBtn.style.display = 'none';
+}
+
+function enableCandidateAudio() {
+  const vid = document.getElementById('exam-cam-video');
+  if (!vid) return;
+  vid.muted = false;
+  vid.play().then(() => {
+    toast('🔊 Candidate audio enabled — you can now hear them');
+    const btn = document.getElementById('btn-unmute-cam');
+    if (btn) btn.style.display = 'none';
+  }).catch(e => {
+    toast('Audio blocked by browser — try clicking directly on the video first', 'warning');
+  });
 }
 
 // ── Admin controls ─────────────────────────────────────────────────────────────
@@ -1855,9 +1880,19 @@ function resumeExam() {
 
 function stopExam() {
   if (!_selectedId) { toast('No session selected', 'warning'); return; }
-  if (!confirm('Stop and force-submit this candidate\'s exam? This cannot be undone.')) return;
-  if (send({ type: 'stop_exam' })) {
-    toast('⏹ Stop command sent — exam will auto-submit', 'warning');
+  const cand = _sessions[_selectedId]?.candidateName || 'this candidate';
+  // Use admin-shared's custom confirm modal (no native browser dialog in Electron)
+  if (window.showConfirm) {
+    window.showConfirm(
+      `Force-submit ${cand}'s exam? This immediately ends their session and cannot be undone.`,
+      () => {
+        if (send({ type: 'stop_exam' })) toast('⏹ Stop command sent — exam will auto-submit', 'warning');
+      },
+      { title: 'Stop & Submit Exam', danger: true, confirmText: 'Stop & Submit', icon: '⏹' }
+    );
+  } else {
+    // Fallback if showConfirm not loaded yet
+    if (send({ type: 'stop_exam' })) toast('⏹ Stop command sent — exam will auto-submit', 'warning');
   }
 }
 

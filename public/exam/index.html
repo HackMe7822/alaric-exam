@@ -910,13 +910,21 @@ document.getElementById('btn-go-fullscreen').addEventListener('click', () => {
 // Reliable display count — prefers Electron IPC (screen.getAllDisplays().length)
 // because window.screen.isExtended is undefined in many Electron versions.
 async function getDisplayCount() {
+  // Primary: Electron IPC — uses screen.getAllDisplays().length (always reliable)
   if (window.AlaricProctor?.getDisplayCount) {
-    try { return await window.AlaricProctor.getDisplayCount(); } catch {}
+    try {
+      const n = await window.AlaricProctor.getDisplayCount();
+      if (typeof n === 'number') return n;
+    } catch(e) {
+      console.warn('[multimon] getDisplayCount IPC failed:', e);
+    }
   }
-  // Fallback: Screen API (needs window-management permission in Chrome, may be undefined)
-  if (window.screen?.isExtended === true) return 2;
+  // Fallback 1: Screen Window Placement API
+  if (window.screen?.isExtended === true)  return 2;
   if (window.screen?.isExtended === false) return 1;
-  return 1; // assume single if unknown
+  // Fallback 2: available screen area vs actual screen size (heuristic)
+  if (window.screen && window.screen.availWidth > window.screen.width * 1.2) return 2;
+  return 1;
 }
 
 async function autoFixMultiMonitor() {
@@ -980,7 +988,7 @@ function startMultiMonitorCheck() {
   // Initial check on exam load
   checkNow(false);
 
-  // Poll every 3 seconds during active exam
+  // Poll every 2 seconds during active exam (faster detection)
   setInterval(async () => {
     if (!state.examStarted || state.submitted) return;
     await checkNow(true);
