@@ -1171,10 +1171,8 @@ async function postEvent(eventType) {
     submission_id: state.submissionId,
     event_type: eventType
   });
-  // Safety fallback — triggerTabViolation handles this first, but catch it here too
-  const _limit = state.maxTabSwitches;
-  if (_limit > 0 && (eventType === 'tab_switch' || eventType === 'multi_monitor') &&
-      state.tabSwitchCount >= _limit) {
+  // Hard fallback at >10 — triggerTabViolation now handles limit properly via WS
+  if ((eventType === 'tab_switch' || eventType === 'multi_monitor') && state.tabSwitchCount > 10) {
     autoSubmit('violation_limit');
   }
 }
@@ -2259,6 +2257,7 @@ function startMonitorWs() {
     if (msg.type === 'exam_camera_ice' && msg.dir === 'admin_to_exam') handleExamCameraIce(msg.candidate);
     if (msg.type === 'pause_exam')        handlePauseExam();
     if (msg.type === 'resume_exam')       handleResumeExam();
+    if (msg.type === 'grant_extra_tries') handleGrantExtraTries(msg.extra);
     if (msg.type === 'stop_exam')         handleStopExam();
     if (msg.type === 'exam_chat')         handleExamChat(msg.message, msg.proctorName);
     if (msg.type === 'mute_mic')          handleMuteMic(msg.muted);
@@ -2666,21 +2665,26 @@ function triggerTabViolation(reason) {
 
   document.getElementById('violation-count').textContent = state.tabSwitchCount;
 
-  // ── Auto-terminate when violation limit is reached ────────────────────────
-  // limit === 0 means violations are monitored but never auto-terminate
+  // ── Violation limit reached — pause and let proctor decide ───────────────
+  // limit=0 means no auto-terminate (proctor must stop manually)
   const limit = state.maxTabSwitches;
   if (limit > 0 && state.tabSwitchCount >= limit) {
-    // Update overlay to show termination message instead of resume form
-    if (titleEl) { titleEl.textContent = 'Exam Terminated'; titleEl.style.color = '#dc2626'; }
-    if (msgEl) msgEl.innerHTML = `You have reached the maximum allowed violations (<strong>${limit}</strong>). Your exam is being submitted automatically.`;
-    if (explainEl) explainEl.style.display = 'none';
-    const form = document.querySelector('#overlay-violation textarea');
-    if (form) form.style.display = 'none';
+    // Show "limit reached" overlay — proctor decides whether to terminate or give more tries
+    if (titleEl) { titleEl.textContent = 'Violation Limit Reached'; titleEl.style.color = '#dc2626'; }
+    if (msgEl) msgEl.innerHTML = `You have reached the maximum allowed violations (<strong>${limit}</strong>). Your exam is paused. Your proctor will decide whether to terminate or give you additional attempts.`;
+    if (explainEl) explainEl.textContent = 'Please wait — your proctor has been notified and is reviewing.';
+    // Hide the resume-request form (proctor decides, not candidate)
+    const remarkEl2 = document.getElementById('violation-remark');
+    if (remarkEl2) remarkEl2.style.display = 'none';
+    const waitMsg = document.getElementById('violation-wait-msg');
+    if (waitMsg) { waitMsg.style.display = ''; waitMsg.textContent = '⏳ Violation limit reached — waiting for proctor decision…'; }
     const btn2 = document.getElementById('btn-req-resume');
     if (btn2) btn2.style.display = 'none';
     document.getElementById('overlay-violation').classList.add('active');
+    // Notify proctor of limit reached — special message so monitor shows decision buttons
+    wsSend({ type: 'violation_limit_reached', submissionId: state.submissionId,
+      count: state.tabSwitchCount, limit, candidateName: state.examData?.link?.candidate_name || '' });
     sendMonitorState('violation_limit');
-    setTimeout(() => autoSubmit('violation_limit'), 4000);
     return;
   }
 
@@ -2714,12 +2718,26 @@ function handlePauseExam() {
 
 function handleResumeExam() {
   _examPaused = false;
-  _displayChangeBlur = false; // reset so next monitor hotplug is detected cleanly
-  // Close ALL overlays — multimonitor overlay must also clear so second connection fires fresh
+  _displayChangeBlur = false;
+  // Restore form elements in case violation overlay was in "limit reached" state
+  const remarkEl2 = document.getElementById('violation-remark');
+  if (remarkEl2) remarkEl2.style.display = '';
+  const btn2 = document.getElementById('btn-req-resume');
+  if (btn2) { btn2.style.display = ''; btn2.disabled = false; btn2.textContent = 'Send & Request Resume'; }
+  const waitMsg = document.getElementById('violation-wait-msg');
+  if (waitMsg) waitMsg.style.display = 'none';
+  // Close ALL overlays
   document.getElementById('overlay-paused').classList.remove('active');
   document.getElementById('overlay-violation').classList.remove('active');
   document.getElementById('overlay-multimonitor').classList.remove('active');
   sendMonitorState('exam_resumed');
+}
+
+function handleGrantExtraTries(extra) {
+  // Proctor granted more attempts — increase the limit and resume
+  state.maxTabSwitches = state.tabSwitchCount + parseInt(extra || 1);
+  handleResumeExam();
+  showToast(`Proctor gave you ${extra || 1} more attempt${extra > 1 ? 's' : ''}. Please continue carefully.`, 'info', 6000);
 }
 
 function handleStopExam() {

@@ -911,6 +911,63 @@ function handleMsg(msg) {
     const vAlert = document.getElementById('pc-viol-alert');
     if (vAlert && msg.submissionId == _selectedId) vAlert.style.display = '';
   }
+
+  if (msg.type === 'violation_limit_reached') {
+    showViolationLimitDecision(msg.submissionId, msg.candidateName, msg.count, msg.limit);
+  }
+}
+
+function showViolationLimitDecision(submissionId, candidateName, count, limit) {
+  // Auto-select session if not already viewing it
+  if (_selectedId != submissionId) selectSession(submissionId);
+
+  const vb = document.getElementById('violation-banner');
+  if (!vb) return;
+  document.getElementById('viol-num').textContent = count;
+  document.getElementById('viol-remark').textContent =
+    `${esc(candidateName || 'Candidate')} has reached the maximum violation limit (${count}/${limit}). Choose an action:`;
+
+  // Replace approve/terminate buttons with decision buttons
+  const btns = vb.querySelector('div[style*="display:flex"]') || vb.querySelector('div:last-child');
+  if (btns) {
+    btns.innerHTML = `
+      <button class="pc-ctrl-btn pcb-stop" onclick="terminateExamFinal()" style="flex:1;justify-content:center">❌ Terminate Exam</button>
+      <button class="pc-ctrl-btn" style="flex:1;justify-content:center;background:#1f3361;color:#79c0ff" onclick="showExtraTryPicker()">➕ Give More Tries</button>`;
+  }
+  vb.classList.add('active');
+
+  const alert = document.getElementById('pc-viol-alert');
+  if (alert) { alert.textContent = '⚠ VIOLATION LIMIT — DECIDE'; alert.style.display = ''; }
+}
+
+function terminateExamFinal() {
+  if (!_selectedId) return;
+  if (send({ type: 'stop_exam' })) {
+    toast('⏹ Exam terminated — candidate will be auto-submitted', 'warning');
+    const vb = document.getElementById('violation-banner');
+    if (vb) vb.classList.remove('active');
+  }
+}
+
+function showExtraTryPicker() {
+  if (!window.showConfirm) { grantExtraTries(1); return; }
+  // Simple dropdown via confirm dialog — use prompt-style input
+  const extra = parseInt(prompt('How many extra violations to allow? (e.g. 1, 2, 3)') || '1');
+  if (isNaN(extra) || extra < 1) return;
+  grantExtraTries(extra);
+}
+
+function grantExtraTries(extra) {
+  if (!_selectedId) return;
+  send({ type: 'grant_extra_tries', extra });
+  toast(`✅ Gave candidate ${extra} more attempt${extra > 1 ? 's' : ''} — exam resumed`, 'success');
+  const vb = document.getElementById('violation-banner');
+  if (vb) vb.classList.remove('active');
+  const alert = document.getElementById('pc-viol-alert');
+  if (alert) alert.style.display = 'none';
+  // Restore normal violation banner buttons
+  _isPaused = false;
+  updateControlButtons();
 }
 
 function send(data) {

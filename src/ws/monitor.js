@@ -369,6 +369,19 @@ function handleExamMsg(ws, msg) {
     } catch(e) {}
   }
 
+  // ── Violation limit reached — broadcast to all admins for decision ────────
+  if (msg.type === 'violation_limit_reached') {
+    session.violationLimitReached = true;
+    sendToAdmins({
+      type: 'violation_limit_reached',
+      submissionId: msg.submissionId,
+      candidateName: session.candidateName,
+      count: msg.count,
+      limit: msg.limit,
+    }); // no filter — all admins see it
+    broadcastSessions();
+  }
+
   // ── Proctor call answer + ICE (exam → admin) ──────────────────────────────
   if (msg.type === 'proctor_call_answer') {
     sendToAdmins(
@@ -541,6 +554,17 @@ function handleAdminMsg(ws, msg) {
     const s = info.subscribedTo && examSessions.get(info.subscribedTo);
     if (s && s.ws.readyState === WebSocket.OPEN) {
       s.ws.send(JSON.stringify({ type: 'stop_exam' }));
+    }
+  }
+
+  if (msg.type === 'grant_extra_tries') {
+    const s = info.subscribedTo && examSessions.get(info.subscribedTo);
+    if (s && s.ws.readyState === WebSocket.OPEN) {
+      s.violationLimitReached = false;
+      s.ws.send(JSON.stringify({ type: 'grant_extra_tries', extra: msg.extra || 1 }));
+      s.ws.send(JSON.stringify({ type: 'resume_exam' }));
+      s.paused = false;
+      broadcastSessions();
     }
   }
 
