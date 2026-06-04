@@ -305,13 +305,15 @@ function handleExamMsg(ws, msg) {
     );
   }
 
-  // ── Violation resume request (exam → subscribed admin) ──────────────────
+  // ── Violation resume request (exam → ALL admins) ─────────────────────────
+  // Broadcast to every connected admin, not just the subscribed one.
+  // If the proctor hasn't clicked the session pill yet, they still see the alert.
   if (msg.type === 'resume_request') {
     session.pendingViolation = { remark: msg.remark, violationNum: msg.violationNum, at: new Date().toISOString() };
     sendToAdmins(
       { type: 'resume_request', submissionId: msg.submissionId,
-        candidateName: session.candidateName, remark: msg.remark, violationNum: msg.violationNum },
-      info => info.subscribedTo == msg.submissionId
+        candidateName: session.candidateName, remark: msg.remark, violationNum: msg.violationNum }
+      // No filter — send to all admins so anyone can act on it
     );
     broadcastSessions();
   }

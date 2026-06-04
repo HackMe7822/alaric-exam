@@ -889,9 +889,27 @@ function handleMsg(msg) {
       }
     }
   }
-  if (msg.type === 'resume_request' && msg.submissionId == _selectedId) {
-    showViolationRequest(msg.remark, msg.violationNum);
-    toast(`⚠ ${msg.candidateName} requesting resume after violation #${msg.violationNum}`, 'warning');
+  if (msg.type === 'resume_request') {
+    if (msg.submissionId == _selectedId) {
+      // Proctor is already viewing this session — show violation banner directly
+      showViolationRequest(msg.remark, msg.violationNum);
+    } else {
+      // Proctor is NOT viewing this session — show urgent toast that opens it on click
+      const candName = esc(msg.candidateName || 'Candidate');
+      const t = document.createElement('div');
+      t.className = 'toast warning';
+      t.style.cssText = 'cursor:pointer';
+      t.innerHTML = `🚨 <strong>${candName}</strong> requesting resume — violation #${msg.violationNum}. <u>Click to open</u>`;
+      t.onclick = () => { selectSession(msg.submissionId); t.remove(); };
+      const container = document.getElementById('toast-container');
+      if (container) {
+        container.appendChild(t);
+        setTimeout(() => t.remove(), 30000); // keep for 30s so proctor can see it
+      }
+    }
+    // Always show sidebar badge
+    const vAlert = document.getElementById('pc-viol-alert');
+    if (vAlert && msg.submissionId == _selectedId) vAlert.style.display = '';
   }
 }
 
