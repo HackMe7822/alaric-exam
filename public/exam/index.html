@@ -1148,13 +1148,35 @@ function setupSecurity() {
     }
   });
 
-  // Electron dispatches this immediately when display-added fires in main process.
-  // Run the full checkNow flow (auto-fix + pause if needed) right away instead of
-  // waiting for the 3-second poll. _multiCheckNow is set by startMultiMonitorCheck().
-  window.addEventListener('alaric_display_added', () => {
+  // Electron fires this IMMEDIATELY when a display is added — before DisplaySwitch runs.
+  // DO NOT call checkNow/getDisplayCount here: by the time the IPC round-trip completes,
+  // DisplaySwitch /internal may have already removed the extra monitor so count returns 1.
+  // Instead use e.detail.count which was captured in main.js BEFORE auto-disconnect ran.
+  window.addEventListener('alaric_display_added', (e) => {
     if (!state.examStarted || state.submitted) return;
-    _displayChangeBlur = true; // suppress the blur event that follows hotplug
-    if (_multiCheckNow) _multiCheckNow(true);
+    _displayChangeBlur = true; // suppress the blur that follows hotplug
+
+    const count = (e.detail && e.detail.count) ? e.detail.count : 2;
+    if (count <= 1) return; // should never happen but guard anyway
+
+    postEvent('multi_monitor');
+    const overlay = document.getElementById('overlay-multimonitor');
+    const msgEl   = document.getElementById('multimon-msg');
+    if (overlay) overlay.classList.add('active');
+    if (msgEl) msgEl.innerHTML = 'Extra display detected — <strong>auto-disconnecting…</strong>';
+
+    // Pause exam and require proctor approval regardless of whether auto-fix succeeds
+    if (!_examPaused) {
+      state.tabSwitchCount++;
+      const remarkEl = document.getElementById('violation-remark');
+      if (remarkEl) remarkEl.value = 'An extra monitor was connected to my machine.';
+      triggerTabViolation('multi_monitor');
+    }
+
+    // Try auto-fix async — only updates overlay message, exam stays paused either way
+    autoFixMultiMonitor().then(fixed => {
+      if (fixed && msgEl) msgEl.textContent = 'Extra display disconnected. Wait for your proctor to resume.';
+    });
   });
 }
 
