@@ -88,6 +88,9 @@ function initDb() {
   }
   // JS migration: display control mode (0=software disconnect only, 1=require physical cable removal)
   try { d.exec(`ALTER TABLE exams ADD COLUMN display_control_mode INTEGER DEFAULT 0`); } catch(e) {}
+  // JS migration: violation / flag monitoring settings
+  // max_tab_switches: 0 = disabled (no auto-submit), 1-99 = limit (default 3)
+  try { d.exec(`ALTER TABLE exams ADD COLUMN max_tab_switches INTEGER DEFAULT 3`); } catch(e) {}
   // JS migration: pre-exam identity + environment verification
   try { d.exec(`CREATE TABLE IF NOT EXISTS exam_verifications (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

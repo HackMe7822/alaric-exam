@@ -63,8 +63,10 @@ router.get('/:token', (req, res) => {
   });
 
   const settings = {};
-  const rows = db.prepare('SELECT key, value FROM settings WHERE key IN (?,?,?,?,?)').all('webcam_enabled', 'webcam_interval', 'fullscreen_enforce', 'ai_paste_detect', 'max_tab_switches');
+  const rows = db.prepare('SELECT key, value FROM settings WHERE key IN (?,?,?,?)').all('webcam_enabled', 'webcam_interval', 'fullscreen_enforce', 'ai_paste_detect');
   for (const r of rows) settings[r.key] = r.value;
+  // Per-exam max_tab_switches overrides global setting (0 = disabled, default 3)
+  settings.max_tab_switches = exam.max_tab_switches != null ? String(exam.max_tab_switches) : '3';
 
   res.json({
     link: { id: link.id, candidate_name: link.candidate_name, candidate_email: link.candidate_email, exam_id: link.exam_id },
@@ -72,7 +74,8 @@ router.get('/:token', (req, res) => {
       id: exam.id, title: exam.title, description: exam.description, instructions: exam.instructions,
       duration_minutes: exam.duration_minutes, total_marks: exam.total_marks, pass_marks: exam.pass_marks,
       allow_review: exam.allow_review, branding_color: exam.branding_color, branding_logo: exam.branding_logo,
-      require_screen_consent: exam.require_screen_consent || 0
+      require_screen_consent: exam.require_screen_consent || 0,
+      max_tab_switches: exam.max_tab_switches != null ? exam.max_tab_switches : 3
     },
     sections, questions, settings
   });

@@ -98,7 +98,7 @@ router.put('/:id', auth, requireRole('exam_manager', 'super_admin'), (req, res) 
     'branding_logo','certificate_template','status','require_screen_consent',
     'check_antivirus','check_firewall','check_processes','check_services',
     'check_vm','check_remote','check_displays','check_camera','check_mic',
-    'display_control_mode'];
+    'display_control_mode','max_tab_switches'];
   const updates = [];
   const vals = [];
   for (const f of fields) {

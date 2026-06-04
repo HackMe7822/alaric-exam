@@ -800,7 +800,8 @@ async function startExam() {
   state.examStarted = true;
 
   const s = state.examData.settings;
-  state.maxTabSwitches = parseInt(s.max_tab_switches || '3');
+  // 0 = violations disabled (no auto-submit), >0 = limit before auto-submit
+  state.maxTabSwitches = parseInt(s.max_tab_switches ?? '3');
   state.fullscreenEnforced = s.fullscreen_enforce === '1';
 
   // Save initial state to localStorage
@@ -1171,8 +1172,9 @@ async function postEvent(eventType) {
     event_type: eventType
   });
   // Safety fallback — triggerTabViolation handles this first, but catch it here too
-  if ((eventType === 'tab_switch' || eventType === 'multi_monitor') &&
-      state.tabSwitchCount >= (state.maxTabSwitches || 3)) {
+  const _limit = state.maxTabSwitches;
+  if (_limit > 0 && (eventType === 'tab_switch' || eventType === 'multi_monitor') &&
+      state.tabSwitchCount >= _limit) {
     autoSubmit('violation_limit');
   }
 }
@@ -2665,8 +2667,9 @@ function triggerTabViolation(reason) {
   document.getElementById('violation-count').textContent = state.tabSwitchCount;
 
   // ── Auto-terminate when violation limit is reached ────────────────────────
-  const limit = state.maxTabSwitches || 3;
-  if (state.tabSwitchCount >= limit) {
+  // limit === 0 means violations are monitored but never auto-terminate
+  const limit = state.maxTabSwitches;
+  if (limit > 0 && state.tabSwitchCount >= limit) {
     // Update overlay to show termination message instead of resume form
     if (titleEl) { titleEl.textContent = 'Exam Terminated'; titleEl.style.color = '#dc2626'; }
     if (msgEl) msgEl.innerHTML = `You have reached the maximum allowed violations (<strong>${limit}</strong>). Your exam is being submitted automatically.`;

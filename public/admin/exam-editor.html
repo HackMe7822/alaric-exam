@@ -364,6 +364,29 @@ textarea.form-control-sm { resize: vertical; min-height: 72px; }
         <label class="toggle-sw" style="flex-shrink:0"><input type="checkbox" id="s-require-consent"><span class="sw-track"></span></label>
       </div>
 
+      <!-- Violation / Flag Settings -->
+      <div class="toggle-row" style="align-items:flex-start;gap:12px">
+        <div style="flex:1">
+          <label style="display:block;font-weight:600">Tab Switch / Flag Violations</label>
+          <span style="font-size:11px;color:var(--gray);display:block;margin-top:2px">
+            When enabled, tab switches and duplicate monitor detections are flagged and counted.<br>
+            Set the maximum number of violations before the exam is automatically submitted. Set to <strong>0</strong> to disable auto-termination (proctor must stop manually).
+          </span>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+            <label style="font-size:12px;font-weight:600;color:var(--gray);white-space:nowrap">Max flags before auto-submit:</label>
+            <select id="s-max-tab-switches" class="form-control-sm" style="width:140px">
+              <option value="0">Disabled (no limit)</option>
+              <option value="1">1 violation</option>
+              <option value="2">2 violations</option>
+              <option value="3" selected>3 violations (default)</option>
+              <option value="4">4 violations</option>
+              <option value="5">5 violations</option>
+              <option value="10">10 violations</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div class="panel-section-title">Secure Browser Pre-checks</div>
       <div style="font-size:11px;color:var(--gray);margin-bottom:8px;line-height:1.5">
         Choose which system checks must pass before the candidate can start the exam in the Secure Browser. Disabled checks are silently skipped.
@@ -894,6 +917,15 @@ function populateSettings() {
   chk('s-is-open-test', e.is_open_test);
   chk('s-require-consent', e.require_screen_consent);
 
+  // Violation / flag settings
+  const maxSwEl = document.getElementById('s-max-tab-switches');
+  if (maxSwEl) {
+    const v = String(e.max_tab_switches ?? 3);
+    // Select matching option, fallback to 3
+    const opt = maxSwEl.querySelector(`option[value="${v}"]`);
+    maxSwEl.value = opt ? v : '3';
+  }
+
   // Pre-check toggles — default ON (1) if column is null/undefined (new exams)
   const pc = k => e[k] !== 0 && e[k] !== false; // null/undefined/1 → true; 0/false → false
   chk('s-check-antivirus', pc('check_antivirus'));
@@ -982,6 +1014,7 @@ document.getElementById('saveSettingsBtn').onclick = async () => {
     is_public:            document.getElementById('s-is-public').checked,
     is_open_test:            document.getElementById('s-is-open-test').checked,
     require_screen_consent:  document.getElementById('s-require-consent').checked,
+    max_tab_switches: parseInt(document.getElementById('s-max-tab-switches').value) || 0,
     check_antivirus:  document.getElementById('s-check-antivirus').checked,
     check_firewall:   document.getElementById('s-check-firewall').checked,
     check_processes:  document.getElementById('s-check-processes').checked,
