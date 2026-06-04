@@ -792,18 +792,12 @@ function handleMsg(msg) {
       const msg2 = isSubmit ? '📋 Candidate submitted — session closed' : '⚠ Candidate session ended';
       toast(msg2, isSubmit ? 'success' : 'warning');
       appendEvent({ event: isSubmit ? 'exam_submitted' : 'session_ended', at: new Date().toISOString() });
-      // Disable controls and tear down WebRTC — exam is over
-      document.querySelectorAll('#pc-controls .pc-ctrl-btn').forEach(b => b.disabled = true);
+      // Tear down WebRTC and return to empty state immediately
       closeExamCam();
       stopScreen(true);
       endProctorCall();
-      // Return to empty state after 3 seconds
-      setTimeout(() => {
-        if (_selectedId == msg.submissionId) {
-          _selectedId = null;
-          showEmptyDetail();
-        }
-      }, 3000);
+      _selectedId = null;
+      showEmptyDetail();
     }
   }
   if (msg.type === 'session_detail') {
@@ -1796,12 +1790,14 @@ async function handleExamCameraIce(msg) {
 function closeExamCam() {
   if (_examCamPc) { try { _examCamPc.close(); } catch {} _examCamPc = null; }
   _examCamIce = [];
-  const vid = document.getElementById('exam-cam-video');
-  if (vid) { vid.srcObject = null; } // don't hide — video always rendered
-  const ph = document.getElementById('cam-placeholder');
-  if (ph) ph.style.display = '';
-  const cs = document.getElementById('cam-status');
-  if (cs) { cs.textContent = 'Connecting…'; cs.style.color = ''; }
+  const vid   = document.getElementById('exam-cam-video');
+  if (vid) vid.srcObject = null;
+  const ph    = document.getElementById('cam-placeholder');
+  if (ph)  ph.style.display = '';
+  const badge = document.getElementById('cam-status-badge');
+  if (badge) badge.style.display = 'none';
+  const cs    = document.getElementById('cam-status');
+  if (cs) { cs.textContent = 'Connecting…'; cs.style.display = ''; cs.style.color = ''; }
 }
 
 // ── Admin controls ─────────────────────────────────────────────────────────────
