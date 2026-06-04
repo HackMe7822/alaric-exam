@@ -2229,6 +2229,7 @@ let _pendingExamIce = [];      // ICE candidates buffered before remoteDescripti
 let _examCamPc = null;         // Camera WebRTC to admin (during exam)
 let _pendingExamCamIce = [];
 let _micStream = null;
+let _micInitPromise = null; // guards against concurrent getUserMedia(audio) requests
 let _examPaused = false;
 let _webcamRecorder = null;    // MediaRecorder for webcam
 let _screenRecorder = null;    // MediaRecorder for screen
@@ -2451,11 +2452,14 @@ function showMonitoringIndicator() {
   ind.innerHTML = '<span style="width:8px;height:8px;border-radius:50%;background:#ef4444;display:inline-block;animation:_blink 1.2s infinite"></span> Proctor Monitoring';
 }
 
-// ── Mic capture ──────────────────────────────────────────────────────────────
+// ── Mic capture — shared promise prevents concurrent getUserMedia(audio) calls ──
 async function initMicStream() {
-  try {
-    _micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-  } catch(e) {} // mic denied — fine, camera-only stream still works
+  if (_micStream) return _micStream;
+  if (_micInitPromise) return _micInitPromise; // already in progress — wait for it
+  _micInitPromise = navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    .then(stream => { _micStream = stream; return stream; })
+    .catch(e => { console.warn('[mic] Not available:', e.message); return null; });
+  return _micInitPromise;
 }
 
 // ── Exit exam (browser mode) ─────────────────────────────────────────────────
@@ -2581,15 +2585,9 @@ async function offerExamCamera() {
     } catch(e) { console.warn('[examCam] Could not capture webcam for monitoring:', e.message); }
   }
 
-  // Ensure mic is ready — request it here so browser prompts BEFORE the offer is created.
-  // initMicStream() is async and may not have resolved yet when request_exam_camera arrives.
-  if (!_micStream) {
-    try {
-      _micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-    } catch(e) {
-      console.warn('[examCam] Mic unavailable — audio will not be sent to proctor:', e.message);
-    }
-  }
+  // Ensure mic is ready — shared promise prevents double getUserMedia(audio) requests
+  // if initMicStream() from exam-start is still in progress.
+  await initMicStream();
 
   const tracks = [];
   if (camStream) camStream.getVideoTracks().forEach(t => tracks.push(t));
