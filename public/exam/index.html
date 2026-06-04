@@ -2673,7 +2673,9 @@ function triggerTabViolation(reason) {
   }
 
   document.getElementById('violation-count').textContent = state.tabSwitchCount;
-  document.getElementById('violation-remark').value = remarkEl?.value || '';
+  // For tab switch: always clear the remark so old multi-monitor text doesn't persist.
+  // For multi-monitor: keep the pre-filled explanation (set by caller before invoking this).
+  document.getElementById('violation-remark').value = isMultiMon ? (remarkEl?.value || '') : '';
   document.getElementById('violation-wait-msg').style.display = 'none';
   const btn = document.getElementById('btn-req-resume');
   if (btn) { btn.disabled = false; btn.textContent = 'Send & Request Resume'; }
